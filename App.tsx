@@ -1,0 +1,51 @@
+// App.tsx (na raiz do projeto)
+import React, { useState } from 'react';
+import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import Login from './src/screens/Login';
+import Dashboard from './src/screens/Dashboard';
+import RegisterBroker from './src/screens/RegisterBroker'; // <-- IMPORTADO AQUI
+
+function AppContent() {
+  const { signed, loading } = useAuth();
+  const [currentScreen, setCurrentScreen] = useState<'login' | 'register'>('login'); // <-- CONTROLE DE TELA
+
+  // Se o aplicativo estiver buscando os dados salvos no celular, exibe tela de carregamento [15]
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#E31C1C" />
+      </View>
+    );
+  }
+
+  // Se o usuário estiver logado, exibe o Dashboard diretamente [15]
+  if (signed) {
+    return <Dashboard />;
+  }
+
+  // Se não estiver logado, alterna dinamicamente entre Login e Cadastro
+  return currentScreen === 'login' ? (
+    <Login onGoToRegister={() => setCurrentScreen('register')} />
+  ) : (
+    <RegisterBroker onBackToLogin={() => setCurrentScreen('login')} />
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
+  );
+}
+
+const styles = StyleSheet.create({
+  loadingContainer: {
+    flex: 1,
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#f5f5f7',
+  },
+});
