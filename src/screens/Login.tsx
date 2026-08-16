@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import {
   View,
+  Image,
   Text,
   TextInput,
   TouchableOpacity,
@@ -42,6 +43,12 @@ export default function Login({ onGoToRegister }: LoginProps) {
   return (
     <View style={styles.container}>
       <View style={styles.card}>
+        <Image
+          source={require('../../assets/abiatar-logo.jpg')}
+          style={styles.logo}
+          resizeMode="contain"
+          accessibilityLabel="Logo Abiatar"
+        />
         <Text style={styles.title}>APP ABIATAR</Text>
         <Text style={styles.subtitle}>Acesse a sua conta</Text>
 
@@ -106,6 +113,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 5,
+  },
+  logo: {
+    width: '100%',
+    height: 96,
+    marginBottom: 12,
   },
   title: {
     fontSize: 24,
