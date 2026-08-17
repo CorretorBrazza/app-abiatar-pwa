@@ -1,22 +1,33 @@
-/* Generated during web:build. Do not add service-account credentials here. */
+/* ABIATAR FCM service worker. Firebase web configuration is public by design. */
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
 
-const firebaseConfig = {"apiKey":"","authDomain":"","projectId":"","storageBucket":"","messagingSenderId":"","appId":""};
-firebase.initializeApp(firebaseConfig);
+firebase.initializeApp({"apiKey":"AIzaSyDSqzU4jOQZ-7zLrjyc-r8JIlQqq7MGmPw","authDomain":"abiatar-app.firebaseapp.com","projectId":"abiatar-app","storageBucket":"abiatar-app.firebasestorage.app","messagingSenderId":"391082150090","appId":"1:391082150090:web:2cf0048e0b0c23f6680c33"});
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || 'ABIATAR';
-  const options = {
-    body: payload.notification?.body || 'Você recebeu uma nova atualização.',
+  const messageId = payload.data?.messageId || payload.messageId || 'message-' + Date.now();
+  self.registration.showNotification(title, {
+    body: payload.notification?.body || 'Você recebeu uma nova mensagem.',
     icon: '/icon.png',
-    data: payload.data || {},
-  };
-  self.registration.showNotification(title, options);
+    badge: '/icon.png',
+    tag: 'abiatar-' + messageId,
+    renotify: true,
+    data: { ...(payload.data || {}), url: 'https://abiatar.bitimob.com.br/#/inbox' },
+  });
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.waitUntil(clients.openWindow('https://abiatar.bitimob.com.br'));
+  const url = event.notification.data?.url || 'https://abiatar.bitimob.com.br/#/inbox';
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    for (const client of clientList) {
+      if ('focus' in client) {
+        client.navigate(url);
+        return client.focus();
+      }
+    }
+    return clients.openWindow(url);
+  }));
 });

@@ -1,52 +1,48 @@
 import { mkdir, writeFile } from 'node:fs/promises';
 
-const requiredKeys = [
-  'EXPO_PUBLIC_FIREBASE_API_KEY',
-  'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN',
-  'EXPO_PUBLIC_FIREBASE_PROJECT_ID',
-  'EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET',
-  'EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID',
-  'EXPO_PUBLIC_FIREBASE_APP_ID',
-];
-
-const missingKeys = requiredKeys.filter((key) => !process.env[key]);
-if (missingKeys.length > 0) {
-  throw new Error(
-    `[FCM] Variáveis públicas ausentes no build: ${missingKeys.join(', ')}. ` +
-      'O deploy foi interrompido para evitar um service worker inválido.',
-  );
-}
-
 const config = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID,
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
+  // Configuração Web do Firebase: pública por definição. Os fallbacks
+  // impedem que um build sem ambiente gere um service worker inválido.
+  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || 'AIzaSyDSqzU4jOQZ-7zLrjyc-r8JIlQqq7MGmPw',
+  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || 'abiatar-app.firebaseapp.com',
+  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'abiatar-app',
+  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || 'abiatar-app.firebasestorage.app',
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '391082150090',
+  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '1:391082150090:web:2cf0048e0b0c23f6680c33',
 };
 
-const content = `/* Generated during web:build. Do not add service-account credentials here. */
+const content = `/* ABIATAR FCM service worker. Firebase web configuration is public by design. */
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-app-compat.js');
 importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-compat.js');
 
-const firebaseConfig = ${JSON.stringify(config)};
-firebase.initializeApp(firebaseConfig);
+firebase.initializeApp(${JSON.stringify(config)});
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
   const title = payload.notification?.title || 'ABIATAR';
-  const options = {
-    body: payload.notification?.body || 'Você recebeu uma nova atualização.',
+  const messageId = payload.data?.messageId || payload.messageId || 'message-' + Date.now();
+  self.registration.showNotification(title, {
+    body: payload.notification?.body || 'Você recebeu uma nova mensagem.',
     icon: '/icon.png',
-    data: payload.data || {},
-  };
-  self.registration.showNotification(title, options);
+    badge: '/icon.png',
+    tag: 'abiatar-' + messageId,
+    renotify: true,
+    data: { ...(payload.data || {}), url: 'https://abiatar.bitimob.com.br/#/inbox' },
+  });
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  event.waitUntil(clients.openWindow('https://abiatar.bitimob.com.br'));
+  const url = event.notification.data?.url || 'https://abiatar.bitimob.com.br/#/inbox';
+  event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    for (const client of clientList) {
+      if ('focus' in client) {
+        client.navigate(url);
+        return client.focus();
+      }
+    }
+    return clients.openWindow(url);
+  }));
 });
 `;
 

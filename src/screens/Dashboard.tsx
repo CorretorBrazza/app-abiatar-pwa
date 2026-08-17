@@ -14,6 +14,7 @@ import Inbox from './Inbox';
 import ManagerPanel from './ManagerPanel'; 
 import StatisticsPanel from './StatisticsPanel'; // <-- ADICIONE ESTA IMPORTAÇÃO DO PAINEL DE BI [14]
 import ReceptionPanel from './ReceptionPanel';
+import PushToast from '../components/PushToast';
 import api from '../services/api';
 
 export default function Dashboard() {
@@ -24,6 +25,7 @@ export default function Dashboard() {
   const [loadingSession, setLoadingSession] = useState(true);
   const [endingShift, setEndingShift] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pushNotice, setPushNotice] = useState<{ title: string; body: string } | null>(null);
 
   // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI) [10, 12, 14, 15]
   const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics'>('main'); // <-- ADICIONADO "statistics" AQUI
@@ -87,12 +89,23 @@ export default function Dashboard() {
 
     loadUnreadCount();
     const intervalId = setInterval(loadUnreadCount, 15000);
-    const handlePush = () => loadUnreadCount();
+    let noticeTimeout: ReturnType<typeof setTimeout> | undefined;
+    const handlePush = (event: Event) => {
+      void loadUnreadCount();
+      const payload = (event as CustomEvent).detail || {};
+      setPushNotice({
+        title: payload.notification?.title || 'Nova mensagem ABIATAR',
+        body: payload.notification?.body || 'Você recebeu uma nova mensagem.',
+      });
+      if (noticeTimeout) clearTimeout(noticeTimeout);
+      noticeTimeout = setTimeout(() => setPushNotice(null), 10000);
+    };
     window.addEventListener('abiatar:push', handlePush);
 
     return () => {
       mounted = false;
       clearInterval(intervalId);
+      if (noticeTimeout) clearTimeout(noticeTimeout);
       window.removeEventListener('abiatar:push', handlePush);
     };
   }, [user]);
@@ -158,6 +171,7 @@ export default function Dashboard() {
     if (!activeSession) {
       return (
         <View style={styles.container}>
+          {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
           <View style={{ flex: 1 }}>
             <CheckIn 
               onCheckInSuccess={(data) => {
@@ -193,6 +207,7 @@ export default function Dashboard() {
 
     return (
       <View style={styles.container}>
+        {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
         <View style={[styles.header, { backgroundColor: primaryColor }]}>
           <Text style={styles.tenantName}>{tenant?.name}</Text>
           <Text style={styles.roleTag}>Corretor Ativo</Text>
@@ -249,6 +264,7 @@ export default function Dashboard() {
   // ==========================================
   return (
     <View style={styles.container}>
+      {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <Text style={styles.tenantName}>{tenant?.name}</Text>
         <Text style={styles.roleTag}>Diretoria</Text>
