@@ -3,7 +3,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
-  StyleSheet, 
+  StyleSheet,
+  ScrollView,
   TouchableOpacity, 
   ActivityIndicator, 
   Platform 
@@ -31,6 +32,8 @@ export default function Dashboard() {
   const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics'>('main'); // <-- ADICIONADO "statistics" AQUI
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
+  const isManager = user?.role === 'gerencia_level_2';
+  const isDirector = user?.role === 'diretoria_level_1';
 
   // 1. Efeito Inicial: Busca se o corretor já possui um turno ativo online na nuvem [8]
   useEffect(() => {
@@ -260,61 +263,84 @@ export default function Dashboard() {
   }
 
   // ==========================================
-  // FLUXO DO ADMINISTRADOR / DIRETORIA (NÍVEL 1) [2]
+  // FLUXO PRINCIPAL POR NÍVEL HIERÁRQUICO
   // ==========================================
   return (
     <View style={styles.container}>
       {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <Text style={styles.tenantName}>{tenant?.name}</Text>
-        <Text style={styles.roleTag}>Diretoria</Text>
+        <Text style={styles.roleTag}>{isManager ? 'Gerência' : isDirector ? 'Diretoria' : 'Administrador'}</Text>
       </View>
 
-      <View style={styles.content}>
+      <ScrollView
+        style={styles.dashboardScroll}
+        contentContainerStyle={styles.dashboardScrollContent}
+        showsVerticalScrollIndicator
+      >
         <Text style={styles.welcomeTitle}>Olá, {user?.nome_guerra}!</Text>
-        <Text style={styles.welcomeSubtitle}>Seja bem-vindo à sua área de trabalho administrativa.</Text>
+        <Text style={styles.welcomeSubtitle}>
+          {isManager ? 'Acompanhe sua equipe, os corretores e as comunicações do plantão.' : 'Seja bem-vindo à sua área de trabalho administrativa.'}
+        </Text>
 
-        <View style={styles.card}>
-          <Text style={styles.infoTitle}>Status da Construtora (Tenant)</Text>
-          <Text style={styles.infoText}>Sua empresa: {tenant?.name}</Text>
-          <Text style={styles.infoText}>Identificador (Slug): {tenant?.slug}</Text>
-          <Text style={styles.infoText}>ID da Nuvem: {tenant?.id}</Text>
-        </View>
+        {isManager ? (
+          <>
+            <View style={styles.card}>
+              <Text style={styles.infoTitle}>Resumo da Gerência</Text>
+              <Text style={styles.infoText}>Empresa: {tenant?.name}</Text>
+              <Text style={styles.infoText}>Acesso: gestão da equipe de corretores</Text>
+              <Text style={styles.infoText}>Use o painel de gestão para convites, aprovações e fila de leads.</Text>
+            </View>
 
-        {/* 1. BOTÃO DE NAVEGAÇÃO PARA O PAINEL DE BI DA DIRETORIA [6, 14] */}
-        <TouchableOpacity 
-          style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 400 }]} 
-          onPress={() => setCurrentView('statistics')}
-        >
-          <Text style={[styles.msgText, { color: primaryColor }]}>Ver Inteligência de Plantão (BI)</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+              onPress={() => setCurrentView('manager_panel')}
+            >
+              <Text style={[styles.msgText, { color: primaryColor }]}>Abrir Gestão da Minha Equipe</Text>
+            </TouchableOpacity>
+          </>
+        ) : (
+          <>
+            <View style={styles.card}>
+              <Text style={styles.infoTitle}>Status da Construtora (Tenant)</Text>
+              <Text style={styles.infoText}>Sua empresa: {tenant?.name}</Text>
+              <Text style={styles.infoText}>Identificador (Slug): {tenant?.slug}</Text>
+              <Text style={styles.infoText}>ID da Nuvem: {tenant?.id}</Text>
+            </View>
 
-        {/* 2. BOTÃO DE NAVEGAÇÃO PARA O PAINEL DE GESTÃO DO TIME DO GERENTE [10] */}
-        <TouchableOpacity 
-          style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 400 }]} 
-          onPress={() => setCurrentView('manager_panel')}
-        >
-          <Text style={[styles.msgText, { color: primaryColor }]}>Gerenciar Corretores / Equipe</Text>
-        </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+              onPress={() => setCurrentView('statistics')}
+            >
+              <Text style={[styles.msgText, { color: primaryColor }]}>Ver Inteligência de Plantão (BI)</Text>
+            </TouchableOpacity>
 
-        {/* 3. BOTÃO DE NAVEGAÇÃO PARA O INBOX DE ALERTAS PREDITIVOS [6, 12] */}
-        <TouchableOpacity 
-          style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 400 }]} 
+            <TouchableOpacity
+              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+              onPress={() => setCurrentView('manager_panel')}
+            >
+              <Text style={[styles.msgText, { color: primaryColor }]}>Gerenciar Corretores / Equipe</Text>
+            </TouchableOpacity>
+          </>
+        )}
+
+        <TouchableOpacity
+          style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
           onPress={() => setCurrentView('inbox')}
         >
           <View style={styles.buttonRow}>
-            <Text style={[styles.msgText, { color: primaryColor }]}>Ver Mensagens / Alertas Recebidos</Text>
+            <Text style={[styles.msgText, { color: primaryColor }]}>{isManager ? 'Ver Mensagens da Equipe' : 'Ver Mensagens / Alertas Recebidos'}</Text>
             {unreadCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>}
           </View>
         </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.logoutButton, { borderColor: primaryColor }]} 
+        <TouchableOpacity
+          style={[styles.logoutButton, { borderColor: primaryColor, width: '100%', maxWidth: 520 }]}
           onPress={logout}
         >
           <Text style={[styles.logoutText, { color: primaryColor }]}>Encerrar Sessão</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -369,7 +395,15 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
     padding: 24,
-    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  dashboardScroll: {
+    flex: 1,
+  },
+  dashboardScrollContent: {
+    flexGrow: 1,
+    padding: 24,
+    paddingBottom: 48,
     alignItems: 'center',
   },
   welcomeTitle: {
