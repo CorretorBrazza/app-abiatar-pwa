@@ -13,6 +13,7 @@ import CheckIn from './CheckIn';
 import Inbox from './Inbox'; 
 import ManagerPanel from './ManagerPanel'; 
 import StatisticsPanel from './StatisticsPanel'; // <-- ADICIONE ESTA IMPORTAÇÃO DO PAINEL DE BI [14]
+import ReceptionPanel from './ReceptionPanel';
 import api from '../services/api';
 
 export default function Dashboard() {
@@ -97,6 +98,10 @@ export default function Dashboard() {
         <Text style={styles.loadingText}>Verificando status de presença...</Text>
       </View>
     );
+  }
+
+  if (user?.role === 'recepcao_level_3') {
+    return <ReceptionPanel />;
   }
 
   // ==========================================
