@@ -1,12 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import Inbox from './Inbox';
 import api from '../services/api';
 
 export default function ReceptionPanel() {
   const { user, tenant, logout } = useAuth();
   const [booths, setBooths] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [showInbox, setShowInbox] = useState(false);
   const primaryColor = tenant?.primary_color || '#1c1c1e';
 
   useEffect(() => {
@@ -26,6 +29,31 @@ export default function ReceptionPanel() {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    const loadUnreadCount = async () => {
+      try {
+        const response = await api.get('/messages/my-inbox');
+        if (mounted) setUnreadCount(Array.isArray(response.data) ? response.data.filter((item: any) => !item.read_at).length : 0);
+      } catch (error) {
+        console.warn('[RECEPTION] Falha ao atualizar mensagens não lidas:', error);
+      }
+    };
+    loadUnreadCount();
+    const intervalId = setInterval(loadUnreadCount, 15000);
+    const handlePush = () => loadUnreadCount();
+    window.addEventListener('abiatar:push', handlePush);
+    return () => {
+      mounted = false;
+      clearInterval(intervalId);
+      window.removeEventListener('abiatar:push', handlePush);
+    };
+  }, []);
+
+  if (showInbox) {
+    return <Inbox onBack={() => setShowInbox(false)} />;
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -44,6 +72,11 @@ export default function ReceptionPanel() {
       <View style={styles.content}>
         <Text style={styles.title}>Olá, {user?.nome_guerra}.</Text>
         <Text style={styles.subtitle}>Selecione um plantão atribuído para acompanhar a operação.</Text>
+
+        <TouchableOpacity style={[styles.inboxButton, { borderColor: primaryColor }]} onPress={() => setShowInbox(true)}>
+          <Text style={[styles.inboxText, { color: primaryColor }]}>Mensagens / Inbox</Text>
+          {unreadCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>}
+        </TouchableOpacity>
 
         {booths.length === 0 ? (
           <View style={styles.card}>
@@ -82,6 +115,10 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 17, fontWeight: 'bold', color: '#1c1c1e', marginBottom: 8 },
   muted: { color: '#636366', lineHeight: 20 },
   status: { color: '#8e8e93', marginTop: 12 },
+  inboxButton: { width: '100%', maxWidth: 520, minHeight: 50, borderWidth: 2, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 20, flexDirection: 'row', gap: 8, backgroundColor: '#FFF' },
+  inboxText: { fontWeight: 'bold', fontSize: 16 },
+  badge: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, backgroundColor: '#ff3b30', alignItems: 'center', justifyContent: 'center' },
+  badgeText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' },
   logout: { width: '100%', maxWidth: 520, height: 50, borderWidth: 2, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
   logoutText: { fontWeight: 'bold', fontSize: 16 },
 });

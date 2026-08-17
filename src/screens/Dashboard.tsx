@@ -23,6 +23,7 @@ export default function Dashboard() {
   const [activeSession, setActiveSession] = useState<any | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [endingShift, setEndingShift] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI) [10, 12, 14, 15]
   const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics'>('main'); // <-- ADICIONADO "statistics" AQUI
@@ -68,6 +69,31 @@ export default function Dashboard() {
 
     return () => {
       if (intervalId) clearInterval(intervalId);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadUnreadCount = async () => {
+      try {
+        const response = await api.get('/messages/my-inbox');
+        if (mounted) {
+          setUnreadCount(Array.isArray(response.data) ? response.data.filter((item: any) => !item.read_at).length : 0);
+        }
+      } catch (error) {
+        console.warn('[INBOX] Falha ao atualizar contador de não lidas:', error);
+      }
+    };
+
+    loadUnreadCount();
+    const intervalId = setInterval(loadUnreadCount, 15000);
+    const handlePush = () => loadUnreadCount();
+    window.addEventListener('abiatar:push', handlePush);
+
+    return () => {
+      mounted = false;
+      clearInterval(intervalId);
+      window.removeEventListener('abiatar:push', handlePush);
     };
   }, [user]);
 
@@ -148,7 +174,10 @@ export default function Dashboard() {
               style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 12 }]} 
               onPress={() => setCurrentView('inbox')}
             >
-              <Text style={[styles.msgText, { color: primaryColor }]}>Ver Mensagens / Inbox</Text>
+              <View style={styles.buttonRow}>
+                <Text style={[styles.msgText, { color: primaryColor }]}>Ver Mensagens / Inbox</Text>
+                {unreadCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>}
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity 
@@ -198,7 +227,10 @@ export default function Dashboard() {
             style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16 }]} 
             onPress={() => setCurrentView('inbox')}
           >
-            <Text style={[styles.msgText, { color: primaryColor }]}>Ver Mensagens / Alertas</Text>
+            <View style={styles.buttonRow}>
+              <Text style={[styles.msgText, { color: primaryColor }]}>Ver Mensagens / Alertas</Text>
+              {unreadCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>}
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -254,7 +286,10 @@ export default function Dashboard() {
           style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 400 }]} 
           onPress={() => setCurrentView('inbox')}
         >
-          <Text style={[styles.msgText, { color: primaryColor }]}>Ver Mensagens / Alertas Recebidos</Text>
+          <View style={styles.buttonRow}>
+            <Text style={[styles.msgText, { color: primaryColor }]}>Ver Mensagens / Alertas Recebidos</Text>
+            {unreadCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>}
+          </View>
         </TouchableOpacity>
 
         <TouchableOpacity 
@@ -379,6 +414,26 @@ const styles = StyleSheet.create({
   buttonText: {
     color: '#FFF',
     fontSize: 16,
+    fontWeight: 'bold',
+  },
+  buttonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  badge: {
+    minWidth: 20,
+    height: 20,
+    borderRadius: 10,
+    paddingHorizontal: 6,
+    backgroundColor: '#ff3b30',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  badgeText: {
+    color: '#FFF',
+    fontSize: 11,
     fontWeight: 'bold',
   },
   footerLogout: {
