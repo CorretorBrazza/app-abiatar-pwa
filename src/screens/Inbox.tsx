@@ -136,9 +136,10 @@ export default function Inbox({ onBack }: InboxProps) {
             >
               <View style={styles.cardHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  {isUnread && <View style={[styles.unreadDot, { backgroundColor: primaryColor }]} />}
+                  {isUnread && <Text style={styles.unreadIcon}>!</Text>}
                   <Text style={styles.senderText}>De: {item.message.sender.nome_guerra}</Text>
                 </View>
+                <Text style={isUnread ? styles.unreadStatus : styles.readStatus}>{isUnread ? 'NÃO LIDA' : 'LIDA'}</Text>
                 {isUrgent && <Text style={styles.urgentBadge}>URGENTE</Text>}
               </View>
 
@@ -264,10 +265,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 8,
   },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
+  unreadIcon: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#ff3b30',
+    color: '#FFF',
+    textAlign: 'center',
+    lineHeight: 20,
+    fontWeight: 'bold',
+    marginRight: 8,
+  },
+  unreadStatus: {
+    color: '#ff3b30',
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginLeft: 'auto',
+    marginRight: 8,
+  },
+  readStatus: {
+    color: '#34c759',
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginLeft: 'auto',
     marginRight: 8,
   },
   senderText: {

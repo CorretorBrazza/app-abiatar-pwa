@@ -73,6 +73,24 @@ export async function registerWebPushNotifications(): Promise<boolean> {
 
     onMessage(messaging, (payload) => {
       window.dispatchEvent(new CustomEvent('abiatar:push', { detail: payload }));
+      const title = payload.notification?.title || 'ABIATAR';
+      const body = payload.notification?.body || 'Você recebeu uma nova mensagem.';
+      if (Notification.permission === 'granted') {
+        try {
+          const notification = new Notification(title, {
+            body,
+            icon: '/icon.png',
+            tag: payload.data?.messageId ? `message-${payload.data.messageId}` : 'abiatar-message',
+          });
+          notification.onclick = () => {
+            window.focus();
+            window.location.hash = '#/inbox';
+            notification.close();
+          };
+        } catch (error) {
+          console.warn('[PUSH] Falha ao exibir notificação em foreground:', error);
+        }
+      }
     });
 
     return true;
