@@ -140,7 +140,16 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
       };
       const response = selectedBoothId
         ? await api.patch(`/booths/${selectedBoothId}`, payload)
-        : await api.post('/booths', payload);
+        : await api.post('/booths', {
+            name: selectedBooth.name,
+            address: selectedBooth.address,
+            latitude: Number(selectedBooth.latitude),
+            longitude: Number(selectedBooth.longitude),
+            gps_radius: Number(selectedBooth.gps_radius),
+            min_brokers_required: Number(selectedBooth.min_brokers_required),
+            managerId: selectedBooth.manager_id || null,
+            wifis: (selectedBooth.wifis || []).map((wifi) => wifi.ssid).filter(Boolean),
+          });
       setSelectedBooth(response.data);
       if (!selectedBoothId) setSelectedBoothId(response.data.id);
       setBooths((current) => current.some((booth) => booth.id === response.data.id)
