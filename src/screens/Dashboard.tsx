@@ -271,7 +271,11 @@ export default function Dashboard() {
           <Text style={styles.roleTag}>Corretor Ativo</Text>
         </View>
 
-        <View style={styles.content}>
+        <ScrollView
+          style={styles.dashboardScroll}
+          contentContainerStyle={styles.brokerScrollContent}
+          showsVerticalScrollIndicator
+        >
           <Text style={styles.welcomeTitle}>Olá, {user?.nome_guerra}!</Text>
           <Text style={styles.welcomeSubtitle}>Você está ativo e em plantão de vendas.</Text>
 
@@ -321,12 +325,12 @@ export default function Dashboard() {
 
           <PushSetupButton />
           <TouchableOpacity 
-            style={[styles.logoutButton, { borderColor: primaryColor }]} 
+            style={[styles.logoutButton, { borderColor: primaryColor }]}
             onPress={logout}
           >
             <Text style={[styles.logoutText, { color: primaryColor }]}>Encerrar Sessão (Sair)</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </View>
     );
   }
@@ -476,6 +480,12 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 24,
     paddingBottom: 48,
+    alignItems: 'center',
+  },
+  brokerScrollContent: {
+    flexGrow: 1,
+    padding: 24,
+    paddingBottom: 64,
     alignItems: 'center',
   },
   welcomeTitle: {
