@@ -85,11 +85,12 @@ export async function registerWebPushNotifications(): Promise<boolean> {
       // O Push Operacional é apresentado pelo modal persistente do PWA;
       // não criar uma segunda notificação nativa em foreground.
       if (payload.data?.type === 'operational_push') return;
-      const title = payload.notification?.title || 'ABIATAR';
-      const body = payload.notification?.body || 'Você recebeu uma nova mensagem.';
+      const brandName = payload.data?.brandName || 'ABIATAR';
+      const originalTitle = payload.notification?.title;
+      const body = [originalTitle, payload.notification?.body].filter(Boolean).join(' — ') || 'Você recebeu uma nova mensagem.';
       if (Notification.permission === 'granted') {
         try {
-          const notification = new Notification(title, {
+          const notification = new Notification(brandName, {
             body,
             icon: '/icon.png',
             tag: payload.data?.messageId ? `message-${payload.data.messageId}` : 'abiatar-message',

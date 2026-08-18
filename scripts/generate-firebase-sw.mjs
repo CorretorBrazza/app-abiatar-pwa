@@ -19,11 +19,12 @@ firebase.initializeApp(${JSON.stringify(config)});
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title || 'ABIATAR';
+  const brandName = payload.data?.brandName || 'ABIATAR';
+  const originalTitle = payload.notification?.title;
   const messageId = payload.data?.messageId || payload.messageId || 'message-' + Date.now();
   const isOperational = payload.data?.type === 'operational_push';
-  self.registration.showNotification(title, {
-    body: payload.notification?.body || (isOperational ? 'Alerta operacional do plantão.' : 'Você recebeu uma nova mensagem.'),
+  self.registration.showNotification(brandName, {
+    body: [originalTitle, payload.notification?.body].filter(Boolean).join(' — ') || (isOperational ? 'Alerta operacional do plantão.' : 'Você recebeu uma nova mensagem.'),
     icon: '/icon.png',
     badge: '/icon.png',
     tag: 'abiatar-' + messageId,

@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "app-abiatar-frontend",
+    "name": "ABIATAR",
     "slug": "app-abiatar-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -18,6 +18,8 @@
       }
     },
     "web": {
+      "name": "ABIATAR",
+      "shortName": "ABIATAR",
       "favicon": "./assets/favicon.png"
     }
   }
