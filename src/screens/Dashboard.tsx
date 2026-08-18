@@ -16,6 +16,7 @@ import ManagerPanel from './ManagerPanel';
 import StatisticsPanel from './StatisticsPanel'; // <-- ADICIONE ESTA IMPORTAÇÃO DO PAINEL DE BI [14]
 import ReceptionPanel from './ReceptionPanel';
 import PushToast from '../components/PushToast';
+import PushSetupButton from '../components/PushSetupButton';
 import api from '../services/api';
 
 export default function Dashboard() {
@@ -187,6 +188,7 @@ export default function Dashboard() {
           </View>
           
           <View style={styles.footerLogout}>
+            <PushSetupButton />
             <TouchableOpacity 
               style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 12 }]} 
               onPress={() => setCurrentView('inbox')}
@@ -251,6 +253,7 @@ export default function Dashboard() {
             </View>
           </TouchableOpacity>
 
+          <PushSetupButton />
           <TouchableOpacity 
             style={[styles.logoutButton, { borderColor: primaryColor }]} 
             onPress={logout}
@@ -334,6 +337,7 @@ export default function Dashboard() {
           </View>
         </TouchableOpacity>
 
+        <PushSetupButton />
         <TouchableOpacity
           style={[styles.logoutButton, { borderColor: primaryColor, width: '100%', maxWidth: 520 }]}
           onPress={logout}

@@ -42,8 +42,18 @@ export async function registerWebPushNotifications(): Promise<boolean> {
       return false;
     }
 
-    const permission = await Notification.requestPermission();
+    const serviceWorkerRegistration = await navigator.serviceWorker.register(
+      '/firebase-messaging-sw.js',
+      { updateViaCache: 'none' },
+    );
+    await navigator.serviceWorker.ready;
+    console.info('[PUSH] Service worker FCM registrado:', serviceWorkerRegistration.scope);
+
+    const permission = Notification.permission === 'granted'
+      ? 'granted'
+      : await Notification.requestPermission();
     if (permission !== 'granted') {
+      console.warn('[PUSH] Permissão de notificações não concedida:', permission);
       return false;
     }
 
@@ -52,9 +62,6 @@ export async function registerWebPushNotifications(): Promise<boolean> {
     const firebaseApp = getApps().length
       ? getApp()
       : initializeApp(firebaseConfig);
-    const serviceWorkerRegistration = await navigator.serviceWorker.register(
-      '/firebase-messaging-sw.js',
-    );
     const messaging = getMessaging(firebaseApp);
     const token = await getToken(messaging, {
       vapidKey,
@@ -62,8 +69,10 @@ export async function registerWebPushNotifications(): Promise<boolean> {
     });
 
     if (!token) {
+      console.warn('[PUSH] Firebase não retornou token Web Push.');
       return false;
     }
+    console.info('[PUSH] Token Web Push obtido; registrando no backend.');
 
     await api.post('/notifications/devices', {
       token,
@@ -97,6 +106,9 @@ export async function registerWebPushNotifications(): Promise<boolean> {
   })().catch((error) => {
     console.warn('[PUSH] Não foi possível registrar este dispositivo:', error);
     return false;
+  }).then((result) => {
+    if (!result) registrationPromise = null;
+    return result;
   });
 
   return registrationPromise;
