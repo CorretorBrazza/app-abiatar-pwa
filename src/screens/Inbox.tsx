@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import ScreenCode from '../components/ScreenCode';
 
 interface MessageRecipient {
   id: string;
@@ -105,6 +106,7 @@ export default function Inbox({ onBack }: InboxProps) {
 
   return (
     <View style={styles.container}>
+      <ScreenCode code="IN-01" />
       {/* Botão de Voltar para a Tela Anterior */}
       <TouchableOpacity style={styles.backHeader} onPress={onBack}>
         <Text style={[styles.backHeaderText, { color: primaryColor }]}>← Voltar ao Painel</Text>

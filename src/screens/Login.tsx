@@ -11,6 +11,7 @@ import {
   Platform,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import ScreenCode from '../components/ScreenCode';
 
 interface LoginProps {
   onGoToRegister: () => void; // <-- ADICIONADO ESTE PARÂMETRO
@@ -42,6 +43,7 @@ export default function Login({ onGoToRegister }: LoginProps) {
 
   return (
     <View style={styles.container}>
+      <ScreenCode code="LG-01" />
       <View style={styles.card}>
         <Image
           source={require('../../assets/abiatar-logo.jpg')}

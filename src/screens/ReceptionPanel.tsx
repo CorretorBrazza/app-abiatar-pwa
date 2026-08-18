@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Inbox from './Inbox';
 import api from '../services/api';
 import OperationalPushComposer, { OperationalTarget } from '../components/OperationalPushComposer';
+import ScreenCode from '../components/ScreenCode';
 
 export default function ReceptionPanel() {
   const { user, tenant, logout } = useAuth();
@@ -16,24 +17,28 @@ export default function ReceptionPanel() {
 
   useEffect(() => {
     let mounted = true;
-    Promise.all([
-      api.get('/booths/assigned'),
-      api.get('/notifications/operational/targets'),
-    ])
-      .then(([boothsResponse, targetsResponse]) => {
+    const loadOperationalData = async () => {
+      try {
+        const [boothsResponse, targetsResponse] = await Promise.all([
+          api.get('/booths/assigned'),
+          api.get('/notifications/operational/targets'),
+        ]);
         if (mounted) {
           setBooths(Array.isArray(boothsResponse.data) ? boothsResponse.data : []);
           setOperationalTargets(Array.isArray(targetsResponse.data) ? targetsResponse.data : []);
         }
-      })
-      .catch((error) => {
-        console.error('[RECEPTION] Falha ao carregar operação:', error);
-      })
-      .finally(() => {
+      } catch (error) {
+        console.error('[RECEPTION] Falha ao atualizar operação:', error);
+      } finally {
         if (mounted) setLoading(false);
-      });
+      }
+    };
+
+    void loadOperationalData();
+    const intervalId = setInterval(loadOperationalData, 5000);
     return () => {
       mounted = false;
+      clearInterval(intervalId);
     };
   }, []);
 
@@ -73,6 +78,7 @@ export default function ReceptionPanel() {
 
   return (
     <View style={styles.container}>
+      <ScreenCode code="RX-01" />
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <Text style={styles.tenant}>{tenant?.name}</Text>
         <Text style={styles.role}>Recepção / Controle de Plantão</Text>
@@ -94,13 +100,19 @@ export default function ReceptionPanel() {
               o acompanhamento operacional aparecerá aqui.
             </Text>
           </View>
-        ) : booths.map((booth) => (
-          <View key={booth.id} style={styles.card}>
-            <Text style={styles.cardTitle}>{booth.name}</Text>
-            <Text style={styles.muted}>{booth.address}</Text>
-            <Text style={styles.status}>Painel operacional disponível após o cadastro de presença.</Text>
-          </View>
-        ))}
+        ) : booths.map((booth) => {
+          const onlineTargets = operationalTargets.filter((target) => target.boothId === booth.id);
+          return (
+            <View key={booth.id} style={styles.card}>
+              <Text style={styles.cardTitle}>{booth.name}</Text>
+              <Text style={styles.muted}>{booth.address}</Text>
+              <Text style={onlineTargets.length > 0 ? styles.onlineStatus : styles.status}>
+                {onlineTargets.length > 0 ? `ONLINE: ${onlineTargets.map((target) => target.nomeGuerra).join(', ')}` : 'Nenhum corretor online neste plantão.'}
+              </Text>
+              <Text style={styles.refreshText}>Atualização automática a cada 5 segundos.</Text>
+            </View>
+          );
+        })}
 
         <OperationalPushComposer
           targets={operationalTargets}
@@ -130,6 +142,8 @@ const styles = StyleSheet.create({
   cardTitle: { fontSize: 17, fontWeight: 'bold', color: '#1c1c1e', marginBottom: 8 },
   muted: { color: '#636366', lineHeight: 20 },
   status: { color: '#8e8e93', marginTop: 12 },
+  onlineStatus: { color: '#248a3d', fontWeight: '800', marginTop: 12 },
+  refreshText: { color: '#8e8e93', fontSize: 11, marginTop: 8 },
   inboxButton: { width: '100%', maxWidth: 520, minHeight: 50, borderWidth: 2, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 20, flexDirection: 'row', gap: 8, backgroundColor: '#FFF' },
   inboxText: { fontWeight: 'bold', fontSize: 16 },
   badge: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, backgroundColor: '#ff3b30', alignItems: 'center', justifyContent: 'center' },

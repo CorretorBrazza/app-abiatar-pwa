@@ -18,6 +18,7 @@ import ReceptionPanel from './ReceptionPanel';
 import PushToast from '../components/PushToast';
 import PushSetupButton from '../components/PushSetupButton';
 import OperationalAlert from '../components/OperationalAlert';
+import ScreenCode from '../components/ScreenCode';
 import api from '../services/api';
 
 export default function Dashboard() {
@@ -185,6 +186,7 @@ export default function Dashboard() {
           {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
       {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
           <View style={{ flex: 1 }}>
+            <ScreenCode code="CR-01" />
             <CheckIn 
               onCheckInSuccess={(data) => {
                 setActiveSession({
@@ -222,6 +224,7 @@ export default function Dashboard() {
       <View style={styles.container}>
         {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
       {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
+        <ScreenCode code="CR-02" />
         <View style={[styles.header, { backgroundColor: primaryColor }]}>
           <Text style={styles.tenantName}>{tenant?.name}</Text>
           <Text style={styles.roleTag}>Corretor Ativo</Text>
@@ -281,6 +284,7 @@ export default function Dashboard() {
     <View style={styles.container}>
       {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
       {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
+      <ScreenCode code={isManager ? 'GE-01' : isDirector ? 'DR-01' : 'AD-01'} />
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <Text style={styles.tenantName}>{tenant?.name}</Text>
         <Text style={styles.roleTag}>{isManager ? 'Gerência' : isDirector ? 'Diretoria' : 'Administrador'}</Text>

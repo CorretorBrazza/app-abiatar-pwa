@@ -12,6 +12,7 @@ import {
 import * as Location from 'expo-location'; // Captura GPS nativo [17]
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import ScreenCode from '../components/ScreenCode';
 
 interface Booth {
   id: string;
@@ -99,6 +100,7 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
 
   return (
     <View style={styles.container}>
+      <ScreenCode code="CR-01" />
       <Text style={styles.title}>Plantões Disponíveis</Text>
       <Text style={styles.subtitle}>Selecione o seu plantão de vendas atual para iniciar o turno [8]</Text>
 

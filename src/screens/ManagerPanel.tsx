@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import ScreenCode from '../components/ScreenCode';
 
 interface PendingBroker {
   id: string;
@@ -147,6 +148,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+      <ScreenCode code="GE-02" />
       <TouchableOpacity style={styles.backHeader} onPress={onBack}>
         <Text style={[styles.backHeaderText, { color: primaryColor }]}>← Voltar ao Painel</Text>
       </TouchableOpacity>
