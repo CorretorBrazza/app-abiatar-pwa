@@ -82,6 +82,9 @@ export async function registerWebPushNotifications(): Promise<boolean> {
 
     onMessage(messaging, (payload) => {
       window.dispatchEvent(new CustomEvent('abiatar:push', { detail: payload }));
+      // O Push Operacional é apresentado pelo modal persistente do PWA;
+      // não criar uma segunda notificação nativa em foreground.
+      if (payload.data?.type === 'operational_push') return;
       const title = payload.notification?.title || 'ABIATAR';
       const body = payload.notification?.body || 'Você recebeu uma nova mensagem.';
       if (Notification.permission === 'granted') {

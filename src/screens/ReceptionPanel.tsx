@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import Inbox from './Inbox';
 import api from '../services/api';
+import OperationalPushComposer, { OperationalTarget } from '../components/OperationalPushComposer';
 
 export default function ReceptionPanel() {
   const { user, tenant, logout } = useAuth();
@@ -10,16 +11,23 @@ export default function ReceptionPanel() {
   const [loading, setLoading] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showInbox, setShowInbox] = useState(false);
+  const [operationalTargets, setOperationalTargets] = useState<OperationalTarget[]>([]);
   const primaryColor = tenant?.primary_color || '#1c1c1e';
 
   useEffect(() => {
     let mounted = true;
-    api.get('/booths/assigned')
-      .then((response) => {
-        if (mounted) setBooths(Array.isArray(response.data) ? response.data : []);
+    Promise.all([
+      api.get('/booths/assigned'),
+      api.get('/notifications/operational/targets'),
+    ])
+      .then(([boothsResponse, targetsResponse]) => {
+        if (mounted) {
+          setBooths(Array.isArray(boothsResponse.data) ? boothsResponse.data : []);
+          setOperationalTargets(Array.isArray(targetsResponse.data) ? targetsResponse.data : []);
+        }
       })
       .catch((error) => {
-        console.error('[RECEPTION] Falha ao carregar plantões atribuídos:', error);
+        console.error('[RECEPTION] Falha ao carregar operação:', error);
       })
       .finally(() => {
         if (mounted) setLoading(false);
@@ -69,7 +77,7 @@ export default function ReceptionPanel() {
         <Text style={styles.tenant}>{tenant?.name}</Text>
         <Text style={styles.role}>Recepção / Controle de Plantão</Text>
       </View>
-      <View style={styles.content}>
+      <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <Text style={styles.title}>Olá, {user?.nome_guerra}.</Text>
         <Text style={styles.subtitle}>Selecione um plantão atribuído para acompanhar a operação.</Text>
 
@@ -94,10 +102,16 @@ export default function ReceptionPanel() {
           </View>
         ))}
 
+        <OperationalPushComposer
+          targets={operationalTargets}
+          primaryColor={primaryColor}
+          onSent={() => api.get('/notifications/operational/targets').then((response) => setOperationalTargets(Array.isArray(response.data) ? response.data : []))}
+        />
+
         <TouchableOpacity style={[styles.logout, { borderColor: primaryColor }]} onPress={logout}>
           <Text style={[styles.logoutText, { color: primaryColor }]}>Encerrar Sessão</Text>
         </TouchableOpacity>
-      </View>
+      </ScrollView>
     </View>
   );
 }
@@ -108,7 +122,8 @@ const styles = StyleSheet.create({
   header: { paddingTop: 60, paddingBottom: 24, paddingHorizontal: 24, alignItems: 'center', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 },
   tenant: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
   role: { color: '#FFF', fontSize: 13, marginTop: 8, fontWeight: '600' },
-  content: { flex: 1, padding: 24, alignItems: 'center' },
+  scroll: { flex: 1 },
+  content: { padding: 24, alignItems: 'center', paddingBottom: 48 },
   title: { width: '100%', maxWidth: 520, fontSize: 24, fontWeight: 'bold', color: '#1c1c1e', marginTop: 20 },
   subtitle: { width: '100%', maxWidth: 520, color: '#636366', marginTop: 8, marginBottom: 24 },
   card: { width: '100%', maxWidth: 520, backgroundColor: '#FFF', borderRadius: 12, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#e5e5ea' },

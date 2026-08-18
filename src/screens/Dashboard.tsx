@@ -17,6 +17,7 @@ import StatisticsPanel from './StatisticsPanel'; // <-- ADICIONE ESTA IMPORTAÇ�
 import ReceptionPanel from './ReceptionPanel';
 import PushToast from '../components/PushToast';
 import PushSetupButton from '../components/PushSetupButton';
+import OperationalAlert from '../components/OperationalAlert';
 import api from '../services/api';
 
 export default function Dashboard() {
@@ -28,6 +29,7 @@ export default function Dashboard() {
   const [endingShift, setEndingShift] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pushNotice, setPushNotice] = useState<{ title: string; body: string } | null>(null);
+  const [operationalNotice, setOperationalNotice] = useState<{ title: string; body: string } | null>(null);
 
   // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI) [10, 12, 14, 15]
   const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics'>('main'); // <-- ADICIONADO "statistics" AQUI
@@ -97,12 +99,17 @@ export default function Dashboard() {
     const handlePush = (event: Event) => {
       void loadUnreadCount();
       const payload = (event as CustomEvent).detail || {};
-      setPushNotice({
-        title: payload.notification?.title || 'Nova mensagem ABIATAR',
+      const notice = {
+        title: payload.notification?.title || (payload.data?.type === 'operational_push' ? 'Alerta operacional' : 'Nova mensagem ABIATAR'),
         body: payload.notification?.body || 'Você recebeu uma nova mensagem.',
-      });
-      if (noticeTimeout) clearTimeout(noticeTimeout);
-      noticeTimeout = setTimeout(() => setPushNotice(null), 10000);
+      };
+      if (payload.data?.type === 'operational_push') {
+        setOperationalNotice(notice);
+      } else {
+        setPushNotice(notice);
+        if (noticeTimeout) clearTimeout(noticeTimeout);
+        noticeTimeout = setTimeout(() => setPushNotice(null), 10000);
+      }
     };
     window.addEventListener('abiatar:push', handlePush);
 
@@ -176,6 +183,7 @@ export default function Dashboard() {
       return (
         <View style={styles.container}>
           {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
+      {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
           <View style={{ flex: 1 }}>
             <CheckIn 
               onCheckInSuccess={(data) => {
@@ -213,6 +221,7 @@ export default function Dashboard() {
     return (
       <View style={styles.container}>
         {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
+      {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
         <View style={[styles.header, { backgroundColor: primaryColor }]}>
           <Text style={styles.tenantName}>{tenant?.name}</Text>
           <Text style={styles.roleTag}>Corretor Ativo</Text>
@@ -271,6 +280,7 @@ export default function Dashboard() {
   return (
     <View style={styles.container}>
       {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
+      {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <Text style={styles.tenantName}>{tenant?.name}</Text>
         <Text style={styles.roleTag}>{isManager ? 'Gerência' : isDirector ? 'Diretoria' : 'Administrador'}</Text>
