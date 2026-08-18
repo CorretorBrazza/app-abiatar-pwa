@@ -54,6 +54,9 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const [generatingLink, setGeneratingLink] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState('');
+  const [inviteRole, setInviteRole] = useState<'gerencia_level_2' | 'corretor_level_3'>('corretor_level_3');
+  const [managers, setManagers] = useState<Array<{ id: string; nome_guerra: string; name: string }>>([]);
+  const [selectedManagerId, setSelectedManagerId] = useState('');
   const [error, setError] = useState('');
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
@@ -63,14 +66,20 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const loadData = async () => {
     try {
       setError('');
-      const [pendingRes, teamRes, queueRes] = await Promise.all([
+      const requests: Promise<any>[] = [
         api.get(`/users/pending/${managerId}`),
         api.get(`/users/team/${managerId}`),
-        api.get('/users/leads-queue'), // <-- CONSULTA A FILA EM REAL-TIME
-      ]);
+        api.get('/users/leads-queue'),
+      ];
+      if (user?.role === 'diretoria_level_1') requests.push(api.get('/users/managers/active'));
+      const [pendingRes, teamRes, queueRes, managersRes] = await Promise.all(requests);
       setPending(pendingRes.data);
       setTeam(teamRes.data);
-      setLeadsQueue(queueRes.data.queue); // <-- SALVA OS DADOS DA FILA
+      setLeadsQueue(queueRes.data.queue);
+      if (managersRes) {
+        setManagers(Array.isArray(managersRes.data) ? managersRes.data : []);
+        if (!selectedManagerId && managersRes.data?.[0]) setSelectedManagerId(managersRes.data[0].id);
+      }
     } catch (err: any) {
       setError('Falha ao carregar os dados de gestão do time.');
     } finally {
@@ -86,8 +95,13 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const handleGenerateLink = async () => {
     try {
       setGeneratingLink(true);
+      if (user?.role === 'diretoria_level_1' && inviteRole === 'corretor_level_3' && !selectedManagerId) {
+        alert('Selecione um Gerente responsável antes de convidar um Corretor.');
+        return;
+      }
       const response = await api.post('/users/onboarding-link', {
-        managerId,
+        invitedRole: inviteRole,
+        managerId: user?.role === 'gerencia_level_2' ? managerId : (inviteRole === 'corretor_level_3' ? selectedManagerId : undefined),
       });
       setInviteLink(response.data.onboarding_url);
     } catch (err: any) {
@@ -160,8 +174,30 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
 
       {/* SEÇÃO A: GERAR CONVITES DE CADASTRO */}
       <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Convide Novos Corretores</Text>
-        <Text style={styles.sectionDesc}>Gere um link temporário único para enviar pelo WhatsApp.</Text>
+        <Text style={styles.sectionTitle}>{user?.role === 'diretoria_level_1' ? 'Convites Hierárquicos' : 'Convide Novos Corretores'}</Text>
+        <Text style={styles.sectionDesc}>Gere um link temporário único. O aceite será vinculado automaticamente à hierarquia correta.</Text>
+        {user?.role === 'diretoria_level_1' && (
+          <>
+            <Text style={styles.actionLabel}>Tipo de convite</Text>
+            <View style={styles.buttonGroup}>
+              <TouchableOpacity style={[styles.roleButton, inviteRole === 'gerencia_level_2' && styles.roleButtonActive]} onPress={() => setInviteRole('gerencia_level_2')}><Text style={styles.roleButtonText}>Gerente</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.roleButton, inviteRole === 'corretor_level_3' && styles.roleButtonActive]} onPress={() => setInviteRole('corretor_level_3')}><Text style={styles.roleButtonText}>Corretor</Text></TouchableOpacity>
+            </View>
+            {inviteRole === 'corretor_level_3' && (
+              <>
+                <Text style={styles.actionLabel}>Gerente responsável obrigatório</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.managerPicker}>
+                  {managers.map((manager) => (
+                    <TouchableOpacity key={manager.id} style={[styles.managerButton, selectedManagerId === manager.id && styles.managerButtonActive]} onPress={() => setSelectedManagerId(manager.id)}>
+                      <Text style={styles.managerButtonText}>{manager.nome_guerra || manager.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+                {!managers.length && <Text style={styles.emptyText}>Nenhum gerente ativo disponível.</Text>}
+              </>
+            )}
+          </>
+        )}
         
         {inviteLink ? (
           <View style={styles.linkContainer}>
@@ -383,6 +419,13 @@ const styles = StyleSheet.create({
     color: '#8e8e93',
     marginBottom: 16,
   },
+  roleButton: { borderWidth: 1, borderColor: '#bbb', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, marginRight: 8 },
+  roleButtonActive: { backgroundColor: '#1c1c1e', borderColor: '#1c1c1e' },
+  roleButtonText: { color: '#333', fontWeight: '700' },
+  managerPicker: { marginBottom: 12 },
+  managerButton: { backgroundColor: '#eef2ff', borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 8, padding: 10, marginRight: 8 },
+  managerButtonActive: { backgroundColor: '#1e3a8a', borderColor: '#1e3a8a' },
+  managerButtonText: { color: '#1e3a8a', fontWeight: '700' },
   generateButton: {
     height: 44,
     borderRadius: 8,
