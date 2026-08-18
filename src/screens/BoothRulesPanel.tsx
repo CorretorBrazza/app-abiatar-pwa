@@ -116,11 +116,18 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
     setSelectedBooth((current) => current ? { ...current, [key]: value } : current);
   }
 
+  function startNewBooth() {
+    setSelectedBoothId('');
+    setRules(null);
+    setReason('');
+    setSelectedBooth({ id: '', name: '', address: '', latitude: '', longitude: '', gps_radius: 100, min_brokers_required: 2, manager_id: null, lifecycle_status: 'draft', wifis: [] });
+  }
+
   async function saveBooth() {
-    if (!selectedBooth || !selectedBoothId) return;
+    if (!selectedBooth) return;
     setSavingBooth(true);
     try {
-      const response = await api.patch(`/booths/${selectedBoothId}`, {
+      const payload = {
         name: selectedBooth.name,
         address: selectedBooth.address,
         latitude: Number(selectedBooth.latitude),
@@ -130,10 +137,16 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
         managerId: selectedBooth.manager_id || null,
         wifis: (selectedBooth.wifis || []).map((wifi) => wifi.ssid).filter(Boolean),
         reason: reason.trim() || 'Atualização do cadastro do plantão pela Diretoria',
-      });
+      };
+      const response = selectedBoothId
+        ? await api.patch(`/booths/${selectedBoothId}`, payload)
+        : await api.post('/booths', payload);
       setSelectedBooth(response.data);
-      setBooths((current) => current.map((booth) => booth.id === response.data.id ? response.data : booth));
-      Alert.alert('ABIATAR', 'Cadastro-base do plantão atualizado e auditado.');
+      if (!selectedBoothId) setSelectedBoothId(response.data.id);
+      setBooths((current) => current.some((booth) => booth.id === response.data.id)
+        ? current.map((booth) => booth.id === response.data.id ? response.data : booth)
+        : [...current, response.data]);
+      Alert.alert('ABIATAR', selectedBoothId ? 'Cadastro-base do plantão atualizado e auditado.' : 'Plantão criado como rascunho. Configure as regras e publique quando estiver validado.');
     } catch (error: any) {
       Alert.alert('ABIATAR', error?.response?.data?.message || 'Não foi possível salvar o cadastro do plantão.');
     } finally {
@@ -199,7 +212,10 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator>
         <Text style={styles.subtitle}>Configuração White Label do tenant</Text>
         <Text style={styles.description}>Cada plantão possui regras próprias. Alterações geram uma nova versão e não modificam presenças já iniciadas.</Text>
-        <Text style={styles.label}>Selecionar plantão</Text>
+        <View style={styles.boothToolbar}>
+          <Text style={styles.label}>Selecionar plantão</Text>
+          <TouchableOpacity style={styles.newBoothButton} onPress={startNewBooth}><Text style={styles.newBoothText}>+ Novo plantão</Text></TouchableOpacity>
+        </View>
         <View style={styles.boothRow}>
           {booths.map((booth) => (
               <TouchableOpacity key={booth.id} style={[styles.boothButton, selectedBoothId === booth.id && styles.boothButtonActive]} onPress={() => setSelectedBoothId(booth.id)}>
@@ -220,7 +236,7 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
             <Text style={styles.label}>Redes Wi-Fi autorizadas (uma por linha)</Text>
             <TextInput value={(selectedBooth.wifis || []).map((wifi) => wifi.ssid).join('\\n')} onChangeText={(value) => setSelectedBooth({ ...selectedBooth, wifis: value.split('\\n').map((ssid) => ({ ssid: ssid.trim() })).filter((wifi) => wifi.ssid) })} style={[styles.input, styles.reason]} multiline />
             <TouchableOpacity style={styles.saveSecondary} onPress={saveBooth} disabled={savingBooth}>
-              {savingBooth ? <ActivityIndicator color="#1c1c1e" /> : <Text style={styles.saveSecondaryText}>Salvar cadastro-base</Text>}
+              {savingBooth ? <ActivityIndicator color="#1c1c1e" /> : <Text style={styles.saveSecondaryText}>{selectedBoothId ? 'Salvar cadastro-base' : 'Criar plantão como rascunho'}</Text>}
             </TouchableOpacity>
             <View style={styles.lifecycleRow}>
               <TouchableOpacity style={styles.lifecycleButton} onPress={() => changeLifecycle('publish')}><Text style={styles.lifecycleButtonText}>Publicar</Text></TouchableOpacity>
@@ -269,6 +285,9 @@ const styles = StyleSheet.create({
   subtitle: { fontSize: 18, fontWeight: '700', color: '#1c1c1e', marginBottom: 6 },
   description: { color: '#666', lineHeight: 20, marginBottom: 18 },
   label: { color: '#333', fontSize: 13, fontWeight: '600', marginBottom: 6 },
+  boothToolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  newBoothButton: { backgroundColor: '#1c1c1e', borderRadius: 8, paddingVertical: 9, paddingHorizontal: 12 },
+  newBoothText: { color: '#fff', fontWeight: '800' },
   boothRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },
   boothButton: { borderWidth: 1, borderColor: '#bbb', borderRadius: 8, padding: 12, backgroundColor: '#fff' },
   boothButtonActive: { backgroundColor: '#1c1c1e', borderColor: '#1c1c1e' },

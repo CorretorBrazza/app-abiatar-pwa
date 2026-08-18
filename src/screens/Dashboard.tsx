@@ -394,7 +394,7 @@ export default function Dashboard() {
               style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
               onPress={() => setCurrentView('booth_rules')}
             >
-              <Text style={[styles.msgText, { color: primaryColor }]}>Configurar Regras dos Plantões</Text>
+              <Text style={[styles.msgText, { color: primaryColor }]}>Administrar Plantões e Regras</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
