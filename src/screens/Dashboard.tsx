@@ -20,6 +20,7 @@ import PushToast from '../components/PushToast';
 import PushSetupButton from '../components/PushSetupButton';
 import OperationalAlert from '../components/OperationalAlert';
 import ScreenCode from '../components/ScreenCode';
+import BrokerMaterials from '../components/BrokerMaterials';
 import api from '../services/api';
 
 export default function Dashboard() {
@@ -32,6 +33,7 @@ export default function Dashboard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [pushNotice, setPushNotice] = useState<{ title: string; body: string } | null>(null);
   const [operationalNotice, setOperationalNotice] = useState<{ title: string; body: string } | null>(null);
+  const [brokerSummary, setBrokerSummary] = useState<any | null>(null);
 
   // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI)
   const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics'>('main'); // <-- ADICIONADO "statistics" AQUI
@@ -79,6 +81,25 @@ export default function Dashboard() {
 
     return () => {
       if (intervalId) clearInterval(intervalId);
+    };
+  }, [user]);
+
+  useEffect(() => {
+    if (user?.role !== 'corretor_level_3') return;
+    let mounted = true;
+    const loadBrokerSummary = async () => {
+      try {
+        const response = await api.get('/presences/dashboard-summary');
+        if (mounted) setBrokerSummary(response.data);
+      } catch (error) {
+        console.warn('[BROKER SUMMARY] Falha ao atualizar períodos do corretor:', error);
+      }
+    };
+    void loadBrokerSummary();
+    const summaryInterval = setInterval(loadBrokerSummary, 15000);
+    return () => {
+      mounted = false;
+      clearInterval(summaryInterval);
     };
   }, [user]);
 
@@ -209,6 +230,15 @@ export default function Dashboard() {
           </View>
           
           <View style={styles.footerLogout}>
+            <View style={styles.brokerPeriodsCard}>
+              <Text style={styles.brokerPeriodsTitle}>Resumo dos seus períodos</Text>
+              <Text style={styles.infoText}>Períodos acumulados na semana: {brokerSummary?.accumulatedPeriods ?? '—'}</Text>
+              <Text style={styles.infoText}>
+                Fim de semana: {brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
+              </Text>
+              <Text style={styles.infoText}>Mínimo informativo por período: {brokerSummary?.minimumMinutesPerPeriod ?? 120} minutos</Text>
+            </View>
+            <BrokerMaterials primaryColor={primaryColor} onOpenMaterials={handleOpenMaterials} />
             <PushSetupButton />
             <TouchableOpacity 
               style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 12 }]} 
@@ -254,6 +284,17 @@ export default function Dashboard() {
             </Text>
           </View>
 
+          <View style={styles.brokerPeriodsCard}>
+            <Text style={styles.brokerPeriodsTitle}>Resumo dos seus períodos</Text>
+            <Text style={styles.infoText}>Períodos acumulados na semana: {brokerSummary?.accumulatedPeriods ?? '—'}</Text>
+            <Text style={styles.infoText}>
+              Tempo do turno atual: {brokerSummary?.activeShift ? `${brokerSummary.activeShift.activeMinutes} min / ${brokerSummary.activeShift.minimumMinutes} min` : '—'}
+            </Text>
+            <Text style={styles.infoText}>
+              Fim de semana: {brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
+            </Text>
+          </View>
+
           <TouchableOpacity 
             style={[styles.checkoutButton, { backgroundColor: primaryColor, marginBottom: 16 }]} 
             onPress={handleCheckOut}
@@ -276,23 +317,7 @@ export default function Dashboard() {
             </View>
           </TouchableOpacity>
 
-          <View style={styles.productivitySection}>
-            <Text style={styles.productivityTitle}>Materiais para atendimento</Text>
-            <TouchableOpacity
-              style={[styles.resourceButton, styles.resourceButtonDisabled]}
-              onPress={() => alert('A Tabela de Preços Atualizada estará disponível em breve.')}
-            >
-              <Text style={styles.resourceButtonText}>Tabela de Preços Atualizada</Text>
-              <Text style={styles.resourceHint}>Material em preparação</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.resourceButton, { backgroundColor: primaryColor }]}
-              onPress={handleOpenMaterials}
-            >
-              <Text style={styles.resourceButtonText}>Material Empreendimentos</Text>
-              <Text style={styles.resourceHintLight}>Abrir material Abiatar</Text>
-            </TouchableOpacity>
-          </View>
+          <BrokerMaterials primaryColor={primaryColor} onOpenMaterials={handleOpenMaterials} />
 
           <PushSetupButton />
           <TouchableOpacity 
@@ -496,13 +521,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFF',
   },
-  productivitySection: { width: '100%', maxWidth: 520, marginBottom: 16 },
-  productivityTitle: { color: '#1c1c1e', fontSize: 16, fontWeight: '800', marginBottom: 8 },
-  resourceButton: { minHeight: 58, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10, justifyContent: 'center', marginBottom: 10 },
-  resourceButtonDisabled: { backgroundColor: '#e5e5ea' },
-  resourceButtonText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
-  resourceHint: { color: '#636366', fontSize: 11, marginTop: 3 },
-  resourceHintLight: { color: 'rgba(255,255,255,0.82)', fontSize: 11, marginTop: 3 },
+  brokerPeriodsCard: { width: '100%', maxWidth: 520, backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e5e5ea' },
+  brokerPeriodsTitle: { color: '#1c1c1e', fontSize: 16, fontWeight: '800', marginBottom: 8 },
   logoutText: {
     fontSize: 16,
     fontWeight: 'bold',

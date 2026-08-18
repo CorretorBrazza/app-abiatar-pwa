@@ -8,11 +8,13 @@ import {
   ActivityIndicator,
   FlatList,
   Platform,
+  Linking,
 } from 'react-native';
 import * as Location from 'expo-location'; // Captura GPS nativo
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import ScreenCode from '../components/ScreenCode';
+import BrokerMaterials from '../components/BrokerMaterials';
 
 interface Booth {
   id: string;
@@ -33,8 +35,19 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
   const [loading, setLoading] = useState(true);
   const [checkingIn, setCheckingIn] = useState<string | null>(null); // Armazena o ID do plantão clicado
   const [error, setError] = useState('');
+  const [brokerSummary, setBrokerSummary] = useState<any | null>(null);
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
+  const showTestDiagnostics = process.env.EXPO_PUBLIC_TEST_MODE !== 'false';
+
+  const materialsUrl = 'https://linktr.ee/Abiatarimoveisconstrutora?utm_source=linktree_admin_share';
+  const handleOpenMaterials = async () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(materialsUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    await Linking.openURL(materialsUrl);
+  };
 
   // 1. Efeito Inicial: Busca os plantões cadastrados na nuvem para esta construtora
   useEffect(() => {
@@ -50,6 +63,14 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
     }
 
     loadBooths();
+  }, []);
+
+  useEffect(() => {
+    let mounted = true;
+    api.get('/presences/dashboard-summary')
+      .then((response) => { if (mounted) setBrokerSummary(response.data); })
+      .catch(() => undefined);
+    return () => { mounted = false; };
   }, []);
 
   // 2. Método de Check-in: Solicita GPS, captura localização e envia para a API
@@ -115,7 +136,7 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
             <View style={styles.boothInfo}>
               <Text style={styles.boothName}>{item.name}</Text>
               <Text style={styles.boothAddress}>{item.address}</Text>
-              <Text style={styles.boothRadius}>Raio permitido: {item.gps_radius} metros</Text>
+              {showTestDiagnostics && <Text style={styles.boothRadius}>[Raio permitido: {item.gps_radius} metros]</Text>}
             </View>
 
             <TouchableOpacity
@@ -131,6 +152,19 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
             </TouchableOpacity>
           </View>
         )}
+        ListFooterComponent={
+          <View style={styles.listFooter}>
+            <View style={styles.periodsCard}>
+              <Text style={styles.periodsTitle}>Resumo dos seus períodos</Text>
+              <Text style={styles.periodText}>Períodos acumulados na semana: {brokerSummary?.accumulatedPeriods ?? '—'}</Text>
+              <Text style={styles.periodText}>
+                Fim de semana: {brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
+              </Text>
+              <Text style={styles.periodText}>Mínimo informativo por período: {brokerSummary?.minimumMinutesPerPeriod ?? 120} minutos</Text>
+            </View>
+            <BrokerMaterials primaryColor={primaryColor} onOpenMaterials={handleOpenMaterials} />
+          </View>
+        }
       />
     </View>
   );
@@ -173,7 +207,12 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
+    paddingBottom: 24,
   },
+  listFooter: { width: '100%', alignItems: 'center', paddingTop: 16 },
+  periodsCard: { width: '100%', maxWidth: 600, backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e5e5ea' },
+  periodsTitle: { color: '#1c1c1e', fontSize: 16, fontWeight: '800', marginBottom: 8 },
+  periodText: { color: '#3a3a3c', fontSize: 14, marginBottom: 6 },
   boothCard: {
     backgroundColor: '#FFF',
     borderRadius: 12,
