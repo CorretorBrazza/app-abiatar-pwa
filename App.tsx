@@ -7,7 +7,7 @@ import Dashboard from './src/screens/Dashboard';
 import RegisterBroker from './src/screens/RegisterBroker'; // <-- IMPORTADO AQUI
 import ProjectStatus from './src/screens/ProjectStatus';
 
-function AppContent() {
+function AppContent({ inviteToken }: { inviteToken?: string }) {
   const { signed, loading } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<'login' | 'register'>('login'); // <-- CONTROLE DE TELA
 
@@ -18,6 +18,10 @@ function AppContent() {
         <ActivityIndicator size="large" color="#E31C1C" />
       </View>
     );
+  }
+
+  if (inviteToken && !signed) {
+    return <RegisterBroker inviteToken={inviteToken} onBackToLogin={() => { window.history.replaceState({}, '', '/'); window.location.reload(); }} />;
   }
 
   // Se o usuário estiver logado, exibe o Dashboard diretamente [15]
@@ -35,6 +39,8 @@ function AppContent() {
 
 export default function App() {
   const isStatusPage = Platform.OS === 'web' && typeof window !== 'undefined' && window.location.pathname.replace(/\/$/, '') === '/status';
+  const inviteMatch = Platform.OS === 'web' && typeof window !== 'undefined' ? window.location.pathname.match(/^\/cadastro\/([^/]+)\/?$/) : null;
+  const inviteToken = inviteMatch?.[1];
 
   if (isStatusPage) {
     return <ProjectStatus />;
@@ -42,7 +48,7 @@ export default function App() {
 
   return (
     <AuthProvider>
-      <AppContent />
+      <AppContent inviteToken={inviteToken} />
     </AuthProvider>
   );
 }

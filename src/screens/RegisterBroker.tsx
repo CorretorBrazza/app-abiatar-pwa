@@ -1,5 +1,5 @@
 // src/screens/RegisterBroker.tsx
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -13,10 +13,14 @@ import api from '../services/api';
 
 interface RegisterBrokerProps {
   onBackToLogin: () => void;
+  inviteToken?: string;
 }
 
-export default function RegisterBroker({ onBackToLogin }: RegisterBrokerProps) {
-  const [token, setToken] = useState(''); // Token do link recebido pelo WhatsApp
+export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterBrokerProps) {
+  const [token, setToken] = useState(inviteToken || '');
+  const [invitedRole, setInvitedRole] = useState<'gerencia_level_2' | 'corretor_level_3' | null>(null);
+  const [inviteManagerName, setInviteManagerName] = useState('');
+  const [inviteLoading, setInviteLoading] = useState(Boolean(inviteToken));
   const [name, setName] = useState('');
   const [nomeGuerra, setNomeGuerra] = useState('');
   const [email, setEmail] = useState('');
@@ -26,8 +30,24 @@ export default function RegisterBroker({ onBackToLogin }: RegisterBrokerProps) {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  useEffect(() => {
+    const resolveToken = inviteToken || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
+    if (!resolveToken) {
+      setInviteLoading(false);
+      return;
+    }
+    setToken(resolveToken);
+    api.get(`/users/onboarding-link/${resolveToken}`)
+      .then((response) => {
+        setInvitedRole(response.data.invited_role);
+        setInviteManagerName(response.data.manager?.nome_guerra || '');
+      })
+      .catch((err) => setError(err.response?.data?.message || 'Convite inválido ou expirado.'))
+      .finally(() => setInviteLoading(false));
+  }, [inviteToken]);
+
   const handleRegister = async () => {
-    if (!token || !name || !nomeGuerra || !email || !password || !creci) {
+    if (!token || !invitedRole || !name || !nomeGuerra || !email || !password || (invitedRole === 'corretor_level_3' && !creci)) {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
@@ -37,14 +57,13 @@ export default function RegisterBroker({ onBackToLogin }: RegisterBrokerProps) {
       setSuccessMessage('');
       setLoading(true);
 
-      // Dispara o cadastro para a rota pública do nosso backend
-      const response = await api.post('/users/register-broker', {
+      const response = await api.post(invitedRole === 'gerencia_level_2' ? '/users/register-manager' : '/users/register-broker', {
         token,
         name,
         nomeGuerra,
         email,
         passwordHash: password,
-        creci,
+        ...(invitedRole === 'corretor_level_3' ? { creci } : {}),
       });
 
       setSuccessMessage(response.data.message);
@@ -56,6 +75,7 @@ export default function RegisterBroker({ onBackToLogin }: RegisterBrokerProps) {
       setEmail('');
       setPassword('');
       setCreci('');
+      setInvitedRole(null);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Falha ao realizar o cadastro.';
       setError(msg);
@@ -64,18 +84,22 @@ export default function RegisterBroker({ onBackToLogin }: RegisterBrokerProps) {
     }
   };
 
+  if (inviteLoading) {
+    return <View style={styles.container}><ActivityIndicator size="large" color="#1c1c1e" /></View>;
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.card}>
-        <Text style={styles.title}>Cadastre-se no Sistema</Text>
-        <Text style={styles.subtitle}>Insira o convite do gerente para iniciar</Text>
+        <Text style={styles.title}>{invitedRole === 'gerencia_level_2' ? 'Cadastro de Gerente' : invitedRole === 'corretor_level_3' ? 'Cadastro de Corretor' : 'Convite de Acesso'}</Text>
+        <Text style={styles.subtitle}>{invitedRole === 'gerencia_level_2' ? 'Seu convite foi destinado ao nível de Gerência.' : invitedRole === 'corretor_level_3' ? `Seu cadastro ficará vinculado ao Gerente ${inviteManagerName || 'responsável'}.` : 'Informe um convite válido para continuar.'}</Text>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
 
         <TextInput
           style={styles.input}
-          placeholder="Código de Convite (Token do Gerente) *"
+          placeholder="Código de Convite *"
           value={token}
           onChangeText={setToken}
           autoCapitalize="none"
@@ -113,13 +137,13 @@ export default function RegisterBroker({ onBackToLogin }: RegisterBrokerProps) {
           autoCapitalize="none"
         />
 
-        <TextInput
+        {invitedRole === 'corretor_level_3' && <TextInput
           style={styles.input}
           placeholder="Seu CRECI profissional *"
           value={creci}
           onChangeText={setCreci}
           autoCapitalize="characters"
-        />
+        />}
 
         <TouchableOpacity
           style={styles.button}
@@ -129,7 +153,7 @@ export default function RegisterBroker({ onBackToLogin }: RegisterBrokerProps) {
           {loading ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.buttonText}>Enviar Cadastro</Text>
+              <Text style={styles.buttonText}>{invitedRole === 'gerencia_level_2' ? 'Concluir Cadastro de Gerente' : 'Enviar Cadastro de Corretor'}</Text>
           )}
         </TouchableOpacity>
 
