@@ -2,70 +2,23 @@
   "project": "ABIATAR",
   "publicDomain": "bitimob.com.br",
   "lastValidated": "2026-08-18",
-  "overallProgress": 78,
-  "progressLabel": "Em evolução avançada",
+  "publicInstitutionalReadiness": 55,
+  "internalTechnicalProgress": 78,
+  "publicProgressLabel": "Em consolidação",
+  "metricDefinition": "A prontidão institucional considera desenvolvimento, validação, segurança, documentação, aceite operacional e preparação para escala. O progresso técnico interno mede apenas a implementação funcional e é mantido fora da comunicação pública.",
   "stages": [
-    {
-      "id": "foundation",
-      "title": "Fundação da plataforma",
-      "weight": 15,
-      "progress": 100,
-      "status": "completed",
-      "publicDescription": "Ambientes digitais, identidade visual, acesso seguro e estrutura-base preparados."
-    },
-    {
-      "id": "operations",
-      "title": "Operação de plantões",
-      "weight": 20,
-      "progress": 100,
-      "status": "completed",
-      "publicDescription": "Presença, localização, check-in, check-out e cálculo de períodos validados."
-    },
-    {
-      "id": "communication",
-      "title": "Comunicação operacional",
-      "weight": 15,
-      "progress": 90,
-      "status": "advanced",
-      "publicDescription": "Alertas imediatos e mensagens formais persistentes estruturados em canais independentes."
-    },
-    {
-      "id": "management",
-      "title": "Gestão e indicadores",
-      "weight": 15,
-      "progress": 75,
-      "status": "advanced",
-      "publicDescription": "Painéis para operação, gestão, recepção e diretoria em validação contínua."
-    },
-    {
-      "id": "configuration",
-      "title": "Configuração operacional",
-      "weight": 15,
-      "progress": 100,
-      "status": "completed",
-      "publicDescription": "Regras por plantão, versionamento e aplicação nos cálculos operacionais implantados."
-    },
-    {
-      "id": "security",
-      "title": "Segurança e rastreabilidade",
-      "weight": 10,
-      "progress": 75,
-      "status": "advanced",
-      "publicDescription": "Controle de acesso, auditoria e camadas de proteção em consolidação."
-    },
-    {
-      "id": "integrations",
-      "title": "Integrações e expansão",
-      "weight": 10,
-      "progress": 20,
-      "status": "planned",
-      "publicDescription": "Sincronizações externas, camada jurídica pública e administração global previstas para as próximas etapas."
-    }
+    {"id":"foundation","title":"Fundação da plataforma","publicProgress":85,"status":"structured","publicDescription":"Ambientes digitais, identidade visual, acesso seguro e estrutura-base em consolidação."},
+    {"id":"operations","title":"Operação de plantões","publicProgress":65,"status":"consolidating","publicDescription":"Fluxos de presença, localização e períodos avançam para a etapa de aceite operacional."},
+    {"id":"communication","title":"Comunicação operacional","publicProgress":60,"status":"evolving","publicDescription":"Canais de alerta e mensagens formais seguem em validação e refinamento."},
+    {"id":"management","title":"Gestão e indicadores","publicProgress":55,"status":"evolving","publicDescription":"Painéis de operação, gestão, recepção e diretoria avançam em ciclos de validação."},
+    {"id":"configuration","title":"Configuração operacional","publicProgress":70,"status":"consolidating","publicDescription":"Regras por plantão, versionamento e critérios operacionais seguem em aperfeiçoamento."},
+    {"id":"security","title":"Segurança e rastreabilidade","publicProgress":45,"status":"structuring","publicDescription":"Auditoria, proteção, documentação e critérios de aceite compõem o próximo ciclo."},
+    {"id":"integrations","title":"Integrações e expansão","publicProgress":20,"status":"planned","publicDescription":"Sincronizações externas, camada jurídica pública e administração global estão previstas."}
   ],
   "publicNotes": [
     "A infraestrutura essencial do projeto já foi adquirida e está disponível para a operação.",
     "O projeto utiliza domínio próprio bitimob.com.br exclusivamente como ambiente de hospedagem e apresentação digital.",
-    "O progresso é acompanhado por etapas verificáveis e atualizado conforme validações realizadas."
+    "A prontidão institucional inclui validação, segurança, documentação, aceite e preparação para escala."
   ],
   "internalOnly": {
     "nextMilestones": [

@@ -2,13 +2,13 @@ import React from 'react';
 import { Linking, Platform, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 const stages = [
-  { title: 'Fundação da plataforma', progress: 100, status: 'Concluída', description: 'Ambientes digitais, identidade visual, acesso seguro e estrutura-base preparados.' },
-  { title: 'Operação de plantões', progress: 100, status: 'Concluída', description: 'Presença, localização, check-in, check-out e cálculo de períodos validados.' },
-  { title: 'Comunicação operacional', progress: 90, status: 'Avançada', description: 'Alertas imediatos e mensagens formais persistentes estruturados em canais independentes.' },
-  { title: 'Gestão e indicadores', progress: 75, status: 'Avançada', description: 'Painéis para operação, gestão, recepção e diretoria em validação contínua.' },
-  { title: 'Configuração operacional', progress: 100, status: 'Concluída', description: 'Regras por plantão, versionamento e aplicação nos cálculos operacionais implantados.' },
-  { title: 'Segurança e rastreabilidade', progress: 75, status: 'Avançada', description: 'Controle de acesso, auditoria e camadas de proteção em consolidação.' },
-  { title: 'Integrações e expansão', progress: 20, status: 'Próxima etapa', description: 'Sincronizações externas, camada jurídica pública e administração global previstas.' },
+  { title: 'Fundação da plataforma', progress: 85, status: 'Estruturada', description: 'Ambientes digitais, identidade visual, acesso seguro e estrutura-base em consolidação.' },
+  { title: 'Operação de plantões', progress: 65, status: 'Em consolidação', description: 'Fluxos de presença, localização e períodos avançam para a etapa de aceite operacional.' },
+  { title: 'Comunicação operacional', progress: 60, status: 'Em evolução', description: 'Canais de alerta e mensagens formais seguem em validação e refinamento.' },
+  { title: 'Gestão e indicadores', progress: 55, status: 'Em evolução', description: 'Painéis de operação, gestão, recepção e diretoria avançam em ciclos de validação.' },
+  { title: 'Configuração operacional', progress: 70, status: 'Em consolidação', description: 'Regras por plantão, versionamento e critérios operacionais seguem em aperfeiçoamento.' },
+  { title: 'Segurança e rastreabilidade', progress: 45, status: 'Em estruturação', description: 'Auditoria, proteção, documentação e critérios de aceite compõem o próximo ciclo.' },
+  { title: 'Integrações e expansão', progress: 20, status: 'Planejada', description: 'Sincronizações externas, camada jurídica pública e administração global estão previstas.' },
 ];
 
 export default function ProjectStatus() {
@@ -23,11 +23,11 @@ export default function ProjectStatus() {
 
       <View style={styles.heroCard}>
         <View style={styles.heroTop}>
-          <View><Text style={styles.cardLabel}>PROGRESSO GERAL</Text><Text style={styles.percent}>78%</Text></View>
-          <View style={styles.statusPill}><View style={styles.statusDot} /><Text style={styles.statusPillText}>Em evolução avançada</Text></View>
+          <View><Text style={styles.cardLabel}>PRONTIDÃO INSTITUCIONAL</Text><Text style={styles.percent}>55%</Text></View>
+          <View style={styles.statusPill}><View style={styles.statusDot} />        <Text style={styles.statusPillText}>Em consolidação</Text></View>
         </View>
-        <View style={styles.progressTrack}><View style={[styles.progressFill, { width: '78%' }]} /></View>
-        <Text style={styles.heroText}>O projeto avança por etapas verificáveis, com cada camada validada antes da evolução para o próximo nível de maturidade.</Text>
+        <View style={styles.progressTrack}><View style={[styles.progressFill, { width: '55%' }]} /></View>
+        <Text style={styles.heroText}>O projeto está em fase intermediária-avançada de consolidação. Os principais fluxos já foram estruturados, enquanto validações, refinamentos, documentação e preparação para escala continuam em andamento.</Text>
       </View>
 
       <View style={styles.section}>
@@ -41,7 +41,7 @@ export default function ProjectStatus() {
       </View>
 
       <View style={styles.section}>
-        <Text style={styles.sectionTitle}>Evolução por etapas</Text>
+        <Text style={styles.sectionTitle}>Evolução institucional por etapas</Text>
         {stages.map((stage) => (
           <View key={stage.title} style={styles.stageCard}>
             <View style={styles.stageHeader}><Text style={styles.stageTitle}>{stage.title}</Text><Text style={styles.stagePercent}>{stage.progress}%</Text></View>
