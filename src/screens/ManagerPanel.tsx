@@ -30,7 +30,7 @@ interface TeamMember {
   carencia_ends_at: string | null;
 }
 
-// Interface de tipagem estrita para a fila de leads em tempo real [10]
+// Interface de tipagem estrita para a fila de leads em tempo real
 interface LeadsQueueItem {
   brokerId: string;
   nomeGuerra: string;
@@ -49,7 +49,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const { user, tenant } = useAuth();
   const [pending, setPending] = useState<PendingBroker[]>([]);
   const [team, setTeam] = useState<TeamMember[]>([]);
-  const [leadsQueue, setLeadsQueue] = useState<LeadsQueueItem[]>([]); // <-- ADICIONADO ESTADO DA FILA [10]
+  const [leadsQueue, setLeadsQueue] = useState<LeadsQueueItem[]>([]); // <-- ADICIONADO ESTADO DA FILA
   const [loading, setLoading] = useState(true);
   const [generatingLink, setGeneratingLink] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
@@ -59,7 +59,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const managerId = user?.id || '';
 
-  // 1. Efeito Inicial: Carrega todas as filas e a distribuição de leads ao vivo em paralelo [10]
+  // 1. Efeito Inicial: Carrega todas as filas e a distribuição de leads ao vivo em paralelo
   const loadData = async () => {
     try {
       setError('');
@@ -82,7 +82,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
     loadData();
   }, [managerId]);
 
-  // 2. Método para o Gerente gerar um novo link de convite único [10]
+  // 2. Método para o Gerente gerar um novo link de convite único
   const handleGenerateLink = async () => {
     try {
       setGeneratingLink(true);
@@ -97,7 +97,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
     }
   };
 
-  // Copia o link de onboarding gerado [10]
+  // Copia o link de onboarding gerado
   const handleCopyLink = async () => {
     if (!inviteLink) return;
 
@@ -109,7 +109,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
     }
   };
 
-  // Copia o Nome de Guerra do corretor habilitado com um clique para facilitar a distribuição [10]
+  // Copia o Nome de Guerra do corretor habilitado com um clique para facilitar a distribuição
   const handleCopyBrokerName = async (nomeGuerra: string) => {
     if (Platform.OS === 'web') {
       await navigator.clipboard.writeText(nomeGuerra);
@@ -119,7 +119,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
     }
   };
 
-  // 3. Método para Aprovar o Corretor definindo a Carência (A: 7 dias, B: 15 dias, C: 30 dias) [10, 11]
+  // 3. Método para Aprovar o Corretor definindo a Carência (A: 7 dias, B: 15 dias, C: 30 dias)
   const handleApprove = async (brokerId: string, days: number) => {
     try {
       setApprovingId(brokerId);
@@ -154,14 +154,14 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
       </TouchableOpacity>
 
       <Text style={styles.title}>Gestão de Corretores</Text>
-      <Text style={styles.subtitle}>Gerencie convites, cadastros, aprovações e distribuição de leads [10]</Text>
+      <Text style={styles.subtitle}>Gerencie convites, cadastros, aprovações e distribuição de leads</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      {/* SEÇÃO A: GERAR CONVITES DE CADASTRO [10] */}
+      {/* SEÇÃO A: GERAR CONVITES DE CADASTRO */}
       <View style={styles.sectionCard}>
         <Text style={styles.sectionTitle}>Convide Novos Corretores</Text>
-        <Text style={styles.sectionDesc}>Gere um link temporário único para enviar pelo WhatsApp [10].</Text>
+        <Text style={styles.sectionDesc}>Gere um link temporário único para enviar pelo WhatsApp.</Text>
         
         {inviteLink ? (
           <View style={styles.linkContainer}>
@@ -188,7 +188,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
         )}
       </View>
 
-      {/* NOVA SEÇÃO B: FILA DE DISTRIBUIÇÃO DE LEADS AO VIVO (REAL-TIME) [6, 10] */}
+      {/* NOVA SEÇÃO B: FILA DE DISTRIBUIÇÃO DE LEADS AO VIVO (REAL-TIME) */}
       <Text style={styles.subHeader}>Fila de Leads Ativa (Tempo Real)</Text>
       <FlatList
         data={leadsQueue}
@@ -227,7 +227,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
         }}
       />
 
-      {/* SEÇÃO C: FILA DE APROVAÇÕES PENDENTES [10, 11] */}
+      {/* SEÇÃO C: FILA DE APROVAÇÕES PENDENTES */}
       <Text style={styles.subHeader}>Aprovações Pendentes ({pending.length})</Text>
       <FlatList
         data={pending}
@@ -277,7 +277,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
         )}
       />
 
-      {/* SEÇÃO D: EQUIPE ATIVA ATUAL [10] */}
+      {/* SEÇÃO D: EQUIPE ATIVA ATUAL */}
       <Text style={styles.subHeader}>Time Ativo e em Carência ({team.length})</Text>
       <FlatList
         data={team}

@@ -9,7 +9,7 @@ import {
   FlatList,
   Platform,
 } from 'react-native';
-import * as Location from 'expo-location'; // Captura GPS nativo [17]
+import * as Location from 'expo-location'; // Captura GPS nativo
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import ScreenCode from '../components/ScreenCode';
@@ -36,7 +36,7 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
 
-  // 1. Efeito Inicial: Busca os plantões cadastrados na nuvem para esta construtora [7]
+  // 1. Efeito Inicial: Busca os plantões cadastrados na nuvem para esta construtora
   useEffect(() => {
     async function loadBooths() {
       try {
@@ -52,31 +52,31 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
     loadBooths();
   }, []);
 
-  // 2. Método de Check-in: Solicita GPS, captura localização e envia para a API [7, 8]
+  // 2. Método de Check-in: Solicita GPS, captura localização e envia para a API
   const handleCheckIn = async (booth: Booth) => {
     try {
       setError('');
       setCheckingIn(booth.id);
 
-      // A. Solicita permissão de GPS nativa para o celular/navegador [17]
+      // A. Solicita permissão de GPS nativa para o celular/navegador
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
         throw new Error('Permissão de localização (GPS) é necessária para realizar o check-in.');
       }
 
-      // B. Captura as coordenadas atuais de latitude/longitude [17]
+      // B. Captura as coordenadas atuais de latitude/longitude
       const location = await Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.High,
       });
 
       const { latitude, longitude } = location.coords;
 
-      // C. Dispara a requisição de check-in para o backend [8]
+      // C. Dispara a requisição de check-in para o backend
       const response = await api.post('/presences/check-in', {
         boothId: booth.id,
         latitude,
         longitude,
-        // ssid: "Abiatar_VistaPlaza_Main" // (Opcional - enviado se o app estivesse rodando nativo) [7]
+        // ssid: "Abiatar_VistaPlaza_Main" // (Opcional - enviado se o app estivesse rodando nativo)
       });
 
       // D. Notifica o componente pai sobre o sucesso do check-in
@@ -102,7 +102,7 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
     <View style={styles.container}>
       <ScreenCode code="CR-01" />
       <Text style={styles.title}>Plantões Disponíveis</Text>
-      <Text style={styles.subtitle}>Selecione o seu plantão de vendas atual para iniciar o turno [8]</Text>
+      <Text style={styles.subtitle}>Selecione o seu plantão de vendas atual para iniciar o turno</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 

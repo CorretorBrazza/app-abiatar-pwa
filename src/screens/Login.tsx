@@ -86,7 +86,7 @@ export default function Login({ onGoToRegister }: LoginProps) {
           )}
         </TouchableOpacity>
 
-        {/* LINK PARA IR PARA A TELA DE CADASTRO [10] */}
+        {/* LINK PARA IR PARA A TELA DE CADASTRO */}
         <TouchableOpacity style={styles.registerButton} onPress={onGoToRegister}>
           <Text style={styles.registerButtonText}>Não tem conta? Cadastre-se aqui</Text>
         </TouchableOpacity>

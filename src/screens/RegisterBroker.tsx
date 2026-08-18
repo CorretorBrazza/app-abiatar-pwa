@@ -16,7 +16,7 @@ interface RegisterBrokerProps {
 }
 
 export default function RegisterBroker({ onBackToLogin }: RegisterBrokerProps) {
-  const [token, setToken] = useState(''); // Token do link recebido pelo WhatsApp [10]
+  const [token, setToken] = useState(''); // Token do link recebido pelo WhatsApp
   const [name, setName] = useState('');
   const [nomeGuerra, setNomeGuerra] = useState('');
   const [email, setEmail] = useState('');
@@ -37,7 +37,7 @@ export default function RegisterBroker({ onBackToLogin }: RegisterBrokerProps) {
       setSuccessMessage('');
       setLoading(true);
 
-      // Dispara o cadastro para a rota pública do nosso backend [10]
+      // Dispara o cadastro para a rota pública do nosso backend
       const response = await api.post('/users/register-broker', {
         token,
         name,
@@ -68,7 +68,7 @@ export default function RegisterBroker({ onBackToLogin }: RegisterBrokerProps) {
     <View style={styles.container}>
       <View style={styles.card}>
         <Text style={styles.title}>Cadastre-se no Sistema</Text>
-        <Text style={styles.subtitle}>Insira o convite do gerente para iniciar [10]</Text>
+        <Text style={styles.subtitle}>Insira o convite do gerente para iniciar</Text>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}

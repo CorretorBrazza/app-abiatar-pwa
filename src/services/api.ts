@@ -12,7 +12,7 @@ const api = axios.create({
   timeout: 10000,
 });
 
-// 1. Interceptador de Requisições: Injeta o Token JWT Bearer automaticamente se existir [15]
+// 1. Interceptador de Requisições: Injeta o Token JWT Bearer automaticamente se existir
 api.interceptors.request.use(
   async (config) => {
     try {
@@ -33,7 +33,7 @@ api.interceptors.request.use(
   },
 );
 
-// 2. Interceptador de Respostas: Desloga e redireciona automaticamente se o Token expirar (Erro 401) [15]
+// 2. Interceptador de Respostas: Desloga e redireciona automaticamente se o Token expirar (Erro 401)
 // (Ignora a rota de login para evitar o loop de recarregamento infinito)
 api.interceptors.response.use(
   (response) => {
@@ -43,7 +43,7 @@ api.interceptors.response.use(
     // Verifica se a requisição que deu erro foi especificamente a de login
     const isLoginRequest = error.config && error.config.url && error.config.url.includes('/auth/login');
 
-    // Só limpa o token e força o recarregamento se o erro 401 NÃO vier da rota de login! [15]
+    // Só limpa o token e força o recarregamento se o erro 401 NÃO vier da rota de login!
     if (error.response && error.response.status === 401 && !isLoginRequest) {
       try {
         await AsyncStorage.multiRemove([

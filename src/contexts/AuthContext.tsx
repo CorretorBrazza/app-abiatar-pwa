@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [tenant, setTenant] = useState<Tenant | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // 2. Efeito Inicial: Recupera os dados salvos no celular ao abrir o aplicativo [15]
+  // 2. Efeito Inicial: Recupera os dados salvos no celular ao abrir o aplicativo
   useEffect(() => {
     async function loadStorageData() {
       try {
@@ -73,7 +73,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loadStorageData();
   }, []);
 
-  // 3. Método de Login: Chama a API, valida credenciais e salva as cores de estilização do inquilino [15, 17]
+  // 3. Método de Login: Chama a API, valida credenciais e salva as cores de estilização do inquilino
   const login = async (email: string, passwordHash: string) => {
     try {
       setLoading(true);
@@ -109,7 +109,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
 
-  // 4. Método de Logout: Limpa os dados e encerra a sessão de forma segura [15]
+  // 4. Método de Logout: Limpa os dados e encerra a sessão de forma segura
   const logout = async () => {
     try {
       await AsyncStorage.multiRemove([

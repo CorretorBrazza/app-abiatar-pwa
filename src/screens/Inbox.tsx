@@ -40,13 +40,13 @@ export default function Inbox({ onBack }: InboxProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
-  // Controle de Visualização do Modal de Mensagem Urgente [13]
+  // Controle de Visualização do Modal de Mensagem Urgente
   const [selectedMessage, setSelectedMessage] = useState<MessageRecipient | null>(null);
   const [markingRead, setMarkingRead] = useState(false);
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
 
-  // 1. Efeito Inicial: Busca os comunicados da Caixa de Entrada na nuvem [12]
+  // 1. Efeito Inicial: Busca os comunicados da Caixa de Entrada na nuvem
   const loadMessages = async () => {
     try {
       setError('');
@@ -63,7 +63,7 @@ export default function Inbox({ onBack }: InboxProps) {
     loadMessages();
   }, []);
 
-  // 2. Método para Confirmar a Leitura da Mensagem [13]
+  // 2. Método para Confirmar a Leitura da Mensagem
   const handleMarkAsRead = async (msg: MessageRecipient) => {
     try {
       setMarkingRead(true);
@@ -84,7 +84,7 @@ export default function Inbox({ onBack }: InboxProps) {
     }
   };
 
-  // 3. Método para Excluir a Mensagem da Caixa de Entrada (Soft-delete) [12]
+  // 3. Método para Excluir a Mensagem da Caixa de Entrada (Soft-delete)
   const handleDeleteMessage = async (msgId: string) => {
     try {
       await api.delete(`/messages/${msgId}`);
@@ -113,7 +113,7 @@ export default function Inbox({ onBack }: InboxProps) {
       </TouchableOpacity>
 
       <Text style={styles.title}>Minhas Mensagens</Text>
-      <Text style={styles.subtitle}>Acompanhe os comunicados e alertas oficiais [12]</Text>
+      <Text style={styles.subtitle}>Acompanhe os comunicados e alertas oficiais</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -161,7 +161,7 @@ export default function Inbox({ onBack }: InboxProps) {
         }}
       />
 
-      {/* MODAL PARA LEITURA COMPLETA DE MENSAGENS URGENTES/NORMAIS [13] */}
+      {/* MODAL PARA LEITURA COMPLETA DE MENSAGENS URGENTES/NORMAIS */}
       <Modal
         visible={selectedMessage !== null}
         transparent
@@ -175,7 +175,7 @@ export default function Inbox({ onBack }: InboxProps) {
             <Text style={styles.modalContent}>{selectedMessage?.message.content}</Text>
 
             {selectedMessage?.message.is_urgent && !selectedMessage.read_at ? (
-              // Se for urgente e não lida, exige o clique no botão de leitura [13]
+              // Se for urgente e não lida, exige o clique no botão de leitura
               <TouchableOpacity 
                 style={[styles.readButton, { backgroundColor: primaryColor }]}
                 onPress={() => handleMarkAsRead(selectedMessage)}

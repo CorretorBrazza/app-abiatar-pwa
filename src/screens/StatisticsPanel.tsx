@@ -41,7 +41,7 @@ export default function StatisticsPanel({ onBack }: StatisticsPanelProps) {
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
 
-  // Dias da semana correspondentes aos números do Postgres [11]
+  // Dias da semana correspondentes aos números do Postgres
   const daysOfWeekNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'];
 
   useEffect(() => {
@@ -65,18 +65,18 @@ export default function StatisticsPanel({ onBack }: StatisticsPanelProps) {
     loadInitialData();
   }, []);
 
-  // 2. Efeito: Toda vez que a Diretora mudar o plantão selecionado, busca o mapa de calor dele [6, 14]
+  // 2. Efeito: Toda vez que a Diretora mudar o plantão selecionado, busca o mapa de calor dele
   useEffect(() => {
     if (!selectedBoothId || !user?.id) return;
 
     async function loadAnalytics() {
       try {
         setLoading(true);
-        // Busca o mapa de calor de demanda horária do plantão na API [6]
+        // Busca o mapa de calor de demanda horária do plantão na API
         const demandRes = await api.get(`/presences/statistics/booth-demand/${selectedBoothId}`);
         setHeatmap(demandRes.data.heatmap);
 
-        // Simularemos a listagem de assiduidade mensal de corretores do time para exibir no painel [6]
+        // Simularemos a listagem de assiduidade mensal de corretores do time para exibir no painel
         const teamRes = await api.get(`/users/team/${user?.id}`); // Usa ID fixo do gestor
         const statsPromises = teamRes.data.map(async (member: any) => {
           const statRes = await api.get(`/presences/statistics/broker/${member.id}`);
@@ -100,7 +100,7 @@ export default function StatisticsPanel({ onBack }: StatisticsPanelProps) {
     loadAnalytics();
   }, [selectedBoothId]);
 
-  // Função auxiliar de cores para o Mapa de Calor (Maior frequência = Cor mais escura) [6, 14]
+  // Função auxiliar de cores para o Mapa de Calor (Maior frequência = Cor mais escura)
   const getHeatmapColor = (count: number) => {
     if (count === 0) return '#fafafc';
     if (count <= 2) return '#ffeb3b'; // Baixo (Amarelo)
@@ -125,7 +125,7 @@ export default function StatisticsPanel({ onBack }: StatisticsPanelProps) {
       </TouchableOpacity>
 
       <Text style={styles.title}>Inteligência de Plantão (BI)</Text>
-      <Text style={styles.subtitle}>Analise a assiduidade do time e os scores de demanda horária [6, 14]</Text>
+      <Text style={styles.subtitle}>Analise a assiduidade do time e os scores de demanda horária</Text>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -151,10 +151,10 @@ export default function StatisticsPanel({ onBack }: StatisticsPanelProps) {
         ))}
       </View>
 
-      {/* SEÇÃO B: MAPA DE CALOR DE DEMANDA HISTÓRICA (HEATMAP) [6, 14] */}
+      {/* SEÇÃO B: MAPA DE CALOR DE DEMANDA HISTÓRICA (HEATMAP) */}
       <View style={styles.card}>
         <Text style={styles.cardTitle}>🔥 Score de Demanda por Horário (Mapa de Calor)</Text>
-        <Text style={styles.cardDesc}>Identifique de forma estatística os momentos de pico e ociosidade [6].</Text>
+        <Text style={styles.cardDesc}>Identifique de forma estatística os momentos de pico e ociosidade.</Text>
         
         {loading ? (
           <ActivityIndicator color={primaryColor} style={{ marginVertical: 30 }} />
@@ -179,8 +179,8 @@ export default function StatisticsPanel({ onBack }: StatisticsPanelProps) {
         )}
       </View>
 
-      {/* SEÇÃO C: ASSIDUIDADE MENSAL DO TIME [6] */}
-      <Text style={styles.subHeader}>Porcentagem de Assiduidade Mensal (Meta: 20 períodos) [6, 9]</Text>
+      {/* SEÇÃO C: ASSIDUIDADE MENSAL DO TIME */}
+      <Text style={styles.subHeader}>Porcentagem de Assiduidade Mensal (Meta: 20 períodos)</Text>
       <FlatList
         data={brokerStats}
         keyExtractor={(item) => item.brokerId}

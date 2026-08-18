@@ -13,7 +13,7 @@ import { useAuth } from '../contexts/AuthContext';
 import CheckIn from './CheckIn';
 import Inbox from './Inbox'; 
 import ManagerPanel from './ManagerPanel'; 
-import StatisticsPanel from './StatisticsPanel'; // <-- ADICIONE ESTA IMPORTAÇÃO DO PAINEL DE BI [14]
+import StatisticsPanel from './StatisticsPanel'; // <-- ADICIONE ESTA IMPORTAÇÃO DO PAINEL DE BI
 import ReceptionPanel from './ReceptionPanel';
 import PushToast from '../components/PushToast';
 import PushSetupButton from '../components/PushSetupButton';
@@ -24,7 +24,7 @@ import api from '../services/api';
 export default function Dashboard() {
   const { user, tenant, logout } = useAuth();
   
-  // Controle de estado da presença física para corretores (Nível 3) [8]
+  // Controle de estado da presença física para corretores (Nível 3)
   const [activeSession, setActiveSession] = useState<any | null>(null);
   const [loadingSession, setLoadingSession] = useState(true);
   const [endingShift, setEndingShift] = useState(false);
@@ -32,14 +32,14 @@ export default function Dashboard() {
   const [pushNotice, setPushNotice] = useState<{ title: string; body: string } | null>(null);
   const [operationalNotice, setOperationalNotice] = useState<{ title: string; body: string } | null>(null);
 
-  // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI) [10, 12, 14, 15]
+  // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI)
   const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics'>('main'); // <-- ADICIONADO "statistics" AQUI
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const isManager = user?.role === 'gerencia_level_2';
   const isDirector = user?.role === 'diretoria_level_1';
 
-  // 1. Efeito Inicial: Busca se o corretor já possui um turno ativo online na nuvem [8]
+  // 1. Efeito Inicial: Busca se o corretor já possui um turno ativo online na nuvem
   useEffect(() => {
     async function checkCurrentSession() {
       if (user?.role !== 'corretor_level_3') {
@@ -52,7 +52,7 @@ export default function Dashboard() {
         if (response.data.hasActiveSession) {
           setActiveSession(response.data.presence);
           
-          // Se houver um ping pendente na nuvem, abre o modal de confirmação na tela na hora! [8]
+          // Se houver um ping pendente na nuvem, abre o modal de confirmação na tela na hora!
           setPendingSessionPingId(response.data.presence.pendingPingId);
         } else {
           setActiveSession(null);
@@ -70,7 +70,7 @@ export default function Dashboard() {
 
     checkCurrentSession();
 
-    // Ativa o Polling (Verificação silenciosa a cada 15 segundos) se for corretor logado [8]
+    // Ativa o Polling (Verificação silenciosa a cada 15 segundos) se for corretor logado
     let intervalId: any;
     if (user?.role === 'corretor_level_3') {
       intervalId = setInterval(checkCurrentSession, 15000);
@@ -127,7 +127,7 @@ export default function Dashboard() {
     // Implementado no componente filho ou estado do modal interno
   };
 
-  // 2. Método de Check-out [8]
+  // 2. Método de Check-out
   const handleCheckOut = async () => {
     try {
       setEndingShift(true);
@@ -156,28 +156,28 @@ export default function Dashboard() {
   }
 
   // ==========================================
-  // ROTA DO PAINEL DE BI / ESTATÍSTICAS (DIRETORIA) [6, 14, 15]
+  // ROTA DO PAINEL DE BI / ESTATÍSTICAS (DIRETORIA)
   // ==========================================
   if (currentView === 'statistics') {
     return <StatisticsPanel onBack={() => setCurrentView('main')} />;
   }
 
   // ==========================================
-  // ROTA DA GESTÃO DE CORRETORES (GERENTE / DIRETORIA) [2, 10, 15]
+  // ROTA DA GESTÃO DE CORRETORES (GERENTE / DIRETORIA)
   // ==========================================
   if (currentView === 'manager_panel') {
     return <ManagerPanel onBack={() => setCurrentView('main')} />;
   }
 
   // ==========================================
-  // ROTA DO INBOX (SE ATIVA, RENDERIZA O INBOX SOBREPOSTO) [12, 15]
+  // ROTA DO INBOX (SE ATIVA, RENDERIZA O INBOX SOBREPOSTO)
   // ==========================================
   if (currentView === 'inbox') {
     return <Inbox onBack={() => setCurrentView('main')} />;
   }
 
   // ==========================================
-  // FLUXO DO CORRETOR (NÍVEL 3) [8]
+  // FLUXO DO CORRETOR (NÍVEL 3)
   // ==========================================
   if (user?.role === 'corretor_level_3') {
     if (!activeSession) {
@@ -232,7 +232,7 @@ export default function Dashboard() {
 
         <View style={styles.content}>
           <Text style={styles.welcomeTitle}>Olá, {user?.nome_guerra}!</Text>
-          <Text style={styles.welcomeSubtitle}>Você está ativo e em plantão de vendas [8].</Text>
+          <Text style={styles.welcomeSubtitle}>Você está ativo e em plantão de vendas.</Text>
 
           <View style={styles.card}>
             <Text style={styles.infoTitle}>Informações do Turno Atual</Text>
