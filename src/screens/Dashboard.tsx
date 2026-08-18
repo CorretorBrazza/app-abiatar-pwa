@@ -15,6 +15,7 @@ import CheckIn from './CheckIn';
 import Inbox from './Inbox'; 
 import ManagerPanel from './ManagerPanel'; 
 import StatisticsPanel from './StatisticsPanel'; // <-- ADICIONE ESTA IMPORTAÇÃO DO PAINEL DE BI
+import BoothRulesPanel from './BoothRulesPanel';
 import ReceptionPanel from './ReceptionPanel';
 import PushToast from '../components/PushToast';
 import PushSetupButton from '../components/PushSetupButton';
@@ -36,7 +37,7 @@ export default function Dashboard() {
   const [brokerSummary, setBrokerSummary] = useState<any | null>(null);
 
   // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI)
-  const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics'>('main'); // <-- ADICIONADO "statistics" AQUI
+  const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics' | 'booth_rules'>('main');
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const isManager = user?.role === 'gerencia_level_2';
@@ -192,6 +193,10 @@ export default function Dashboard() {
   // ==========================================
   if (currentView === 'statistics') {
     return <StatisticsPanel onBack={() => setCurrentView('main')} />;
+  }
+
+  if (currentView === 'booth_rules') {
+    return <BoothRulesPanel onBack={() => setCurrentView('main')} />;
   }
 
   // ==========================================
@@ -382,6 +387,13 @@ export default function Dashboard() {
               <Text style={styles.infoText}>Identificador (Slug): {tenant?.slug}</Text>
               <Text style={styles.infoText}>ID da Nuvem: {tenant?.id}</Text>
             </View>
+
+            <TouchableOpacity
+              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+              onPress={() => setCurrentView('booth_rules')}
+            >
+              <Text style={[styles.msgText, { color: primaryColor }]}>Configurar Regras dos Plantões</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity
               style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
