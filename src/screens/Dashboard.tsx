@@ -237,11 +237,13 @@ export default function Dashboard() {
           <View style={styles.footerLogout}>
             <View style={styles.brokerPeriodsCard}>
               <Text style={styles.brokerPeriodsTitle}>Resumo dos seus períodos</Text>
-              <Text style={styles.infoText}>Períodos acumulados na semana: {brokerSummary?.accumulatedPeriods ?? '—'}</Text>
+              <Text style={styles.infoText}>Períodos válidos na semana: {brokerSummary?.validPeriods ?? '—'}</Text>
+              <Text style={styles.infoText}>Peso acumulado para elegibilidade: {brokerSummary?.weightedPeriods ?? '—'}</Text>
+              {brokerSummary?.invalidatedPeriods > 0 && <Text style={styles.invalidPeriodText}>Períodos invalidados: {brokerSummary.invalidatedPeriods}</Text>}
               <Text style={styles.infoText}>
                 Fim de semana: {brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
               </Text>
-              <Text style={styles.infoText}>Mínimo informativo por período: {brokerSummary?.minimumMinutesPerPeriod ?? 120} minutos</Text>
+              <Text style={styles.infoText}>Mínimo configurado por período: {brokerSummary?.minimumMinutesPerPeriod ?? 120} minutos</Text>
             </View>
             <BrokerMaterials primaryColor={primaryColor} onOpenMaterials={handleOpenMaterials} />
             <PushSetupButton />
@@ -528,6 +530,7 @@ const styles = StyleSheet.create({
     color: '#1c1c1e',
     marginBottom: 12,
   },
+  invalidPeriodText: { color: '#b42318', fontSize: 14, marginBottom: 6, fontWeight: '700' },
   infoText: {
     fontSize: 14,
     color: '#3a3a3c',

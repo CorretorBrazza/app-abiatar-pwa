@@ -156,11 +156,13 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
           <View style={styles.listFooter}>
             <View style={styles.periodsCard}>
               <Text style={styles.periodsTitle}>Resumo dos seus períodos</Text>
-              <Text style={styles.periodText}>Períodos acumulados na semana: {brokerSummary?.accumulatedPeriods ?? '—'}</Text>
+              <Text style={styles.periodText}>Períodos válidos na semana: {brokerSummary?.validPeriods ?? '—'}</Text>
+              <Text style={styles.periodText}>Peso acumulado para elegibilidade: {brokerSummary?.weightedPeriods ?? '—'}</Text>
+              {brokerSummary?.invalidatedPeriods > 0 && <Text style={styles.invalidPeriodText}>Períodos invalidados: {brokerSummary.invalidatedPeriods}</Text>}
               <Text style={styles.periodText}>
                 Fim de semana: {brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
               </Text>
-              <Text style={styles.periodText}>Mínimo informativo por período: {brokerSummary?.minimumMinutesPerPeriod ?? 120} minutos</Text>
+              <Text style={styles.periodText}>Mínimo configurado por período: {brokerSummary?.minimumMinutesPerPeriod ?? 120} minutos</Text>
             </View>
             <BrokerMaterials primaryColor={primaryColor} onOpenMaterials={handleOpenMaterials} />
           </View>
@@ -212,6 +214,7 @@ const styles = StyleSheet.create({
   listFooter: { width: '100%', alignItems: 'center', paddingTop: 16 },
   periodsCard: { width: '100%', maxWidth: 600, backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e5e5ea' },
   periodsTitle: { color: '#1c1c1e', fontSize: 16, fontWeight: '800', marginBottom: 8 },
+  invalidPeriodText: { color: '#b42318', fontSize: 14, marginBottom: 6, fontWeight: '700' },
   periodText: { color: '#3a3a3c', fontSize: 14, marginBottom: 6 },
   boothCard: {
     backgroundColor: '#FFF',
