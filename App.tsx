@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import Login from './src/screens/Login';
 import Dashboard from './src/screens/Dashboard';
 import RegisterBroker from './src/screens/RegisterBroker'; // <-- IMPORTADO AQUI
+import ProjectStatus from './src/screens/ProjectStatus';
 
 function AppContent() {
   const { signed, loading } = useAuth();
@@ -33,6 +34,12 @@ function AppContent() {
 }
 
 export default function App() {
+  const isStatusPage = Platform.OS === 'web' && typeof window !== 'undefined' && window.location.pathname.replace(/\/$/, '') === '/status';
+
+  if (isStatusPage) {
+    return <ProjectStatus />;
+  }
+
   return (
     <AuthProvider>
       <AppContent />

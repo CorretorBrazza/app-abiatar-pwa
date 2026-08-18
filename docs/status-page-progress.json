@@ -1,0 +1,79 @@
+{
+  "project": "ABIATAR",
+  "publicDomain": "bitimob.com.br",
+  "lastValidated": "2026-08-18",
+  "overallProgress": 78,
+  "progressLabel": "Em evolução avançada",
+  "stages": [
+    {
+      "id": "foundation",
+      "title": "Fundação da plataforma",
+      "weight": 15,
+      "progress": 100,
+      "status": "completed",
+      "publicDescription": "Ambientes digitais, identidade visual, acesso seguro e estrutura-base preparados."
+    },
+    {
+      "id": "operations",
+      "title": "Operação de plantões",
+      "weight": 20,
+      "progress": 100,
+      "status": "completed",
+      "publicDescription": "Presença, localização, check-in, check-out e cálculo de períodos validados."
+    },
+    {
+      "id": "communication",
+      "title": "Comunicação operacional",
+      "weight": 15,
+      "progress": 90,
+      "status": "advanced",
+      "publicDescription": "Alertas imediatos e mensagens formais persistentes estruturados em canais independentes."
+    },
+    {
+      "id": "management",
+      "title": "Gestão e indicadores",
+      "weight": 15,
+      "progress": 75,
+      "status": "advanced",
+      "publicDescription": "Painéis para operação, gestão, recepção e diretoria em validação contínua."
+    },
+    {
+      "id": "configuration",
+      "title": "Configuração operacional",
+      "weight": 15,
+      "progress": 100,
+      "status": "completed",
+      "publicDescription": "Regras por plantão, versionamento e aplicação nos cálculos operacionais implantados."
+    },
+    {
+      "id": "security",
+      "title": "Segurança e rastreabilidade",
+      "weight": 10,
+      "progress": 75,
+      "status": "advanced",
+      "publicDescription": "Controle de acesso, auditoria e camadas de proteção em consolidação."
+    },
+    {
+      "id": "integrations",
+      "title": "Integrações e expansão",
+      "weight": 10,
+      "progress": 20,
+      "status": "planned",
+      "publicDescription": "Sincronizações externas, camada jurídica pública e administração global previstas para as próximas etapas."
+    }
+  ],
+  "publicNotes": [
+    "A infraestrutura essencial do projeto já foi adquirida e está disponível para a operação.",
+    "O projeto utiliza domínio próprio bitimob.com.br exclusivamente como ambiente de hospedagem e apresentação digital.",
+    "O progresso é acompanhado por etapas verificáveis e atualizado conforme validações realizadas."
+  ],
+  "internalOnly": {
+    "nextMilestones": [
+      "Validar nova versão de regra no painel da Diretoria.",
+      "Finalizar pausa e retomada operacional da Recepção.",
+      "Integrar sincronização de distribuição de leads.",
+      "Publicar camada jurídica de privacidade e confidencialidade.",
+      "Construir administração global de Nível 0."
+    ]
+  }
+}
