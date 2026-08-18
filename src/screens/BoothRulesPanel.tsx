@@ -20,6 +20,10 @@ type Booth = {
   longitude?: string | number;
   gps_radius?: number;
   min_brokers_required?: number;
+  base_gps_radius?: number;
+  effective_gps_radius?: number;
+  base_min_brokers_required?: number;
+  effective_min_brokers_required?: number;
   manager_id?: string | null;
   lifecycle_status?: 'draft' | 'published' | 'paused' | 'archived';
   wifis?: Array<{ ssid: string }>;
@@ -236,6 +240,13 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
           <>
             <Text style={styles.sectionTitle}>Cadastro-base do plantão</Text>
             <Text style={styles.lifecycle}>Estado: {selectedBooth.lifecycle_status || 'draft'}</Text>
+            <View style={styles.effectiveCard}>
+              <Text style={styles.effectiveTitle}>Valores operacionais</Text>
+              <Text style={styles.effectiveText}>Raio cadastrado: {selectedBooth.base_gps_radius ?? selectedBooth.gps_radius ?? '—'} m</Text>
+              <Text style={styles.effectiveText}>Raio efetivo: {selectedBooth.effective_gps_radius ?? selectedBooth.gps_radius ?? '—'} m</Text>
+              <Text style={styles.effectiveText}>Cobertura cadastrada: {selectedBooth.base_min_brokers_required ?? selectedBooth.min_brokers_required ?? '—'}</Text>
+              <Text style={styles.effectiveText}>Cobertura efetiva: {selectedBooth.effective_min_brokers_required ?? selectedBooth.min_brokers_required ?? '—'}</Text>
+            </View>
             {(['name', 'address', 'latitude', 'longitude', 'gps_radius', 'min_brokers_required', 'manager_id'] as Array<keyof Booth>).map((key) => (
               <View key={String(key)} style={styles.field}>
                 <Text style={styles.label}>{({ name: 'Nome', address: 'Endereço', latitude: 'Latitude', longitude: 'Longitude', gps_radius: 'Raio GPS legado', min_brokers_required: 'Cobertura mínima legada', manager_id: 'ID do gerente responsável' } as Record<string, string>)[String(key)]}</Text>
@@ -304,6 +315,9 @@ const styles = StyleSheet.create({
   boothTextActive: { color: '#fff', fontWeight: '700' },
   sectionTitle: { color: '#1c1c1e', fontSize: 18, fontWeight: '800', marginTop: 12, marginBottom: 8 },
   lifecycle: { color: '#0f766e', fontWeight: '800', marginBottom: 12, textTransform: 'uppercase' },
+  effectiveCard: { backgroundColor: '#eef6ff', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 10, padding: 12, marginBottom: 14 },
+  effectiveTitle: { color: '#1e3a8a', fontWeight: '800', marginBottom: 6 },
+  effectiveText: { color: '#1e40af', marginBottom: 3 },
   version: { color: '#666', marginBottom: 12 },
   field: { marginBottom: 12 },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 16 },
