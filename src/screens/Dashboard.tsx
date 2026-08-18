@@ -7,7 +7,8 @@ import {
   ScrollView,
   TouchableOpacity, 
   ActivityIndicator, 
-  Platform 
+  Platform,
+  Linking,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import CheckIn from './CheckIn';
@@ -125,6 +126,16 @@ export default function Dashboard() {
   // Auxiliar para setar o ID do ping no polling
   const setPendingSessionPingId = (id: string | null) => {
     // Implementado no componente filho ou estado do modal interno
+  };
+
+  const materialsUrl = 'https://linktr.ee/Abiatarimoveisconstrutora?utm_source=linktree_admin_share';
+
+  const handleOpenMaterials = async () => {
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      window.open(materialsUrl, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    await Linking.openURL(materialsUrl);
   };
 
   // 2. Método de Check-out
@@ -264,6 +275,24 @@ export default function Dashboard() {
               {unreadCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>}
             </View>
           </TouchableOpacity>
+
+          <View style={styles.productivitySection}>
+            <Text style={styles.productivityTitle}>Materiais para atendimento</Text>
+            <TouchableOpacity
+              style={[styles.resourceButton, styles.resourceButtonDisabled]}
+              onPress={() => alert('A Tabela de Preços Atualizada estará disponível em breve.')}
+            >
+              <Text style={styles.resourceButtonText}>Tabela de Preços Atualizada</Text>
+              <Text style={styles.resourceHint}>Material em preparação</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.resourceButton, { backgroundColor: primaryColor }]}
+              onPress={handleOpenMaterials}
+            >
+              <Text style={styles.resourceButtonText}>Material Empreendimentos</Text>
+              <Text style={styles.resourceHintLight}>Abrir material Abiatar</Text>
+            </TouchableOpacity>
+          </View>
 
           <PushSetupButton />
           <TouchableOpacity 
@@ -467,6 +496,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#FFF',
   },
+  productivitySection: { width: '100%', maxWidth: 520, marginBottom: 16 },
+  productivityTitle: { color: '#1c1c1e', fontSize: 16, fontWeight: '800', marginBottom: 8 },
+  resourceButton: { minHeight: 58, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10, justifyContent: 'center', marginBottom: 10 },
+  resourceButtonDisabled: { backgroundColor: '#e5e5ea' },
+  resourceButtonText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
+  resourceHint: { color: '#636366', fontSize: 11, marginTop: 3 },
+  resourceHintLight: { color: 'rgba(255,255,255,0.82)', fontSize: 11, marginTop: 3 },
   logoutText: {
     fontSize: 16,
     fontWeight: 'bold',
