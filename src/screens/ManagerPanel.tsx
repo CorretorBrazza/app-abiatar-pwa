@@ -179,8 +179,8 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
           <>
             <Text style={styles.actionLabel}>Tipo de convite</Text>
             <View style={styles.buttonGroup}>
-              <TouchableOpacity style={[styles.roleButton, inviteRole === 'gerencia_level_2' && styles.roleButtonActive]} onPress={() => setInviteRole('gerencia_level_2')}><Text style={styles.roleButtonText}>Gerente</Text></TouchableOpacity>
-              <TouchableOpacity style={[styles.roleButton, inviteRole === 'corretor_level_3' && styles.roleButtonActive]} onPress={() => setInviteRole('corretor_level_3')}><Text style={styles.roleButtonText}>Corretor</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.roleButton, inviteRole === 'gerencia_level_2' && styles.roleButtonActive]} onPress={() => setInviteRole('gerencia_level_2')}><Text style={inviteRole === 'gerencia_level_2' ? styles.roleButtonTextActive : styles.roleButtonText}>Gerente</Text></TouchableOpacity>
+              <TouchableOpacity style={[styles.roleButton, inviteRole === 'corretor_level_3' && styles.roleButtonActive]} onPress={() => setInviteRole('corretor_level_3')}><Text style={inviteRole === 'corretor_level_3' ? styles.roleButtonTextActive : styles.roleButtonText}>Corretor</Text></TouchableOpacity>
             </View>
             {inviteRole === 'corretor_level_3' && (
               <>
@@ -188,7 +188,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.managerPicker}>
                   {managers.map((manager) => (
                     <TouchableOpacity key={manager.id} style={[styles.managerButton, selectedManagerId === manager.id && styles.managerButtonActive]} onPress={() => setSelectedManagerId(manager.id)}>
-                      <Text style={styles.managerButtonText}>{manager.nome_guerra || manager.name}</Text>
+                      <Text style={selectedManagerId === manager.id ? styles.managerButtonTextActive : styles.managerButtonText}>{manager.nome_guerra || manager.name}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
@@ -382,7 +382,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#8e8e93',
+    color: '#4b5563',
     marginBottom: 32,
     textAlign: 'center',
   },
@@ -415,16 +415,18 @@ const styles = StyleSheet.create({
   },
   sectionDesc: {
     fontSize: 13,
-    color: '#8e8e93',
+    color: '#4b5563',
     marginBottom: 16,
   },
   roleButton: { borderWidth: 1, borderColor: '#bbb', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, marginRight: 8 },
   roleButtonActive: { backgroundColor: '#1c1c1e', borderColor: '#1c1c1e' },
-  roleButtonText: { color: '#333', fontWeight: '700' },
+  roleButtonText: { color: '#1f2937', fontWeight: '700' },
+  roleButtonTextActive: { color: '#FFFFFF', fontWeight: '800' },
   managerPicker: { marginBottom: 12 },
   managerButton: { backgroundColor: '#eef2ff', borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 8, padding: 10, marginRight: 8 },
   managerButtonActive: { backgroundColor: '#1e3a8a', borderColor: '#1e3a8a' },
   managerButtonText: { color: '#1e3a8a', fontWeight: '700' },
+  managerButtonTextActive: { color: '#FFFFFF', fontWeight: '800' },
   generateButton: {
     height: 44,
     borderRadius: 8,
@@ -499,7 +501,7 @@ const styles = StyleSheet.create({
   },
   actionLabel: {
     fontSize: 13,
-    color: '#8e8e93',
+    color: '#374151',
     fontWeight: '600',
     marginBottom: 8,
   },
@@ -509,7 +511,8 @@ const styles = StyleSheet.create({
   },
   approveBtn: {
     flex: 1,
-    height: 36,
+    minWidth: 88,
+    height: 44,
     borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
@@ -517,7 +520,7 @@ const styles = StyleSheet.create({
   },
   approveBtnText: {
     color: '#FFF',
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
   },
   teamCard: {
@@ -567,9 +570,9 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     borderWidth: 1,
     borderColor: '#e5e5ea',
-    flexDirection: 'row',
+    flexDirection: 'column',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'stretch',
   },
   queueInfo: {
     flex: 1,
@@ -586,13 +589,17 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   queueAction: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingLeft: 12,
+    paddingLeft: 0,
+    marginTop: 12,
+    width: '100%',
   },
   statusBadge: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontSize: 13,
+    fontWeight: '800',
+    marginBottom: 0,
     textTransform: 'uppercase',
   },
   copyNameBtn: {
