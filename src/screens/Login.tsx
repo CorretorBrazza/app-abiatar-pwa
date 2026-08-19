@@ -1,6 +1,7 @@
 // src/screens/Login.tsx
 import React, { useState } from 'react';
 import {
+  ScrollView,
   View,
   Image,
   Text,
@@ -42,7 +43,7 @@ export default function Login({ onGoToRegister }: LoginProps) {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <ScreenCode code="LG-01" />
       <View style={styles.card}>
         <Image
@@ -91,11 +92,12 @@ export default function Login({ onGoToRegister }: LoginProps) {
           <Text style={styles.registerButtonText}>Não tem conta? Cadastre-se aqui</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
+  scrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 24 },
   container: {
     flex: 1,
     height: (Platform.OS === 'web' ? '100vh' : '100%') as any,

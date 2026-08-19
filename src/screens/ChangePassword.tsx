@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import ScreenCode from '../components/ScreenCode';
 
@@ -42,7 +42,7 @@ export default function ChangePassword() {
   };
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <ScreenCode code="PW-01" />
       <View style={styles.card}>
         <Text style={styles.title}>Criar nova senha</Text>
@@ -63,12 +63,13 @@ export default function ChangePassword() {
           {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.buttonText}>Salvar nova senha</Text>}
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, minHeight: '100%', backgroundColor: '#f5f5f7', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', paddingVertical: 24 },
   card: { width: '100%', maxWidth: 440, backgroundColor: '#FFF', borderRadius: 12, padding: 30, elevation: 5 },
   title: { fontSize: 24, fontWeight: '700', color: '#1c1c1e', textAlign: 'center', marginBottom: 8 },
   subtitle: { fontSize: 15, color: '#6b6b70', textAlign: 'center', lineHeight: 22, marginBottom: 24 },

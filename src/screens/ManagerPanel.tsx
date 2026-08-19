@@ -296,8 +296,14 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
               <ActivityIndicator color={primaryColor} />
             ) : (
               <View style={styles.actionContainer}>
-                <Text style={styles.actionLabel}>Aprovar com Carência:</Text>
+                <Text style={styles.actionLabel}>Aprovar Corretor:</Text>
                 <View style={styles.buttonGroup}>
+                  <TouchableOpacity
+                    style={[styles.approveBtn, { backgroundColor: '#15803d' }]}
+                    onPress={() => handleApprove(item.id, 0)}
+                  >
+                    <Text style={styles.approveBtnText}>Sem carência</Text>
+                  </TouchableOpacity>
                   <TouchableOpacity 
                     style={[styles.approveBtn, { backgroundColor: '#34c759' }]}
                     onPress={() => handleApprove(item.id, 7)}

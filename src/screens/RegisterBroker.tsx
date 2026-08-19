@@ -4,6 +4,7 @@ import {
   View,
   Text,
   TextInput,
+  ScrollView,
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
@@ -97,7 +98,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
         <Text style={styles.title}>{invitedRole === 'gerencia_level_2' ? 'Cadastro de Gerente' : invitedRole === 'corretor_level_3' ? 'Cadastro de Corretor' : 'Convite de Acesso'}</Text>
         <Text style={styles.subtitle}>{invitedRole === 'gerencia_level_2' ? 'Seu convite foi destinado ao nível de Gerência.' : invitedRole === 'corretor_level_3' ? `Seu cadastro ficará vinculado ao Gerente ${inviteManagerName || 'responsável'}.` : 'Informe um convite válido para continuar.'}</Text>
@@ -179,7 +180,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           <Text style={styles.backButtonText}>Já tenho conta? Voltar ao Login</Text>
         </TouchableOpacity>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -191,6 +192,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 24,
   },
   card: {
     width: '100%',
