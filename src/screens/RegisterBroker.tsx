@@ -51,6 +51,14 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
+    if (password.length < 8 || password.length > 128) {
+      setError('A senha deve conter entre 8 e 128 caracteres.');
+      return;
+    }
+    if (nomeGuerra.trim().length < 2 || nomeGuerra.trim().length > 50) {
+      setError('O nome de guerra deve conter entre 2 e 50 caracteres.');
+      return;
+    }
 
     try {
       setError('');
@@ -97,6 +105,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
 
+        <Text style={styles.label}>Código de convite *</Text>
         <TextInput
           style={styles.input}
           placeholder="Código de Convite *"
@@ -105,6 +114,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           autoCapitalize="none"
         />
 
+        <Text style={styles.label}>Nome completo *</Text>
         <TextInput
           style={styles.input}
           placeholder="Nome Completo *"
@@ -112,13 +122,16 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           onChangeText={setName}
         />
 
+        <Text style={styles.label}>Nome de guerra *</Text>
+        <Text style={styles.helpText}>Será convertido para MAIÚSCULAS e deve ser único dentro da empresa.</Text>
         <TextInput
           style={styles.input}
           placeholder="Nome de Guerra (Único na Empresa) *"
           value={nomeGuerra}
-          onChangeText={setNomeGuerra}
+          onChangeText={(value) => setNomeGuerra(value.toLocaleUpperCase('pt-BR'))}
         />
 
+        <Text style={styles.label}>E-mail *</Text>
         <TextInput
           style={styles.input}
           placeholder="Seu melhor e-mail *"
@@ -128,6 +141,8 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           keyboardType="email-address"
         />
 
+        <Text style={styles.label}>Senha *</Text>
+        <Text style={styles.helpText}>Use entre 8 e 128 caracteres. A senha diferencia maiúsculas e minúsculas.</Text>
         <TextInput
           style={styles.input}
           placeholder="Crie sua senha *"
@@ -137,13 +152,16 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           autoCapitalize="none"
         />
 
-        {invitedRole === 'corretor_level_3' && <TextInput
+        {invitedRole === 'corretor_level_3' && <>
+          <Text style={styles.label}>CRECI profissional *</Text>
+          <TextInput
           style={styles.input}
           placeholder="Seu CRECI profissional *"
           value={creci}
           onChangeText={setCreci}
           autoCapitalize="characters"
-        />}
+          />
+        </>}
 
         <TouchableOpacity
           style={styles.button}
@@ -198,6 +216,18 @@ const styles = StyleSheet.create({
     color: '#8e8e93',
     textAlign: 'center',
     marginBottom: 24,
+  },
+  label: {
+    color: '#1c1c1e',
+    fontSize: 14,
+    fontWeight: '700',
+    marginBottom: 4,
+  },
+  helpText: {
+    color: '#636366',
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 6,
   },
   input: {
     height: 48,
