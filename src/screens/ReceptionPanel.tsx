@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import Inbox from './Inbox';
-import api from '../services/api';
+import api, { apiBaseUrl } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import OperationalPushComposer, { OperationalTarget } from '../components/OperationalPushComposer';
 import ScreenCode from '../components/ScreenCode';
 
@@ -35,10 +36,43 @@ export default function ReceptionPanel() {
     };
 
     void loadOperationalData();
-    const intervalId = setInterval(loadOperationalData, 5000);
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    const connectRealtime = async () => {
+      const token = await AsyncStorage.getItem('@abiatar:token');
+      if (!token || cancelled || typeof fetch === 'undefined') return;
+      try {
+        const response = await fetch(`${apiBaseUrl}/realtime/stream`, { headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' } });
+        if (!response.ok || !response.body) throw new Error(`SSE ${response.status}`);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (!cancelled) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const chunks = buffer.split('\\n\\n');
+          buffer = chunks.pop() || '';
+          for (const chunk of chunks) {
+            const dataLine = chunk.split('\\n').find((line) => line.startsWith('data:'));
+            if (!dataLine) continue;
+            try {
+              const event = JSON.parse(dataLine.replace(/^data:\s*/, ''));
+              if (event.eventType?.startsWith('presence.') || event.eventType?.includes('created') || event.eventType?.includes('updated') || event.eventType?.startsWith('message.')) void loadOperationalData();
+            } catch { /* heartbeat */ }
+          }
+        }
+      } catch {
+        if (!cancelled) retryTimer = setTimeout(connectRealtime, 5000);
+      }
+    };
+    void connectRealtime();
+    const fallbackIntervalId = setInterval(loadOperationalData, 15000);
     return () => {
       mounted = false;
-      clearInterval(intervalId);
+      cancelled = true;
+      clearInterval(fallbackIntervalId);
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, []);
 
@@ -109,7 +143,7 @@ export default function ReceptionPanel() {
               <Text style={onlineTargets.length > 0 ? styles.onlineStatus : styles.status}>
                 {onlineTargets.length > 0 ? `ONLINE: ${onlineTargets.map((target) => target.nomeGuerra).join(', ')}` : 'Nenhum corretor online neste plantão.'}
               </Text>
-              <Text style={styles.refreshText}>Atualização automática a cada 5 segundos.</Text>
+              <Text style={styles.refreshText}>Atualização em tempo real; consulta de segurança a cada 15 segundos.</Text>
             </View>
           );
         })}

@@ -25,7 +25,8 @@ import ScreenCode from '../components/ScreenCode';
 import BrokerMaterials from '../components/BrokerMaterials';
 import DirectorMessagingPanel from './DirectorMessagingPanel';
 import UserManagementPanel from './UserManagementPanel';
-import api from '../services/api';
+import api, { apiBaseUrl } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function Dashboard() {
   const { user, tenant, logout } = useAuth();
@@ -51,6 +52,39 @@ export default function Dashboard() {
 
   // 1. Efeito Inicial: Busca se o corretor já possui um turno ativo online na nuvem
   useEffect(() => {
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+    async function connectRealtime() {
+      const token = await AsyncStorage.getItem('@abiatar:token');
+      if (!token || cancelled || typeof fetch === 'undefined') return;
+      try {
+        const response = await fetch(`${apiBaseUrl}/realtime/stream`, { headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' } });
+        if (!response.ok || !response.body) throw new Error(`SSE ${response.status}`);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (!cancelled) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const chunks = buffer.split('\\n\\n');
+          buffer = chunks.pop() || '';
+          for (const chunk of chunks) {
+            const dataLine = chunk.split('\\n').find((line) => line.startsWith('data:'));
+            if (!dataLine) continue;
+            try {
+              const event = JSON.parse(dataLine.replace(/^data:\s*/, ''));
+              if (event.eventType?.startsWith('presence.')) void checkCurrentSession();
+              if ((event.eventType?.includes('created') || event.eventType === 'broker.approved' || event.eventType?.startsWith('message.')) && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('abiatar:realtime', { detail: event }));
+              void loadUnreadCount();
+            } catch { /* heartbeat ou evento inválido não interrompe a conexão */ }
+          }
+        }
+      } catch (error) {
+        if (!cancelled) retryTimer = setTimeout(connectRealtime, 5000);
+      }
+    }
+
     async function checkCurrentSession() {
       if (user?.role !== 'corretor_level_3') {
         setLoadingSession(false);
@@ -79,6 +113,7 @@ export default function Dashboard() {
     }
 
     checkCurrentSession();
+    void connectRealtime();
 
     // Ativa o Polling (Verificação silenciosa a cada 15 segundos) se for corretor logado
     let intervalId: any;
@@ -88,6 +123,8 @@ export default function Dashboard() {
 
     return () => {
       if (intervalId) clearInterval(intervalId);
+      if (retryTimer) clearTimeout(retryTimer);
+      cancelled = true;
     };
   }, [user]);
 
