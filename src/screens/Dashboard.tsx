@@ -22,6 +22,7 @@ import PushSetupButton from '../components/PushSetupButton';
 import OperationalAlert from '../components/OperationalAlert';
 import ScreenCode from '../components/ScreenCode';
 import BrokerMaterials from '../components/BrokerMaterials';
+import DirectorMessagingPanel from './DirectorMessagingPanel';
 import api from '../services/api';
 
 export default function Dashboard() {
@@ -37,7 +38,7 @@ export default function Dashboard() {
   const [brokerSummary, setBrokerSummary] = useState<any | null>(null);
 
   // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI)
-  const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics' | 'booth_rules'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics' | 'booth_rules' | 'director_messaging'>('main');
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const isManager = user?.role === 'gerencia_level_2';
@@ -211,6 +212,10 @@ export default function Dashboard() {
   // ==========================================
   if (currentView === 'inbox') {
     return <Inbox onBack={() => setCurrentView('main')} />;
+  }
+
+  if (currentView === 'director_messaging') {
+    return <DirectorMessagingPanel primaryColor={primaryColor} onBack={() => setCurrentView('main')} />;
   }
 
   // ==========================================
@@ -409,6 +414,13 @@ export default function Dashboard() {
               onPress={() => setCurrentView('manager_panel')}
             >
               <Text style={[styles.msgText, { color: primaryColor }]}>Gerenciar Corretores / Equipe</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+              onPress={() => setCurrentView('director_messaging')}
+            >
+              <Text style={[styles.msgText, { color: primaryColor }]}>Enviar Comunicação Institucional</Text>
             </TouchableOpacity>
           </>
         )}
