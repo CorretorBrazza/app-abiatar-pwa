@@ -138,7 +138,6 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
     try {
       setApprovingId(brokerId);
       await api.patch(`/users/${brokerId}/approve`, {
-        managerId,
         carenciaDays: days,
       });
 
