@@ -13,6 +13,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import ScreenCode from '../components/ScreenCode';
+import BrokerManagementPanel from './BrokerManagementPanel';
 
 interface PendingBroker {
   id: string;
@@ -58,9 +59,11 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const [managers, setManagers] = useState<Array<{ id: string; nome_guerra: string; name: string }>>([]);
   const [selectedManagerId, setSelectedManagerId] = useState('');
   const [error, setError] = useState('');
+  const [selectedBrokerId, setSelectedBrokerId] = useState<string | null>(null);
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const managerId = user?.id || '';
+  const isDirector = user?.role === 'diretoria_level_1';
 
   // 1. Efeito Inicial: Carrega todas as filas e a distribuição de leads ao vivo em paralelo
   const loadData = async () => {
@@ -160,7 +163,15 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <>
+      <BrokerManagementPanel
+        brokerId={selectedBrokerId}
+        isDirector={isDirector}
+        managers={managers}
+        onClose={() => setSelectedBrokerId(null)}
+        onSaved={() => { void loadData(); }}
+      />
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <ScreenCode code="GE-02" />
       <TouchableOpacity style={styles.backHeader} onPress={onBack}>
         <Text style={[styles.backHeaderText, { color: primaryColor }]}>← Voltar ao Painel</Text>
@@ -273,7 +284,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
           <Text style={styles.emptyText}>Nenhum corretor aguardando aprovação.</Text>
         }
         renderItem={({ item }) => (
-          <View style={styles.brokerCard}>
+          <TouchableOpacity style={styles.brokerCard} activeOpacity={0.8} onPress={() => setSelectedBrokerId(item.id)}>
             <View style={styles.brokerInfo}>
               <Text style={styles.brokerName}>{item.name}</Text>
               <Text style={styles.brokerSub}>Nome de Guerra: {item.nome_guerra}</Text>
@@ -308,11 +319,11 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                 </View>
               </View>
             )}
-          </View>
+          </TouchableOpacity>
         )}
       />
 
-      {/* SEÇÃO D: EQUIPE ATIVA ATUAL */}
+      {/* SEÇÃO D: FILA DE EQUIPE ATIVA ATUAL */}
       <Text style={styles.subHeader}>Time Ativo e em Carência ({team.length})</Text>
       <FlatList
         data={team}
@@ -325,7 +336,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
         renderItem={({ item }) => {
           const isGrace = item.status === 'grace_period';
           return (
-            <View style={styles.teamCard}>
+            <TouchableOpacity style={styles.teamCard} activeOpacity={0.8} onPress={() => setSelectedBrokerId(item.id)}>
               <View>
                 <Text style={styles.teamName}>{item.name} ({item.nome_guerra})</Text>
                 {isGrace && item.carencia_ends_at ? (
@@ -336,11 +347,12 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                   <Text style={styles.activeLabel}>🟢 Liberado no CVCRM (Recebendo Leads)</Text>
                 )}
               </View>
-            </View>
+            </TouchableOpacity>
           );
         }}
       />
-    </ScrollView>
+      </ScrollView>
+    </>
   );
 }
 
