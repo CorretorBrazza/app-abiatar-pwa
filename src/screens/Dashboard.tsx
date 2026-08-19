@@ -23,6 +23,7 @@ import OperationalAlert from '../components/OperationalAlert';
 import ScreenCode from '../components/ScreenCode';
 import BrokerMaterials from '../components/BrokerMaterials';
 import DirectorMessagingPanel from './DirectorMessagingPanel';
+import UserManagementPanel from './UserManagementPanel';
 import api from '../services/api';
 
 export default function Dashboard() {
@@ -38,7 +39,7 @@ export default function Dashboard() {
   const [brokerSummary, setBrokerSummary] = useState<any | null>(null);
 
   // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI)
-  const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics' | 'booth_rules' | 'director_messaging'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics' | 'booth_rules' | 'director_messaging' | 'user_management'>('main');
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const isManager = user?.role === 'gerencia_level_2';
@@ -216,6 +217,10 @@ export default function Dashboard() {
 
   if (currentView === 'director_messaging') {
     return <DirectorMessagingPanel primaryColor={primaryColor} isManager={isManager} onBack={() => setCurrentView('main')} />;
+  }
+
+  if (currentView === 'user_management') {
+    return <UserManagementPanel primaryColor={primaryColor} onBack={() => setCurrentView('main')} />;
   }
 
   // ==========================================
@@ -428,6 +433,13 @@ export default function Dashboard() {
               onPress={() => setCurrentView('director_messaging')}
             >
               <Text style={[styles.msgText, { color: primaryColor }]}>Enviar Comunicação Institucional</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+              onPress={() => setCurrentView('user_management')}
+            >
+              <Text style={[styles.msgText, { color: primaryColor }]}>Gerenciar Gerentes e Recepção</Text>
             </TouchableOpacity>
           </>
         )}
