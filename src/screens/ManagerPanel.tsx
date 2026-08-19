@@ -70,7 +70,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
     try {
       setError('');
       const requests: Promise<any>[] = [
-        api.get(`/users/pending/${managerId}`),
+        user?.role === 'gerencia_level_2' ? api.get(`/users/pending/${managerId}`) : Promise.resolve({ data: [] }),
         api.get(`/users/team/${managerId}`),
         api.get('/users/leads-queue'),
       ];
@@ -273,61 +273,51 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
         }}
       />
 
-      {/* SEÇÃO C: FILA DE APROVAÇÕES PENDENTES */}
-      <Text style={styles.subHeader}>Aprovações Pendentes ({pending.length})</Text>
-      <FlatList
-        data={pending}
-        keyExtractor={(item) => item.id}
-        style={styles.list}
-        scrollEnabled={false}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>Nenhum corretor aguardando aprovação.</Text>
-        }
-        renderItem={({ item }) => (
-          <TouchableOpacity style={styles.brokerCard} activeOpacity={0.8} onPress={() => setSelectedBrokerId(item.id)}>
-            <View style={styles.brokerInfo}>
-              <Text style={styles.brokerName}>{item.name}</Text>
-              <Text style={styles.brokerSub}>Nome de Guerra: {item.nome_guerra}</Text>
-              <Text style={styles.brokerSub}>E-mail: {item.email}</Text>
-              <Text style={styles.brokerSub}>CRECI: {item.creci}</Text>
-            </View>
-
-            {approvingId === item.id ? (
-              <ActivityIndicator color={primaryColor} />
-            ) : (
-              <View style={styles.actionContainer}>
-                <Text style={styles.actionLabel}>Aprovar Corretor:</Text>
-                <View style={styles.buttonGroup}>
-                  <TouchableOpacity
-                    style={[styles.approveBtn, { backgroundColor: '#15803d' }]}
-                    onPress={() => handleApprove(item.id, 0)}
-                  >
-                    <Text style={styles.approveBtnText}>Sem carência</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.approveBtn, { backgroundColor: '#34c759' }]}
-                    onPress={() => handleApprove(item.id, 7)}
-                  >
-                    <Text style={styles.approveBtnText}>7 Dias</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.approveBtn, { backgroundColor: '#ff9500' }]}
-                    onPress={() => handleApprove(item.id, 15)}
-                  >
-                    <Text style={styles.approveBtnText}>15 Dias</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity 
-                    style={[styles.approveBtn, { backgroundColor: '#ff3b30' }]}
-                    onPress={() => handleApprove(item.id, 30)}
-                  >
-                    <Text style={styles.approveBtnText}>30 Dias</Text>
-                  </TouchableOpacity>
-                </View>
+      {!isDirector && <>
+        {/* SEÇÃO C: FILA DE APROVAÇÕES PENDENTES */}
+        <Text style={styles.subHeader}>Aprovações Pendentes ({pending.length})</Text>
+        <FlatList
+          data={pending}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          scrollEnabled={false}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>Nenhum corretor aguardando aprovação.</Text>
+          }
+          renderItem={({ item }) => (
+            <TouchableOpacity style={styles.brokerCard} activeOpacity={0.8} onPress={() => setSelectedBrokerId(item.id)}>
+              <View style={styles.brokerInfo}>
+                <Text style={styles.brokerName}>{item.name}</Text>
+                <Text style={styles.brokerSub}>Nome de Guerra: {item.nome_guerra}</Text>
+                <Text style={styles.brokerSub}>E-mail: {item.email}</Text>
+                <Text style={styles.brokerSub}>CRECI: {item.creci}</Text>
               </View>
-            )}
-          </TouchableOpacity>
-        )}
-      />
+
+              {approvingId === item.id ? (
+                <ActivityIndicator color={primaryColor} />
+              ) : (
+                <View style={styles.actionContainer}>
+                  <Text style={styles.actionLabel}>Aprovar Corretor:</Text>
+                  <View style={styles.buttonGroup}>
+                    <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#15803d' }]} onPress={() => handleApprove(item.id, 0)}>
+                      <Text style={styles.approveBtnText}>Sem carência</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#34c759' }]} onPress={() => handleApprove(item.id, 7)}>
+                      <Text style={styles.approveBtnText}>7 Dias</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#ff9500' }]} onPress={() => handleApprove(item.id, 15)}>
+                      <Text style={styles.approveBtnText}>15 Dias</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#ff3b30' }]} onPress={() => handleApprove(item.id, 30)}>
+                      <Text style={styles.approveBtnText}>30 Dias</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+        />
+      </>}
 
       {/* SEÇÃO D: FILA DE EQUIPE ATIVA ATUAL */}
       <Text style={styles.subHeader}>Time Ativo e em Carência ({team.length})</Text>
