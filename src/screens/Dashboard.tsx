@@ -215,7 +215,7 @@ export default function Dashboard() {
   }
 
   if (currentView === 'director_messaging') {
-    return <DirectorMessagingPanel primaryColor={primaryColor} onBack={() => setCurrentView('main')} />;
+    return <DirectorMessagingPanel primaryColor={primaryColor} isManager={isManager} onBack={() => setCurrentView('main')} />;
   }
 
   // ==========================================
@@ -384,6 +384,13 @@ export default function Dashboard() {
               onPress={() => setCurrentView('manager_panel')}
             >
               <Text style={[styles.msgText, { color: primaryColor }]}>Abrir Gestão da Minha Equipe</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+              onPress={() => setCurrentView('director_messaging')}
+            >
+              <Text style={[styles.msgText, { color: primaryColor }]}>Enviar Mensagem à Minha Equipe</Text>
             </TouchableOpacity>
           </>
         ) : (

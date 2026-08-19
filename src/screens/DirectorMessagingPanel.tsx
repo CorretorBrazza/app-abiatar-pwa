@@ -12,7 +12,7 @@ interface Recipient {
   manager_id: string | null;
 }
 
-interface Props { primaryColor: string; onBack: () => void; }
+interface Props { primaryColor: string; onBack: () => void; isManager?: boolean; }
 
 type Scope = 'all_users' | 'all_brokers' | 'all_managers' | 'all_receptionists' | 'specific_team' | 'individual';
 
@@ -32,7 +32,7 @@ const roleLabel = (role: string) => ({
   recepcao_level_3: 'Recepção',
 }[role] || role);
 
-export default function DirectorMessagingPanel({ primaryColor, onBack }: Props) {
+export default function DirectorMessagingPanel({ primaryColor, onBack, isManager = false }: Props) {
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [scope, setScope] = useState<Scope>('all_users');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -58,6 +58,7 @@ export default function DirectorMessagingPanel({ primaryColor, onBack }: Props) 
   useEffect(() => { void loadRecipients(); }, []);
 
   const managers = useMemo(() => recipients.filter((item) => item.role === 'gerencia_level_2'), [recipients]);
+  const availableScopes = (Object.keys(labels) as Scope[]).filter((item) => !isManager || item === 'individual');
   const filteredIndividualRecipients = useMemo(() => {
     if (scope === 'individual') return recipients;
     if (scope === 'specific_team' && targetManagerId) return recipients.filter((item) => item.id === targetManagerId || item.manager_id === targetManagerId);
@@ -90,15 +91,15 @@ export default function DirectorMessagingPanel({ primaryColor, onBack }: Props) 
       <ScrollView contentContainerStyle={styles.content}>
         <ScreenCode code="DR-03" />
         <TouchableOpacity onPress={onBack}><Text style={[styles.back, { color: primaryColor }]}>← Voltar ao Dashboard</Text></TouchableOpacity>
-        <Text style={styles.title}>Comunicação Institucional</Text>
-        <Text style={styles.subtitle}>Envie comunicados persistentes para usuários do próprio tenant, mesmo quando estiverem offline.</Text>
+        <Text style={styles.title}>{isManager ? 'Comunicação da Minha Equipe' : 'Comunicação Institucional'}</Text>
+        <Text style={styles.subtitle}>{isManager ? 'Envie comunicados persistentes somente aos Corretores vinculados à sua equipe.' : 'Envie comunicados persistentes para usuários do próprio tenant, mesmo quando estiverem offline.'}</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {success ? <Text style={styles.success}>{success}</Text> : null}
         {loading ? <ActivityIndicator size="large" color={primaryColor} /> : (
           <>
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Destinatários</Text>
-              {(Object.keys(labels) as Scope[]).map((item) => (
+              {availableScopes.map((item) => (
                 <TouchableOpacity key={item} style={[styles.scopeButton, scope === item && { backgroundColor: primaryColor, borderColor: primaryColor }]} onPress={() => { setScope(item); setSelectedIds([]); setTargetManagerId(''); }}>
                   <Text style={[styles.scopeText, scope === item && styles.selectedText]}>{labels[item]}</Text>
                 </TouchableOpacity>
