@@ -44,6 +44,7 @@ export default function Dashboard() {
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const isManager = user?.role === 'gerencia_level_2';
   const isDirector = user?.role === 'diretoria_level_1';
+  const canManageUsers = tenant?.settings?.features?.manager_management !== false || tenant?.settings?.features?.reception_management !== false;
 
   // 1. Efeito Inicial: Busca se o corretor já possui um turno ativo online na nuvem
   useEffect(() => {
@@ -435,12 +436,12 @@ export default function Dashboard() {
               <Text style={[styles.msgText, { color: primaryColor }]}>Enviar Comunicação Institucional</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity
+            {canManageUsers && <TouchableOpacity
               style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
               onPress={() => setCurrentView('user_management')}
             >
               <Text style={[styles.msgText, { color: primaryColor }]}>Gerenciar Gerentes e Recepção</Text>
-            </TouchableOpacity>
+            </TouchableOpacity>}
           </>
         )}
 

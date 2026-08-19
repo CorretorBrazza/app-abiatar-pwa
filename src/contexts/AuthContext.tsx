@@ -20,6 +20,7 @@ interface Tenant {
   slug: string;
   primary_color: string;
   secondary_color: string;
+  settings?: { features?: Record<string, boolean>; cards?: Record<string, Record<string, boolean>>; approval?: { allowed_roles?: string[]; grace_period_options?: number[] } };
   logo_url: string | null;
 }
 
