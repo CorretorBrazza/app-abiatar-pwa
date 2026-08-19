@@ -11,6 +11,7 @@ import {
   Linking,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import * as Location from 'expo-location';
 import CheckIn from './CheckIn';
 import Inbox from './Inbox'; 
 import ManagerPanel from './ManagerPanel'; 
@@ -37,6 +38,8 @@ export default function Dashboard() {
   const [pushNotice, setPushNotice] = useState<{ title: string; body: string } | null>(null);
   const [operationalNotice, setOperationalNotice] = useState<{ title: string; body: string } | null>(null);
   const [brokerSummary, setBrokerSummary] = useState<any | null>(null);
+  const [pendingSessionPingId, setPendingSessionPingIdState] = useState<string | null>(null);
+  const [confirmingPresence, setConfirmingPresence] = useState(false);
 
   // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI)
   const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics' | 'booth_rules' | 'director_messaging' | 'user_management'>('main');
@@ -149,9 +152,7 @@ export default function Dashboard() {
   }, [user]);
 
   // Auxiliar para setar o ID do ping no polling
-  const setPendingSessionPingId = (id: string | null) => {
-    // Implementado no componente filho ou estado do modal interno
-  };
+  const setPendingSessionPingId = (id: string | null) => setPendingSessionPingIdState(id);
 
   const materialsUrl = 'https://linktr.ee/Abiatarimoveisconstrutora?utm_source=linktree_admin_share';
 
@@ -161,6 +162,23 @@ export default function Dashboard() {
       return;
     }
     await Linking.openURL(materialsUrl);
+  };
+
+  const handlePresenceConfirmation = async (confirm: boolean) => {
+    if (!pendingSessionPingId) return;
+    if (!confirm) { await handleCheckOut(); setPendingSessionPingIdState(null); return; }
+    try {
+      setConfirmingPresence(true);
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') throw new Error('A confirmação exige permissão de localização.');
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
+      await api.post('/presences/ping-response', { pingLogId: pendingSessionPingId, latitude: location.coords.latitude, longitude: location.coords.longitude });
+      setPendingSessionPingIdState(null);
+      alert('Presença confirmada. O próximo ciclo será calculado automaticamente.');
+      const current = await api.get('/presences/current');
+      setActiveSession(current.data.presence);
+    } catch (error: any) { alert(error.response?.data?.message || error.message || 'Não foi possível confirmar a presença.'); }
+    finally { setConfirmingPresence(false); }
   };
 
   // 2. Método de Check-out
@@ -177,6 +195,10 @@ export default function Dashboard() {
       setEndingShift(false);
     }
   };
+
+  if (user?.role === 'corretor_level_3' && pendingSessionPingId) {
+    return <View style={styles.frozenContainer}><ScreenCode code="PR-02" /><Text style={styles.frozenTitle}>Você ainda está no plantão?</Text><Text style={styles.frozenText}>A confirmação é obrigatória para manter sua presença e continuar elegível aos leads.</Text><Text style={styles.frozenText}>Ao confirmar, sua localização será validada por GPS ou Wi-Fi, sem rastreamento contínuo.</Text><TouchableOpacity style={[styles.frozenButton, { backgroundColor: primaryColor }]} onPress={() => void handlePresenceConfirmation(true)} disabled={confirmingPresence}><Text style={styles.frozenButtonText}>{confirmingPresence ? 'Validando presença...' : 'Sim, ainda estou no plantão'}</Text></TouchableOpacity><TouchableOpacity style={styles.frozenNoButton} onPress={() => void handlePresenceConfirmation(false)} disabled={confirmingPresence}><Text style={styles.frozenNoText}>Não, fazer checkout</Text></TouchableOpacity></View>;
+  }
 
   if (loadingSession) {
     return (
@@ -315,6 +337,7 @@ export default function Dashboard() {
             <Text style={styles.infoText}>
               Fim de semana: {brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
             </Text>
+            {brokerSummary?.activeShift?.nextConfirmationAt ? <Text style={styles.infoText}>Próxima confirmação: {new Date(brokerSummary.activeShift.nextConfirmationAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} (+5 min de tolerância)</Text> : null}
           </View>
 
           <TouchableOpacity 
@@ -467,7 +490,7 @@ export default function Dashboard() {
   );
 }
 
-const styles = StyleSheet.create({
+const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff7ed' }, frozenTitle: { fontSize: 26, fontWeight: '800', color: '#9a3412', textAlign: 'center', marginVertical: 14 }, frozenText: { maxWidth: 520, color: '#7c2d12', textAlign: 'center', lineHeight: 22, marginBottom: 10 }, frozenButton: { width: '100%', maxWidth: 520, minHeight: 52, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 18 }, frozenButtonText: { color: '#fff', fontWeight: '800', fontSize: 16 }, frozenNoButton: { width: '100%', maxWidth: 520, minHeight: 50, borderWidth: 1, borderColor: '#9a3412', borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 10 }, frozenNoText: { color: '#9a3412', fontWeight: '800' },
   container: {
     flex: 1,
     backgroundColor: '#f5f5f7',
