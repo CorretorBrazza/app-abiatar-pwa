@@ -6,9 +6,10 @@ import Login from './src/screens/Login';
 import Dashboard from './src/screens/Dashboard';
 import RegisterBroker from './src/screens/RegisterBroker'; // <-- IMPORTADO AQUI
 import ProjectStatus from './src/screens/ProjectStatus';
+import ChangePassword from './src/screens/ChangePassword';
 
 function AppContent({ inviteToken }: { inviteToken?: string }) {
-  const { signed, loading } = useAuth();
+  const { signed, loading, user } = useAuth();
   const [currentScreen, setCurrentScreen] = useState<'login' | 'register'>('login'); // <-- CONTROLE DE TELA
 
   // Se o aplicativo estiver buscando os dados salvos no celular, exibe tela de carregamento [15]
@@ -22,6 +23,11 @@ function AppContent({ inviteToken }: { inviteToken?: string }) {
 
   if (inviteToken && !signed) {
     return <RegisterBroker inviteToken={inviteToken} onBackToLogin={() => { window.history.replaceState({}, '', '/'); window.location.reload(); }} />;
+  }
+
+  // Senha temporária exige troca antes de qualquer tela operacional.
+  if (signed && user?.must_change_password) {
+    return <ChangePassword />;
   }
 
   // Se o usuário estiver logado, exibe o Dashboard diretamente [15]

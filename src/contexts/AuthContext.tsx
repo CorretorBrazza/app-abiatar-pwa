@@ -11,6 +11,7 @@ interface User {
   name: string;
   nome_guerra: string;
   role: string;
+  must_change_password?: boolean;
 }
 
 interface Tenant {
@@ -28,6 +29,7 @@ interface AuthContextData {
   tenant: Tenant | null;
   loading: boolean;
   login(email: string, passwordHash: string): Promise<void>;
+  changePassword(currentPassword: string, newPassword: string): Promise<void>;
   logout(): Promise<void>;
 }
 
@@ -72,6 +74,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     loadStorageData();
   }, []);
+
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    try {
+      await api.post('/auth/change-password', { currentPassword, newPassword });
+      await logout();
+    } catch (error) {
+      const errorMessage = axios.isAxiosError(error)
+        ? error.response?.data?.message || 'Não foi possível alterar a senha.'
+        : 'Não foi possível alterar a senha.';
+      throw new Error(errorMessage);
+    }
+  };
 
   // 3. Método de Login: Chama a API, valida credenciais e salva as cores de estilização do inquilino
   const login = async (email: string, passwordHash: string) => {
@@ -129,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ signed: !!user, user, tenant, loading, login, logout }}>
+    <AuthContext.Provider value={{ signed: !!user, user, tenant, loading, login, changePassword, logout }}>
       {children}
     </AuthContext.Provider>
   );

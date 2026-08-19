@@ -94,6 +94,17 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
     } finally { setSaving(false); }
   };
 
+  const resetPassword = async () => {
+    if (!profile) return;
+    try {
+      setSaving(true); setError('');
+      const response = await api.post(`/auth/reset-password/${profile.id}`, { reason: 'Redefinição solicitada pela gestão' });
+      alert(`Senha temporária criada:\n\n${response.data.temporaryPassword}\n\nEla expira em 30 minutos e deverá ser trocada no próximo acesso.`);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Não foi possível redefinir a senha.');
+    } finally { setSaving(false); }
+  };
+
   const transferBroker = async () => {
     if (!profile || !selectedManagerId) {
       setError('Selecione um Gerente ativo.');
@@ -149,6 +160,14 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
                 <TouchableOpacity style={styles.warningButton} onPress={() => setPause(true)} disabled={saving}><Text style={styles.buttonText}>Pausar recebimento de leads</Text></TouchableOpacity>
               )}
               <TouchableOpacity style={styles.dangerButton} onPress={removeBroker} disabled={saving}><Text style={styles.buttonText}>Excluir Corretor da operação</Text></TouchableOpacity>
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Segurança da conta</Text>
+              <Text style={styles.help}>Gera uma senha temporária de uso único. O Corretor será obrigado a criar uma nova senha no próximo acesso.</Text>
+              <TouchableOpacity style={styles.primaryButton} onPress={resetPassword} disabled={saving}>
+                <Text style={styles.buttonText}>Redefinir senha do Corretor</Text>
+              </TouchableOpacity>
             </View>
 
             {isDirector && (
