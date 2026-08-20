@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import ScreenCode from '../components/ScreenCode';
 
 interface Recipient {
@@ -33,6 +34,7 @@ const roleLabel = (role: string) => ({
 }[role] || role);
 
 export default function DirectorMessagingPanel({ primaryColor, onBack, isManager = false }: Props) {
+  const { user } = useAuth();
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [scope, setScope] = useState<Scope>('all_users');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -49,7 +51,8 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
     try {
       setLoading(true);
       const response = await api.get('/messages/recipients');
-      setRecipients(Array.isArray(response.data) ? response.data : []);
+      const loadedRecipients = Array.isArray(response.data) ? response.data : [];
+      setRecipients(loadedRecipients.filter((item: Recipient) => item.id !== user?.id));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Não foi possível carregar os destinatários.');
     } finally { setLoading(false); }
