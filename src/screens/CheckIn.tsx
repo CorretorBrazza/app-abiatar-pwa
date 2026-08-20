@@ -160,7 +160,7 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
               <Text style={styles.periodText}>Peso acumulado para elegibilidade: {brokerSummary?.weightedPeriods ?? '—'}</Text>
               {brokerSummary?.invalidatedPeriods > 0 && <Text style={styles.invalidPeriodText}>Períodos invalidados: {brokerSummary.invalidatedPeriods}</Text>}
               <Text style={styles.periodText}>
-                Fim de semana: {brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
+                Fim de semana: {brokerSummary?.weekendEligibility?.enabled === false ? 'Não habilitado neste plantão' : brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
               </Text>
               <Text style={styles.periodText}>Mínimo configurado por período: {brokerSummary?.minimumMinutesPerPeriod ?? 120} minutos</Text>
             </View>

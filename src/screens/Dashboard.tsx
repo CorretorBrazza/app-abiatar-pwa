@@ -311,7 +311,7 @@ export default function Dashboard() {
               <Text style={styles.infoText}>Peso acumulado para elegibilidade: {brokerSummary?.weightedPeriods ?? '—'}</Text>
               {brokerSummary?.invalidatedPeriods > 0 && <Text style={styles.invalidPeriodText}>Períodos invalidados: {brokerSummary.invalidatedPeriods}</Text>}
               <Text style={styles.infoText}>
-                Fim de semana: {brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
+                Fim de semana: {brokerSummary?.weekendEligibility?.enabled === false ? 'Não habilitado neste plantão' : brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
               </Text>
               <Text style={styles.infoText}>Mínimo configurado por período: {brokerSummary?.minimumMinutesPerPeriod ?? 120} minutos</Text>
             </View>
@@ -372,7 +372,7 @@ export default function Dashboard() {
               Tempo do turno atual: {brokerSummary?.activeShift ? `${brokerSummary.activeShift.activeMinutes} min / ${brokerSummary.activeShift.minimumMinutes} min` : '—'}
             </Text>
             <Text style={styles.infoText}>
-              Fim de semana: {brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
+              Fim de semana: {brokerSummary?.weekendEligibility?.enabled === false ? 'Não habilitado neste plantão' : brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
             </Text>
             {brokerSummary?.activeShift?.nextConfirmationAt ? <Text style={styles.infoText}>Próxima confirmação: {new Date(brokerSummary.activeShift.nextConfirmationAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} (+5 min de tolerância)</Text> : null}
           </View>
