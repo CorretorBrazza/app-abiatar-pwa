@@ -71,7 +71,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
       setError('');
       const requests: Promise<any>[] = [
         user?.role === 'gerencia_level_2' ? api.get(`/users/pending/${managerId}`) : Promise.resolve({ data: [] }),
-        api.get(`/users/team/${managerId}`),
+        isDirector ? api.get('/users/active-brokers') : api.get(`/users/team/${managerId}`),
         api.get('/users/leads-queue'),
       ];
       if (user?.role === 'diretoria_level_1') requests.push(api.get('/users/managers/active'));
