@@ -8,7 +8,8 @@ import {
   ActivityIndicator, 
   FlatList, 
   Platform,
-  ScrollView 
+  ScrollView,
+  TextInput
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
@@ -60,10 +61,15 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const [selectedManagerId, setSelectedManagerId] = useState('');
   const [error, setError] = useState('');
   const [selectedBrokerId, setSelectedBrokerId] = useState<string | null>(null);
+  const [teamPage, setTeamPage] = useState(1);
+  const [teamSearch, setTeamSearch] = useState('');
+  const [teamStatus, setTeamStatus] = useState('');
+  const [teamMeta, setTeamMeta] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const managerId = user?.id || '';
   const isDirector = user?.role === 'diretoria_level_1';
+  const pageSize = Number((tenant as any)?.settings?.pagination?.managementPageSize) || 25;
 
   // 1. Efeito Inicial: Carrega todas as filas e a distribuição de leads ao vivo em paralelo
   const loadData = async () => {
@@ -71,13 +77,14 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
       setError('');
       const requests: Promise<any>[] = [
         user?.role === 'gerencia_level_2' ? api.get(`/users/pending/${managerId}`) : Promise.resolve({ data: [] }),
-        isDirector ? api.get('/users/active-brokers') : api.get(`/users/team/${managerId}`),
+        isDirector ? api.get('/users/active-brokers', { params: { page: teamPage, pageSize, search: teamSearch || undefined, status: teamStatus || undefined } }) : api.get(`/users/team/${managerId}`, { params: { page: teamPage, pageSize, search: teamSearch || undefined, status: teamStatus || undefined } }),
         api.get('/users/leads-queue'),
       ];
       if (user?.role === 'diretoria_level_1') requests.push(api.get('/users/managers/active'));
       const [pendingRes, teamRes, queueRes, managersRes] = await Promise.all(requests);
-      setPending(pendingRes.data);
-      setTeam(teamRes.data);
+      setPending(Array.isArray(pendingRes.data) ? pendingRes.data : (pendingRes.data?.data || []));
+      setTeam(Array.isArray(teamRes.data) ? teamRes.data : (teamRes.data?.data || []));
+      if (teamRes.data?.totalPages) setTeamMeta(teamRes.data);
       setLeadsQueue(queueRes.data.queue);
       if (managersRes) {
         setManagers(Array.isArray(managersRes.data) ? managersRes.data : []);
@@ -92,7 +99,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
 
   useEffect(() => {
     loadData();
-  }, [managerId]);
+  }, [managerId, teamPage, teamSearch, teamStatus]);
 
   // 2. Método para o Gerente gerar um novo link de convite único
   const handleGenerateLink = async () => {
@@ -320,7 +327,13 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
       </>}
 
       {/* SEÇÃO D: FILA DE EQUIPE ATIVA ATUAL */}
-      <Text style={styles.subHeader}>Time Ativo e em Carência ({team.length})</Text>
+      <Text style={styles.subHeader}>Time Ativo e em Carência ({teamMeta.total || team.length})</Text>
+      <View style={styles.scalableControls}>
+        <TextInput value={teamSearch} onChangeText={(value) => { setTeamPage(1); setTeamSearch(value); }} placeholder="Buscar por nome, nome de guerra ou e-mail" style={styles.searchInput} />
+        <View style={styles.filterRow}>
+          {['', 'active', 'grace_period'].map((status) => <TouchableOpacity key={status || 'all'} style={[styles.filterButton, teamStatus === status && { backgroundColor: primaryColor }]} onPress={() => { setTeamPage(1); setTeamStatus(status); }}><Text style={teamStatus === status ? styles.filterTextActive : styles.filterText}>{status === '' ? 'Todos' : status === 'active' ? 'Ativos' : 'Em carência'}</Text></TouchableOpacity>)}
+        </View>
+      </View>
       <FlatList
         data={team}
         keyExtractor={(item) => item.id}
@@ -347,6 +360,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
           );
         }}
       />
+      {teamMeta.totalPages > 1 && <View style={styles.pagination}><TouchableOpacity disabled={teamPage <= 1} onPress={() => setTeamPage((value) => Math.max(1, value - 1))}><Text style={[styles.pageButton, teamPage <= 1 && styles.pageDisabled]}>← Anterior</Text></TouchableOpacity><Text style={styles.pageLabel}>Página {teamPage} de {teamMeta.totalPages}</Text><TouchableOpacity disabled={teamPage >= teamMeta.totalPages} onPress={() => setTeamPage((value) => Math.min(teamMeta.totalPages, value + 1))}><Text style={[styles.pageButton, teamPage >= teamMeta.totalPages && styles.pageDisabled]}>Próxima →</Text></TouchableOpacity></View>}
       </ScrollView>
     </>
   );
@@ -475,6 +489,16 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
+  scalableControls: { backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 12 },
+  searchInput: { height: 44, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, marginBottom: 10 },
+  filterRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  filterButton: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  filterText: { color: '#111827', fontWeight: '700' },
+  filterTextActive: { color: '#fff', fontWeight: '800' },
+  pagination: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
+  pageButton: { color: '#1d4ed8', fontWeight: '800' },
+  pageDisabled: { color: '#9ca3af' },
+  pageLabel: { color: '#374151', fontWeight: '700' },
   list: {
     width: '100%',
     maxWidth: 600,

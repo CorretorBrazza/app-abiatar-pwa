@@ -79,8 +79,16 @@ export default function StatisticsPanel({ onBack }: StatisticsPanelProps) {
         setHeatmap(demandRes.data.heatmap);
 
         // A Diretoria visualiza todos os Corretores ativos/em carência do tenant.
-        const teamRes = await api.get('/users/active-brokers');
-        const statsPromises = teamRes.data.map(async (member: any) => {
+        const allBrokers: any[] = [];
+        let page = 1;
+        let totalPages = 1;
+        do {
+          const teamRes = await api.get('/users/active-brokers', { params: { page, pageSize: 100 } });
+          allBrokers.push(...(Array.isArray(teamRes.data) ? teamRes.data : (teamRes.data?.data || [])));
+          totalPages = teamRes.data?.totalPages || 1;
+          page += 1;
+        } while (page <= totalPages);
+        const statsPromises = allBrokers.map(async (member: any) => {
           const statRes = await api.get(`/presences/statistics/broker/${member.id}`, { params: { boothId: selectedBoothId } });
           return {
             brokerId: member.id,
