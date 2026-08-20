@@ -25,7 +25,6 @@ import ScreenCode from '../components/ScreenCode';
 import BrokerMaterials from '../components/BrokerMaterials';
 import DirectorMessagingPanel from './DirectorMessagingPanel';
 import UserManagementPanel from './UserManagementPanel';
-import WeeklyPeriodsReportPanel from './WeeklyPeriodsReportPanel';
 import api, { apiBaseUrl } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -44,7 +43,7 @@ export default function Dashboard() {
   const [confirmingPresence, setConfirmingPresence] = useState(false);
 
   // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI)
-  const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics' | 'weekly_report' | 'booth_rules' | 'director_messaging' | 'user_management'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics' | 'booth_rules' | 'director_messaging' | 'user_management'>('main');
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const isManager = user?.role === 'gerencia_level_2';
@@ -248,11 +247,7 @@ export default function Dashboard() {
   }
 
   if (user?.role === 'recepcao_level_3') {
-    return <ReceptionPanel onOpenWeeklyReport={() => setCurrentView('weekly_report')} />;
-  }
-
-  if (currentView === 'weekly_report') {
-    return <WeeklyPeriodsReportPanel onBack={() => setCurrentView('main')} />;
+    return <ReceptionPanel />;
   }
 
   // ==========================================
@@ -510,12 +505,6 @@ export default function Dashboard() {
           </>
         )}
 
-        <TouchableOpacity
-          style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
-          onPress={() => setCurrentView('weekly_report')}
-        >
-          <Text style={[styles.msgText, { color: primaryColor }]}>Relatório Semanal de Períodos</Text>
-        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
           onPress={() => setCurrentView('inbox')}

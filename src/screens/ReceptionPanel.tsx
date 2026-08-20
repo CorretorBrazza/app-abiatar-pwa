@@ -7,9 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import OperationalPushComposer, { OperationalTarget } from '../components/OperationalPushComposer';
 import ScreenCode from '../components/ScreenCode';
 
-interface ReceptionPanelProps { onOpenWeeklyReport?: () => void; }
-
-export default function ReceptionPanel({ onOpenWeeklyReport }: ReceptionPanelProps) {
+export default function ReceptionPanel() {
   const { user, tenant, logout } = useAuth();
   const [booths, setBooths] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -122,10 +120,6 @@ export default function ReceptionPanel({ onOpenWeeklyReport }: ReceptionPanelPro
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <Text style={styles.title}>Olá, {user?.nome_guerra}.</Text>
         <Text style={styles.subtitle}>Selecione um plantão atribuído para acompanhar a operação.</Text>
-
-        {onOpenWeeklyReport && <TouchableOpacity style={[styles.inboxButton, { borderColor: primaryColor }]} onPress={onOpenWeeklyReport}>
-          <Text style={[styles.inboxText, { color: primaryColor }]}>Relatório Semanal dos Plantões</Text>
-        </TouchableOpacity>}
 
         <TouchableOpacity style={[styles.inboxButton, { borderColor: primaryColor }]} onPress={() => setShowInbox(true)}>
           <Text style={[styles.inboxText, { color: primaryColor }]}>Mensagens / Inbox</Text>
