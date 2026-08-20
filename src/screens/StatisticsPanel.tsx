@@ -24,6 +24,8 @@ interface BrokerStat {
   name: string;
   nomeGuerra: string;
   presencePercentage: number;
+  completedPeriods: number;
+  monthlyGoal: number;
 }
 
 interface StatisticsPanelProps {
@@ -76,15 +78,17 @@ export default function StatisticsPanel({ onBack }: StatisticsPanelProps) {
         const demandRes = await api.get(`/presences/statistics/booth-demand/${selectedBoothId}`);
         setHeatmap(demandRes.data.heatmap);
 
-        // Simularemos a listagem de assiduidade mensal de corretores do time para exibir no painel
-        const teamRes = await api.get(`/users/team/${user?.id}`); // Usa ID fixo do gestor
+        // A Diretoria visualiza todos os Corretores ativos/em carência do tenant.
+        const teamRes = await api.get('/users/active-brokers');
         const statsPromises = teamRes.data.map(async (member: any) => {
-          const statRes = await api.get(`/presences/statistics/broker/${member.id}`);
+          const statRes = await api.get(`/presences/statistics/broker/${member.id}`, { params: { boothId: selectedBoothId } });
           return {
             brokerId: member.id,
             name: member.name,
             nomeGuerra: member.nome_guerra,
             presencePercentage: statRes.data.presencePercentage,
+            completedPeriods: statRes.data.completedPeriods,
+            monthlyGoal: statRes.data.monthlyGoal,
           };
         });
 
@@ -193,7 +197,10 @@ export default function StatisticsPanel({ onBack }: StatisticsPanelProps) {
           <View style={styles.statCard}>
             <View style={styles.statHeader}>
               <Text style={styles.brokerName}>{item.nomeGuerra} ({item.name})</Text>
-              <Text style={[styles.percentageText, { color: primaryColor }]}>{item.presencePercentage}%</Text>
+              <View>
+                <Text style={[styles.percentageText, { color: primaryColor }]}>{item.presencePercentage}%</Text>
+                <Text style={styles.statMeta}>{item.completedPeriods}/{item.monthlyGoal} períodos</Text>
+              </View>
             </View>
             
             {/* Barra de progresso visual horizontal de assiduidade */}
@@ -382,6 +389,12 @@ const styles = StyleSheet.create({
   percentageText: {
     fontSize: 16,
     fontWeight: 'bold',
+  },
+  statMeta: {
+    fontSize: 11,
+    color: '#6b7280',
+    textAlign: 'right',
+    marginTop: 2,
   },
   progressBg: {
     height: 10,
