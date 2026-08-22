@@ -9,6 +9,7 @@ interface BrokerProfile {
   nome_guerra: string;
   email: string;
   creci: string | null;
+  broker_stage?: 'treinamento' | 'estagiario' | 'corretor_creci';
   status: string;
   manager_id: string | null;
   manager_nome_guerra: string | null;
@@ -28,6 +29,8 @@ interface Props {
 export default function BrokerManagementPanel({ brokerId, isDirector, managers, onClose, onSaved }: Props) {
   const [profile, setProfile] = useState<BrokerProfile | null>(null);
   const [nomeGuerra, setNomeGuerra] = useState('');
+  const [creci, setCreci] = useState('');
+  const [selectedStage, setSelectedStage] = useState<'treinamento' | 'estagiario' | 'corretor_creci'>('corretor_creci');
   const [reason, setReason] = useState('');
   const [selectedManagerId, setSelectedManagerId] = useState('');
   const [loading, setLoading] = useState(false);
@@ -42,6 +45,8 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
       const response = await api.get(`/users/${brokerId}/management-profile`);
       setProfile(response.data);
       setNomeGuerra(response.data.nome_guerra || '');
+      setCreci(response.data.creci || '');
+      setSelectedStage(response.data.broker_stage || 'corretor_creci');
       setSelectedManagerId(response.data.manager_id || '');
     } catch (err: any) {
       setError(err.response?.data?.message || 'Não foi possível carregar o perfil do Corretor.');
@@ -56,11 +61,25 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
     if (!profile) return;
     try {
       setSaving(true); setError('');
-      await api.patch(`/users/${profile.id}/management-profile`, { nomeGuerra });
+      await api.patch(`/users/${profile.id}/management-profile`, { nomeGuerra, creci });
       await loadProfile();
       onSaved();
     } catch (err: any) {
       setError(err.response?.data?.message || 'Não foi possível atualizar o Corretor.');
+    } finally { setSaving(false); }
+  };
+
+  const updateStage = async (newStage: 'treinamento' | 'estagiario' | 'corretor_creci') => {
+    if (!profile) return;
+    try {
+      setSaving(true); setError('');
+      await api.patch(`/users/${profile.id}/stage`, { brokerStage: newStage, creci });
+      setSelectedStage(newStage);
+      await loadProfile();
+      onSaved();
+      alert(`Estágio do corretor atualizado para ${newStage === 'treinamento' ? 'Treinamento' : newStage === 'estagiario' ? 'Estagiário' : 'Corretor CRECI'} com sucesso!`);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Não foi possível alterar o estágio do Corretor.');
     } finally { setSaving(false); }
   };
 
@@ -120,6 +139,14 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
     } finally { setSaving(false); }
   };
 
+  const getStageBadgeLabel = (stage?: string) => {
+    switch (stage) {
+      case 'treinamento': return '🔵 Em Treinamento';
+      case 'estagiario': return '🟡 Estagiário';
+      case 'corretor_creci': default: return '🟢 Corretor CRECI';
+    }
+  };
+
   return (
     <Modal visible={!!brokerId} animationType="slide" onRequestClose={onClose}>
       <ScrollView style={styles.container} contentContainerStyle={styles.content}>
@@ -135,6 +162,7 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
               <Text style={styles.line}>Nome de guerra: {profile.nome_guerra}</Text>
               <Text style={styles.line}>E-mail: {profile.email}</Text>
               <Text style={styles.line}>CRECI: {profile.creci || 'Não informado'}</Text>
+              <Text style={styles.line}>Estágio: <Text style={{ fontWeight: 'bold' }}>{getStageBadgeLabel(profile.broker_stage)}</Text></Text>
               <Text style={styles.line}>Gerente: {profile.manager_nome_guerra || 'Sem gerente'}</Text>
               <Text style={styles.line}>Status: {profile.status}</Text>
               <Text style={[styles.state, profile.leads_paused ? styles.danger : styles.success]}>
@@ -142,12 +170,47 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
               </Text>
             </View>
 
+            {/* CARD: PROMOÇÃO / ALTERAÇÃO DE ESTÁGIO */}
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Dados editáveis</Text>
+              <Text style={styles.sectionTitle}>Estágio Profissional (Evolução)</Text>
+              <Text style={styles.help}>Altere o estágio do corretor para liberar ou restringir recursos.</Text>
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                <TouchableOpacity
+                  style={[styles.stageSelectBtn, selectedStage === 'treinamento' && styles.stageSelectBtnActive]}
+                  onPress={() => updateStage('treinamento')}
+                  disabled={saving}
+                >
+                  <Text style={selectedStage === 'treinamento' ? styles.stageSelectTextActive : styles.stageSelectText}>🔵 Treinamento</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.stageSelectBtn, selectedStage === 'estagiario' && styles.stageSelectBtnActive]}
+                  onPress={() => updateStage('estagiario')}
+                  disabled={saving}
+                >
+                  <Text style={selectedStage === 'estagiario' ? styles.stageSelectTextActive : styles.stageSelectText}>🟡 Estagiário</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.stageSelectBtn, selectedStage === 'corretor_creci' && styles.stageSelectBtnActive]}
+                  onPress={() => updateStage('corretor_creci')}
+                  disabled={saving}
+                >
+                  <Text style={selectedStage === 'corretor_creci' ? styles.stageSelectTextActive : styles.stageSelectText}>🟢 Corretor CRECI</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>Dados cadastrais</Text>
               <Text style={styles.label}>Nome de guerra</Text>
               <Text style={styles.help}>Será convertido para MAIÚSCULAS e deve ser único no tenant.</Text>
               <TextInput style={styles.input} value={nomeGuerra} onChangeText={(v) => setNomeGuerra(v.toLocaleUpperCase('pt-BR'))} />
-              <TouchableOpacity style={styles.primaryButton} onPress={updateProfile} disabled={saving}><Text style={styles.buttonText}>Salvar alteração</Text></TouchableOpacity>
+
+              <Text style={styles.label}>CRECI</Text>
+              <TextInput style={styles.input} value={creci} placeholder="Ex: 123456-F" onChangeText={(v) => setCreci(v.toUpperCase())} />
+              
+              <TouchableOpacity style={styles.primaryButton} onPress={updateProfile} disabled={saving}><Text style={styles.buttonText}>Salvar dados cadastrais</Text></TouchableOpacity>
             </View>
 
             <View style={styles.card}>
@@ -218,4 +281,8 @@ const styles = StyleSheet.create({
   managerSelected: { backgroundColor: '#1e3a8a', borderColor: '#1e3a8a' },
   managerText: { color: '#1e3a8a', fontWeight: '700' },
   selectedText: { color: '#fff', fontWeight: '800' },
+  stageSelectBtn: { flex: 1, borderWidth: 1.5, borderColor: '#d1d5db', backgroundColor: '#f9fafb', borderRadius: 8, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
+  stageSelectBtnActive: { borderColor: '#1d4ed8', backgroundColor: '#eff6ff' },
+  stageSelectText: { color: '#4b5563', fontSize: 12, fontWeight: '700' },
+  stageSelectTextActive: { color: '#1d4ed8', fontSize: 12, fontWeight: '800' },
 });

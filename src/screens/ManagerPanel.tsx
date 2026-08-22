@@ -23,6 +23,7 @@ interface BrokerItem {
   email: string;
   creci?: string;
   status: string;
+  broker_stage?: 'treinamento' | 'estagiario' | 'corretor_creci';
   manager_id?: string | null;
   carencia_ends_at?: string | null;
 }
@@ -33,6 +34,7 @@ interface PendingBroker {
   nome_guerra: string;
   email: string;
   creci: string;
+  broker_stage?: 'treinamento' | 'estagiario' | 'corretor_creci';
 }
 
 interface LeadsQueueItem {
@@ -223,6 +225,30 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const totalActiveBrokers = useMemo(() => allBrokers.filter((b) => b.status === 'active').length, [allBrokers]);
   const totalGraceBrokers = useMemo(() => allBrokers.filter((b) => b.status === 'grace_period').length, [allBrokers]);
 
+  const renderStageBadge = (stage?: string) => {
+    switch (stage) {
+      case 'treinamento':
+        return (
+          <View style={styles.badgeTreinamento}>
+            <Text style={styles.badgeTextTreinamento}>🔵 Treinamento</Text>
+          </View>
+        );
+      case 'estagiario':
+        return (
+          <View style={styles.badgeEstagiario}>
+            <Text style={styles.badgeTextEstagiario}>🟡 Estagiário</Text>
+          </View>
+        );
+      case 'corretor_creci':
+      default:
+        return (
+          <View style={styles.badgeCreci}>
+            <Text style={styles.badgeTextCreci}>🟢 Corretor CRECI</Text>
+          </View>
+        );
+    }
+  };
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
@@ -349,9 +375,12 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                       onPress={() => setSelectedBrokerId(broker.id)}
                     >
                       <View style={styles.brokerMainInfo}>
-                        <Text style={styles.brokerTitle}>
-                          {broker.nome_guerra} <Text style={styles.brokerRealName}>({broker.name})</Text>
-                        </Text>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <Text style={styles.brokerTitle}>
+                            {broker.nome_guerra} <Text style={styles.brokerRealName}>({broker.name})</Text>
+                          </Text>
+                          {renderStageBadge(broker.broker_stage)}
+                        </View>
                         <Text style={styles.brokerMeta}>
                           Gerente: <Text style={styles.boldText}>{mgr?.nome_guerra || mgr?.name || 'Não vinculado'}</Text> · CRECI: {broker.creci || '—'}
                         </Text>
@@ -420,9 +449,12 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                                   onPress={() => setSelectedBrokerId(broker.id)}
                                 >
                                   <View style={styles.brokerDrawerInfo}>
-                                    <Text style={styles.brokerDrawerName}>
-                                      {broker.nome_guerra} <Text style={styles.brokerDrawerSubName}>({broker.name})</Text>
-                                    </Text>
+                                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                                      <Text style={styles.brokerDrawerName}>
+                                        {broker.nome_guerra} <Text style={styles.brokerDrawerSubName}>({broker.name})</Text>
+                                      </Text>
+                                      {renderStageBadge(broker.broker_stage)}
+                                    </View>
                                     <Text style={styles.brokerDrawerCreci}>
                                       CRECI: {broker.creci || '—'} · {broker.email}
                                     </Text>
@@ -503,10 +535,13 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
               renderItem={({ item }) => (
                 <TouchableOpacity style={styles.brokerCard} activeOpacity={0.8} onPress={() => setSelectedBrokerId(item.id)}>
                   <View style={styles.brokerInfo}>
-                    <Text style={styles.brokerName}>{item.name}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={styles.brokerName}>{item.name}</Text>
+                      {renderStageBadge(item.broker_stage)}
+                    </View>
                     <Text style={styles.brokerSub}>Nome de Guerra: {item.nome_guerra}</Text>
                     <Text style={styles.brokerSub}>E-mail: {item.email}</Text>
-                    <Text style={styles.brokerSub}>CRECI: {item.creci}</Text>
+                    <Text style={styles.brokerSub}>CRECI: {item.creci || 'Não informado / Em formação'}</Text>
                   </View>
 
                   {approvingId === item.id ? (
@@ -603,28 +638,26 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
               </View>
             </View>
 
-            {Array.isArray(teamEligibility?.members) && teamEligibility.members.length > 0 && (
-              <View style={{ marginBottom: 20, gap: 8 }}>
-                {teamEligibility.members.map((member: any) => (
-                  <View key={member.brokerId} style={{ backgroundColor: '#fff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
+            {/* LISTA DETALHADA DE ELEGIBILIDADE POR CORRETOR DA EQUIPE */}
+            {(teamEligibility?.brokers || []).length > 0 && (
+              <View style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#1f2937', marginBottom: 8 }}>
+                  Detalhes por Corretor:
+                </Text>
+                {(teamEligibility?.brokers || []).map((bInfo: any) => (
+                  <View key={bInfo.brokerId} style={{ backgroundColor: '#fff', borderRadius: 8, padding: 10, marginBottom: 6, borderWidth: 1, borderColor: '#e5e7eb' }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ fontWeight: '800', fontSize: 14, color: '#1c1c1e' }}>{member.nomeGuerra} ({member.name})</Text>
-                      <View style={{ flexDirection: 'row', gap: 6 }}>
-                        {member.isEligibleSaturday ? (
-                          <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                            <Text style={{ color: '#15803d', fontSize: 10, fontWeight: '800' }}>SÁBADO OK</Text>
-                          </View>
-                        ) : null}
-                        {member.isEligibleSunday ? (
-                          <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
-                            <Text style={{ color: '#15803d', fontSize: 10, fontWeight: '800' }}>DOMINGO OK</Text>
-                          </View>
-                        ) : null}
-                      </View>
+                      <Text style={{ fontWeight: '700', color: '#111827' }}>{bInfo.brokerNomeGuerra}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: bInfo.saturdayEligible && bInfo.sundayEligible ? '#15803d' : '#b45309' }}>
+                        {bInfo.saturdayEligible && bInfo.sundayEligible ? '🟢 Totalmente Elegível' : bInfo.saturdayEligible ? '🟡 Elegível Sábado' : '⚪ Não Elegível'}
+                      </Text>
                     </View>
-                    {Array.isArray(member.boothsStatus) && (
-                      <View style={{ marginTop: 6, gap: 4 }}>
-                        {member.boothsStatus.map((b: any) => (
+                    <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                      Roletas válidas na semana: <Text style={{ fontWeight: '700', color: '#111827' }}>{bInfo.accumulatedWeekPeriods}</Text> (Sáb: {bInfo.saturdayRequired} / Dom: {bInfo.sundayRequired})
+                    </Text>
+                    {bInfo.boothBreakdown && bInfo.boothBreakdown.length > 0 && (
+                      <View style={{ marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
+                        {bInfo.boothBreakdown.map((b: any) => (
                           <Text key={b.boothId} style={{ fontSize: 12, color: '#4b5563' }}>
                             • {b.boothName}: <Text style={{ fontWeight: '700' }}>{b.validRoletasThisWeek}</Text> roletas {b.saturdayEligible ? '🟢 Elegível' : `(faltam ${b.missingSaturday} p/ Sáb)`}
                           </Text>
@@ -649,7 +682,10 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                 return (
                   <TouchableOpacity style={styles.teamCard} activeOpacity={0.8} onPress={() => setSelectedBrokerId(item.id)}>
                     <View>
-                      <Text style={styles.teamName}>{item.nome_guerra} ({item.name})</Text>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <Text style={styles.teamName}>{item.nome_guerra} ({item.name})</Text>
+                        {renderStageBadge(item.broker_stage)}
+                      </View>
                       {isGrace && item.carencia_ends_at ? (
                         <Text style={styles.carenciaLabel}>Carência ativa até: {new Date(item.carencia_ends_at).toLocaleDateString('pt-BR')}</Text>
                       ) : (
@@ -1206,5 +1242,44 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
     fontWeight: 'bold',
+  },
+  badgeTreinamento: {
+    backgroundColor: '#eff6ff',
+    borderColor: '#93c5fd',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  badgeTextTreinamento: {
+    color: '#1d4ed8',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  badgeEstagiario: {
+    backgroundColor: '#fefce8',
+    borderColor: '#fde047',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  badgeTextEstagiario: {
+    color: '#a16207',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  badgeCreci: {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#86efac',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  badgeTextCreci: {
+    color: '#15803d',
+    fontSize: 11,
+    fontWeight: '700',
   },
 });

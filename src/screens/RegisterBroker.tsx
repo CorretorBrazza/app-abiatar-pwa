@@ -8,9 +8,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import api from '../services/api';
+
+interface ManagerOption {
+  id: string;
+  name: string;
+  nome_guerra: string;
+}
 
 interface RegisterBrokerProps {
   onBackToLogin: () => void;
@@ -18,11 +23,23 @@ interface RegisterBrokerProps {
 }
 
 export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterBrokerProps) {
+  // Modo de cadastro: sem convite (padrão) ou com convite
+  const [hasInviteToken, setHasInviteToken] = useState(Boolean(inviteToken));
   const [token, setToken] = useState(inviteToken || '');
   const [invitedRole, setInvitedRole] = useState<'gerencia_level_2' | 'corretor_level_3' | null>(null);
   const [inviteManagerName, setInviteManagerName] = useState('');
   const [validatingToken, setValidatingToken] = useState(false);
   const [tokenValidated, setTokenValidated] = useState(false);
+
+  // Lista de Gerentes Reais do Tenant
+  const [managers, setManagers] = useState<ManagerOption[]>([]);
+  const [selectedManagerId, setSelectedManagerId] = useState<string>('');
+  const [loadingManagers, setLoadingManagers] = useState(false);
+
+  // Estágio do Corretor (3 Estágios)
+  const [brokerStage, setBrokerStage] = useState<'treinamento' | 'estagiario' | 'corretor_creci'>('corretor_creci');
+
+  // Campos do formulário
   const [name, setName] = useState('');
   const [nomeGuerra, setNomeGuerra] = useState('');
   const [email, setEmail] = useState('');
@@ -30,7 +47,28 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
   const [creci, setCreci] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [successMessage, setSuccessMessage] = useState('');
+  const [successInfo, setSuccessInfo] = useState<{ message: string; managerName: string; stage: string } | null>(null);
+
+  // Carrega a lista de gerentes reais na montagem
+  useEffect(() => {
+    async function loadManagers() {
+      try {
+        setLoadingManagers(true);
+        const res = await api.get('/users/public-managers');
+        if (res.data?.managers) {
+          setManagers(res.data.managers);
+          if (res.data.managers.length > 0 && !selectedManagerId) {
+            setSelectedManagerId(res.data.managers[0].id);
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao carregar gerentes públicos:', err);
+      } finally {
+        setLoadingManagers(false);
+      }
+    }
+    loadManagers();
+  }, []);
 
   const checkToken = async (rawToken: string) => {
     const clean = rawToken.trim();
@@ -64,6 +102,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
     const resolveToken = inviteToken || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
     if (resolveToken) {
       setToken(resolveToken);
+      setHasInviteToken(true);
       void checkToken(resolveToken);
     }
   }, [inviteToken]);
@@ -81,37 +120,13 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
   };
 
   const handleRegister = async () => {
-    const cleanToken = token.trim();
-    if (!cleanToken) {
-      setError('Por favor, informe o código de convite.');
-      return;
-    }
-
-    let role = invitedRole;
-    if (!role) {
-      const isValid = await checkToken(cleanToken);
-      if (!isValid) {
-        setError('Código de convite inválido ou expirado.');
-        return;
-      }
-      // Wait for state or fetch again if needed
-      try {
-        const response = await api.get(`/users/onboarding-link/${cleanToken}`);
-        role = response.data.invited_role;
-        setInvitedRole(role);
-      } catch {
-        setError('Não foi possível validar o convite.');
-        return;
-      }
-    }
-
     if (!name.trim() || !nomeGuerra.trim() || !email.trim() || !password) {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
 
-    if (role === 'corretor_level_3' && !creci.trim()) {
-      setError('O CRECI profissional é obrigatório para cadastro de Corretor.');
+    if (nomeGuerra.trim().length < 2 || nomeGuerra.trim().length > 50) {
+      setError('O nome de guerra deve conter entre 2 e 50 caracteres.');
       return;
     }
 
@@ -119,152 +134,329 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
       setError('A senha deve conter entre 8 e 128 caracteres.');
       return;
     }
-    if (nomeGuerra.trim().length < 2 || nomeGuerra.trim().length > 50) {
-      setError('O nome de guerra deve conter entre 2 e 50 caracteres.');
+
+    // Se estiver usando convite
+    if (hasInviteToken) {
+      const cleanToken = token.trim();
+      if (!cleanToken) {
+        setError('Por favor, informe o código de convite.');
+        return;
+      }
+
+      let role = invitedRole;
+      if (!role) {
+        const isValid = await checkToken(cleanToken);
+        if (!isValid) {
+          setError('Código de convite inválido ou expirado.');
+          return;
+        }
+      }
+
+      if (invitedRole === 'corretor_level_3' && brokerStage !== 'treinamento' && !creci.trim()) {
+        setError(brokerStage === 'estagiario' ? 'O CRECI de Estágio é obrigatório.' : 'O CRECI profissional é obrigatório.');
+        return;
+      }
+
+      try {
+        setError('');
+        setLoading(true);
+        const endpoint = invitedRole === 'gerencia_level_2' ? '/users/register-manager' : '/users/register-broker';
+        const payload = {
+          token: cleanToken,
+          name: name.trim(),
+          nomeGuerra: nomeGuerra.trim().toLocaleUpperCase('pt-BR'),
+          email: email.trim().toLowerCase(),
+          passwordHash: password,
+          brokerStage: brokerStage,
+          ...(creci.trim() ? { creci: creci.trim() } : {}),
+        };
+
+        const response = await api.post(endpoint, payload);
+        setSuccessInfo({
+          message: response.data.message || 'Cadastro realizado com sucesso!',
+          managerName: inviteManagerName || 'Gerência',
+          stage: brokerStage,
+        });
+      } catch (err: any) {
+        setError(err.response?.data?.message || 'Falha ao realizar cadastro.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Cadastro direto sem convite (com seleção do Gerente)
+    if (!selectedManagerId) {
+      setError('Por favor, selecione o Gerente da sua equipe.');
+      return;
+    }
+
+    if (brokerStage !== 'treinamento' && !creci.trim()) {
+      setError(brokerStage === 'estagiario' ? 'O CRECI de Estágio é obrigatório para estagiários.' : 'O CRECI profissional é obrigatório.');
       return;
     }
 
     try {
       setError('');
-      setSuccessMessage('');
       setLoading(true);
 
-      const endpoint = role === 'gerencia_level_2' ? '/users/register-manager' : '/users/register-broker';
       const payload = {
-        token: cleanToken,
+        managerId: selectedManagerId,
+        brokerStage: brokerStage,
         name: name.trim(),
         nomeGuerra: nomeGuerra.trim().toLocaleUpperCase('pt-BR'),
         email: email.trim().toLowerCase(),
         passwordHash: password,
-        ...(role === 'corretor_level_3' ? { creci: creci.trim() } : {}),
+        ...(creci.trim() ? { creci: creci.trim() } : {}),
       };
 
-      const response = await api.post(endpoint, payload);
+      const response = await api.post('/users/register-broker', payload);
+      const chosenManager = managers.find(m => m.id === selectedManagerId);
+      const managerLabel = chosenManager ? (chosenManager.nome_guerra || chosenManager.name) : 'Gerência';
 
-      setSuccessMessage(response.data.message || (role === 'gerencia_level_2' ? 'Cadastro de Gerente realizado com sucesso!' : 'Cadastro enviado com sucesso! Aguarde a aprovação do seu Gerente.'));
-      
-      // Limpa os campos após o sucesso
-      setToken('');
-      setName('');
-      setNomeGuerra('');
-      setEmail('');
-      setPassword('');
-      setCreci('');
-      setInvitedRole(null);
-      setTokenValidated(false);
+      setSuccessInfo({
+        message: response.data.message || 'Cadastro enviado com sucesso! Aguarde a aprovação do seu Gerente.',
+        managerName: managerLabel,
+        stage: brokerStage,
+      });
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Falha ao realizar o cadastro.';
-      setError(msg);
+      setError(err.response?.data?.message || 'Falha ao realizar o cadastro.');
     } finally {
       setLoading(false);
     }
   };
 
+  const getStageLabel = (stage: string) => {
+    switch (stage) {
+      case 'treinamento': return '🔵 Em Treinamento (Sem CRECI / Em formação)';
+      case 'estagiario': return '🟡 Corretor Estagiário (CRECI Estágio)';
+      case 'corretor_creci': default: return '🟢 Corretor com CRECI (Definitivo)';
+    }
+  };
+
+  // Tela de Sucesso
+  if (successInfo) {
+    return (
+      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
+        <View style={styles.card}>
+          <Text style={styles.successIcon}>🎉</Text>
+          <Text style={styles.title}>Cadastro Enviado!</Text>
+          <Text style={styles.successDesc}>
+            Seu cadastro foi enviado para a equipe do Gerente <Text style={{ fontWeight: 'bold' }}>{successInfo.managerName}</Text>.
+          </Text>
+
+          <View style={styles.successSummaryCard}>
+            <Text style={styles.summaryLabel}>Nome de Guerra:</Text>
+            <Text style={styles.summaryValue}>{nomeGuerra.toLocaleUpperCase('pt-BR')}</Text>
+
+            <Text style={styles.summaryLabel}>E-mail:</Text>
+            <Text style={styles.summaryValue}>{email.toLowerCase()}</Text>
+
+            <Text style={styles.summaryLabel}>Estágio:</Text>
+            <Text style={styles.summaryValue}>{getStageLabel(successInfo.stage)}</Text>
+
+            {creci.trim() ? (
+              <>
+                <Text style={styles.summaryLabel}>CRECI:</Text>
+                <Text style={styles.summaryValue}>{creci.toUpperCase()}</Text>
+              </>
+            ) : null}
+          </View>
+
+          <Text style={styles.approvalNote}>
+            Assim que o seu Gerente confirmar a sua entrada, você receberá a liberação para acessar o aplicativo com o seu e-mail e senha.
+          </Text>
+
+          <TouchableOpacity style={styles.button} onPress={onBackToLogin}>
+            <Text style={styles.buttonText}>Ir para o Login</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    );
+  }
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
-        <Text style={styles.title}>
-          {invitedRole === 'gerencia_level_2' ? 'Cadastro de Gerente' : invitedRole === 'corretor_level_3' ? 'Cadastro de Corretor' : 'Convite de Acesso'}
-        </Text>
-        <Text style={styles.subtitle}>
-          {invitedRole === 'gerencia_level_2'
-            ? 'Seu convite foi confirmado para o nível de Gerência.'
-            : invitedRole === 'corretor_level_3'
-            ? `Seu cadastro ficará vinculado ao Gerente ${inviteManagerName || 'responsável'}.`
-            : 'Informe o código do seu convite para liberar o formulário.'}
-        </Text>
+        <Text style={styles.title}>Cadastro de Corretor</Text>
+        <Text style={styles.subtitle}>Faça parte da equipe comercial da construtora</Text>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
-        {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
 
-        <Text style={styles.label}>Código de convite *</Text>
-        <View style={styles.tokenRow}>
-          <TextInput
-            style={[styles.input, styles.tokenInput, tokenValidated && styles.inputSuccess]}
-            placeholder="Cole seu código de convite *"
-            value={token}
-            onChangeText={handleTokenChange}
-            autoCapitalize="none"
-          />
-          {validatingToken && <ActivityIndicator style={styles.tokenSpinner} color="#1c1c1e" />}
+        {/* 1. SELEÇÃO DO ESTÁGIO DO CORRETOR */}
+        <Text style={styles.sectionHeader}>1. Selecione o seu Estágio</Text>
+        <View style={styles.stageContainer}>
+          <TouchableOpacity
+            style={[styles.stageCard, brokerStage === 'treinamento' && styles.stageCardSelected]}
+            onPress={() => setBrokerStage('treinamento')}
+          >
+            <Text style={styles.stageTitle}>🔵 Treinamento</Text>
+            <Text style={styles.stageSubtitle}>Sem CRECI / Curso</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.stageCard, brokerStage === 'estagiario' && styles.stageCardSelected]}
+            onPress={() => setBrokerStage('estagiario')}
+          >
+            <Text style={styles.stageTitle}>🟡 Estagiário</Text>
+            <Text style={styles.stageSubtitle}>CRECI Estágio</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.stageCard, brokerStage === 'corretor_creci' && styles.stageCardSelected]}
+            onPress={() => setBrokerStage('corretor_creci')}
+          >
+            <Text style={styles.stageTitle}>🟢 Corretor CRECI</Text>
+            <Text style={styles.stageSubtitle}>CRECI Definitivo</Text>
+          </TouchableOpacity>
         </View>
 
-        {tokenValidated && (
-          <View style={styles.badgeContainer}>
-            <Text style={styles.badgeText}>
-              ✓ Convite validado: {invitedRole === 'gerencia_level_2' ? 'Gerência' : `Corretor (${inviteManagerName || 'Gerente responsável'})`}
-            </Text>
+        {/* 2. SELEÇÃO DO GERENTE */}
+        {!hasInviteToken && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={styles.sectionHeader}>2. Escolha o seu Gerente</Text>
+            {loadingManagers ? (
+              <ActivityIndicator color="#1c1c1e" style={{ marginVertical: 12 }} />
+            ) : managers.length === 0 ? (
+              <Text style={styles.helpText}>Nenhum gerente ativo disponível no momento.</Text>
+            ) : (
+              <View style={styles.managersGrid}>
+                {managers.map((m) => {
+                  const isSelected = selectedManagerId === m.id;
+                  return (
+                    <TouchableOpacity
+                      key={m.id}
+                      style={[styles.managerCard, isSelected && styles.managerCardSelected]}
+                      onPress={() => setSelectedManagerId(m.id)}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                        <Text style={styles.managerIcon}>{isSelected ? '✓' : '👤'}</Text>
+                        <View style={{ marginLeft: 8, flex: 1 }}>
+                          <Text style={[styles.managerNomeGuerra, isSelected && { color: '#000' }]}>
+                            Gerente {m.nome_guerra || m.name}
+                          </Text>
+                          <Text style={styles.managerFullName}>{m.name}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            )}
           </View>
         )}
 
-        <Text style={styles.label}>Nome completo *</Text>
+        {/* MODO COM CÓDIGO DE CONVITE */}
+        {hasInviteToken && (
+          <View style={{ marginBottom: 16 }}>
+            <Text style={styles.label}>Código de Convite *</Text>
+            <View style={styles.tokenRow}>
+              <TextInput
+                style={[styles.input, styles.tokenInput, tokenValidated && styles.inputSuccess]}
+                placeholder="Cole seu código de convite *"
+                value={token}
+                onChangeText={handleTokenChange}
+                autoCapitalize="none"
+              />
+              {validatingToken && <ActivityIndicator style={styles.tokenSpinner} color="#1c1c1e" />}
+            </View>
+
+            {tokenValidated && (
+              <View style={styles.badgeContainer}>
+                <Text style={styles.badgeText}>
+                  ✓ Convite validado: {invitedRole === 'gerencia_level_2' ? 'Gerência' : `Corretor (${inviteManagerName || 'Gerente responsável'})`}
+                </Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* 3. DADOS PESSOAIS E ACESSO */}
+        <Text style={styles.sectionHeader}>3. Seus Dados de Acesso</Text>
+
+        <Text style={styles.label}>Nome Completo *</Text>
         <TextInput
           style={styles.input}
-          placeholder="Nome Completo *"
+          placeholder="Ex: João da Silva"
           value={name}
           onChangeText={setName}
         />
 
-        <Text style={styles.label}>Nome de guerra *</Text>
-        <Text style={styles.helpText}>Será convertido para MAIÚSCULAS e deve ser único dentro da empresa.</Text>
+        <Text style={styles.label}>Nome de Guerra *</Text>
+        <Text style={styles.helpText}>Nome que será exibido nas escalas, roletas e clientes.</Text>
         <TextInput
           style={styles.input}
-          placeholder="Nome de Guerra (Único na Empresa) *"
+          placeholder="Ex: SILVA"
           value={nomeGuerra}
           onChangeText={(value) => setNomeGuerra(value.toLocaleUpperCase('pt-BR'))}
           autoCapitalize="characters"
         />
 
-        <Text style={styles.label}>E-mail *</Text>
+        <Text style={styles.label}>E-mail de Trabalho *</Text>
         <TextInput
           style={styles.input}
-          placeholder="Seu melhor e-mail *"
+          placeholder="seuemail@exemplo.com"
           value={email}
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
         />
 
-        <Text style={styles.label}>Senha *</Text>
-        <Text style={styles.helpText}>Use entre 8 e 128 caracteres. A senha diferencia maiúsculas e minúsculas.</Text>
+        <Text style={styles.label}>Senha de Acesso *</Text>
+        <Text style={styles.helpText}>Mínimo de 8 caracteres.</Text>
         <TextInput
           style={styles.input}
-          placeholder="Crie sua senha *"
+          placeholder="Crie sua senha segura *"
           value={password}
           onChangeText={setPassword}
           secureTextEntry
           autoCapitalize="none"
         />
 
-        {invitedRole === 'corretor_level_3' && (
-          <>
-            <Text style={styles.label}>CRECI profissional *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Seu CRECI profissional *"
-              value={creci}
-              onChangeText={setCreci}
-              autoCapitalize="characters"
-            />
-          </>
-        )}
+        {/* CAMPO CRECI (OBRIGATÓRIO PARA ESTAGIÁRIO E CORRETOR CRECI; OPCIONAL PARA TREINAMENTO) */}
+        <Text style={styles.label}>
+          {brokerStage === 'treinamento'
+            ? 'CRECI (Opcional - Em Formação)'
+            : brokerStage === 'estagiario'
+            ? 'Número do CRECI de Estágio *'
+            : 'Número do CRECI Profissional *'}
+        </Text>
+        <TextInput
+          style={styles.input}
+          placeholder={brokerStage === 'treinamento' ? 'Deixe em branco ou informe se já tiver' : 'Ex: 123456-F'}
+          value={creci}
+          onChangeText={setCreci}
+          autoCapitalize="characters"
+        />
 
+        {/* BOTÃO DE SUBMIT */}
         <TouchableOpacity
-          style={[styles.button, (!token.trim() || loading) && styles.buttonDisabled]}
+          style={[styles.button, loading && styles.buttonDisabled]}
           onPress={handleRegister}
-          disabled={loading || !token.trim()}
+          disabled={loading}
         >
           {loading ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.buttonText}>
-              {invitedRole === 'gerencia_level_2' ? 'Concluir Cadastro de Gerente' : 'Enviar Cadastro de Corretor'}
-            </Text>
+            <Text style={styles.buttonText}>Enviar Cadastro para o Gerente</Text>
           )}
         </TouchableOpacity>
 
+        {/* TOGGLE PARA QUEM TEM CONVITE / NÃO TEM CONVITE */}
+        <TouchableOpacity
+          style={styles.toggleInviteButton}
+          onPress={() => {
+            setHasInviteToken(!hasInviteToken);
+            setError('');
+          }}
+        >
+          <Text style={styles.toggleInviteText}>
+            {hasInviteToken ? '← Quero escolher o gerente manualmente' : 'Tenho um código de convite específico'}
+          </Text>
+        </TouchableOpacity>
+
         <TouchableOpacity style={styles.backButton} onPress={onBackToLogin}>
-          <Text style={styles.backButtonText}>Já tenho conta? Voltar ao Login</Text>
+          <Text style={styles.backButtonText}>Já possui uma conta? Voltar ao Login</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -276,9 +468,7 @@ const styles = StyleSheet.create({
     flex: 1,
     height: '100%',
     backgroundColor: '#f5f5f7',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
+    padding: 16,
   },
   scrollContent: {
     flexGrow: 1,
@@ -288,10 +478,10 @@ const styles = StyleSheet.create({
   },
   card: {
     width: '100%',
-    maxWidth: 450,
+    maxWidth: 480,
     backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 30,
+    borderRadius: 14,
+    padding: 24,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
@@ -299,37 +489,105 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
   title: {
-    fontSize: 22,
+    fontSize: 24,
     fontWeight: 'bold',
     color: '#1c1c1e',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 4,
   },
   subtitle: {
     fontSize: 14,
     color: '#8e8e93',
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
+  },
+  sectionHeader: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1c1c1e',
+    marginTop: 10,
+    marginBottom: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f2f2f7',
+    paddingBottom: 4,
+  },
+  stageContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    gap: 8,
+  },
+  stageCard: {
+    flex: 1,
+    backgroundColor: '#fafafc',
+    borderWidth: 1.5,
+    borderColor: '#e5e5ea',
+    borderRadius: 8,
+    padding: 10,
+    alignItems: 'center',
+  },
+  stageCardSelected: {
+    borderColor: '#007aff',
+    backgroundColor: '#f0f7ff',
+  },
+  stageTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1c1c1e',
+    marginBottom: 4,
+    textAlign: 'center',
+  },
+  stageSubtitle: {
+    fontSize: 10,
+    color: '#8e8e93',
+    textAlign: 'center',
+  },
+  managersGrid: {
+    gap: 8,
+  },
+  managerCard: {
+    backgroundColor: '#fafafc',
+    borderWidth: 1.5,
+    borderColor: '#e5e5ea',
+    borderRadius: 8,
+    padding: 12,
+  },
+  managerCardSelected: {
+    borderColor: '#34c759',
+    backgroundColor: '#f0fdf4',
+  },
+  managerIcon: {
+    fontSize: 18,
+    color: '#34c759',
+    fontWeight: 'bold',
+  },
+  managerNomeGuerra: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1c1c1e',
+  },
+  managerFullName: {
+    fontSize: 12,
+    color: '#8e8e93',
   },
   label: {
     color: '#1c1c1e',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     marginBottom: 4,
   },
   helpText: {
-    color: '#636366',
-    fontSize: 12,
-    lineHeight: 16,
+    color: '#8e8e93',
+    fontSize: 11,
     marginBottom: 6,
   },
   input: {
-    height: 48,
+    height: 46,
     borderWidth: 1,
     borderColor: '#d1d1d6',
     borderRadius: 8,
-    paddingHorizontal: 16,
-    fontSize: 16,
+    paddingHorizontal: 14,
+    fontSize: 15,
     marginBottom: 12,
     backgroundColor: '#fafafc',
   },
@@ -343,7 +601,7 @@ const styles = StyleSheet.create({
   tokenSpinner: {
     position: 'absolute',
     right: 12,
-    top: 14,
+    top: 13,
   },
   inputSuccess: {
     borderColor: '#34c759',
@@ -364,42 +622,84 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   button: {
-    height: 48,
+    height: 50,
     backgroundColor: '#1c1c1e',
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 12,
+    marginTop: 14,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   buttonText: {
     color: '#FFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
   },
+  toggleInviteButton: {
+    marginTop: 14,
+    alignItems: 'center',
+  },
+  toggleInviteText: {
+    color: '#007aff',
+    fontSize: 13,
+    fontWeight: '600',
+  },
   backButton: {
-    marginTop: 20,
+    marginTop: 16,
     alignItems: 'center',
   },
   backButtonText: {
     color: '#8e8e93',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   errorText: {
     color: '#ff3b30',
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
-    marginBottom: 16,
+    marginBottom: 12,
     fontWeight: 'bold',
   },
-  successText: {
-    color: '#34c759',
-    fontSize: 14,
+  successIcon: {
+    fontSize: 48,
     textAlign: 'center',
+    marginBottom: 12,
+  },
+  successDesc: {
+    fontSize: 14,
+    color: '#3c3c43',
+    textAlign: 'center',
+    lineHeight: 20,
     marginBottom: 16,
-    fontWeight: 'bold',
+  },
+  successSummaryCard: {
+    backgroundColor: '#f5f5f7',
+    borderRadius: 8,
+    padding: 14,
+    marginBottom: 16,
+    borderLeftWidth: 4,
+    borderLeftColor: '#34c759',
+  },
+  summaryLabel: {
+    fontSize: 11,
+    color: '#8e8e93',
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  summaryValue: {
+    fontSize: 13,
+    color: '#1c1c1e',
+    fontWeight: '600',
+    marginBottom: 6,
+  },
+  approvalNote: {
+    fontSize: 12,
+    color: '#8e8e93',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 16,
   },
 });
+
