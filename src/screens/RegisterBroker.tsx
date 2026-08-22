@@ -49,25 +49,26 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
   const [error, setError] = useState('');
   const [successInfo, setSuccessInfo] = useState<{ message: string; managerName: string; stage: string } | null>(null);
 
+  const loadManagers = async () => {
+    try {
+      setLoadingManagers(true);
+      const res = await api.get('/users/public-managers');
+      if (res.data?.managers && Array.isArray(res.data.managers)) {
+        setManagers(res.data.managers);
+        if (res.data.managers.length > 0) {
+          setSelectedManagerId((prev) => prev || res.data.managers[0].id);
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao carregar gerentes públicos:', err);
+    } finally {
+      setLoadingManagers(false);
+    }
+  };
+
   // Carrega a lista de gerentes reais na montagem
   useEffect(() => {
-    async function loadManagers() {
-      try {
-        setLoadingManagers(true);
-        const res = await api.get('/users/public-managers');
-        if (res.data?.managers) {
-          setManagers(res.data.managers);
-          if (res.data.managers.length > 0 && !selectedManagerId) {
-            setSelectedManagerId(res.data.managers[0].id);
-          }
-        }
-      } catch (err) {
-        console.error('Erro ao carregar gerentes públicos:', err);
-      } finally {
-        setLoadingManagers(false);
-      }
-    }
-    loadManagers();
+    void loadManagers();
   }, []);
 
   const checkToken = async (rawToken: string) => {
@@ -318,7 +319,12 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
             {loadingManagers ? (
               <ActivityIndicator color="#1c1c1e" style={{ marginVertical: 12 }} />
             ) : managers.length === 0 ? (
-              <Text style={styles.helpText}>Nenhum gerente ativo disponível no momento.</Text>
+              <View style={{ alignItems: 'center', paddingVertical: 10 }}>
+                <Text style={styles.helpText}>Nenhum gerente encontrado no momento.</Text>
+                <TouchableOpacity style={{ marginTop: 6 }} onPress={loadManagers}>
+                  <Text style={{ color: '#007aff', fontWeight: 'bold', fontSize: 13 }}>🔄 Tentar carregar novamente</Text>
+                </TouchableOpacity>
+              </View>
             ) : (
               <View style={styles.managersGrid}>
                 {managers.map((m) => {
