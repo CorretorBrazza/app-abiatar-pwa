@@ -50,6 +50,15 @@ export default function Dashboard() {
   const isDirector = user?.role === 'diretoria_level_1';
   const canManageUsers = tenant?.settings?.features?.manager_management !== false || tenant?.settings?.features?.reception_management !== false;
 
+  const loadUnreadCount = async () => {
+    try {
+      const response = await api.get('/messages/my-inbox');
+      setUnreadCount(Array.isArray(response.data) ? response.data.filter((item: any) => !item.read_at).length : 0);
+    } catch (error) {
+      console.warn('[INBOX] Falha ao atualizar contador de não lidas:', error);
+    }
+  };
+
   // 1. Efeito Inicial: Busca se o corretor já possui um turno ativo online na nuvem
   useEffect(() => {
     let cancelled = false;
@@ -148,19 +157,7 @@ export default function Dashboard() {
   }, [user]);
 
   useEffect(() => {
-    let mounted = true;
-    const loadUnreadCount = async () => {
-      try {
-        const response = await api.get('/messages/my-inbox');
-        if (mounted) {
-          setUnreadCount(Array.isArray(response.data) ? response.data.filter((item: any) => !item.read_at).length : 0);
-        }
-      } catch (error) {
-        console.warn('[INBOX] Falha ao atualizar contador de não lidas:', error);
-      }
-    };
-
-    loadUnreadCount();
+    void loadUnreadCount();
     const intervalId = setInterval(loadUnreadCount, 15000);
     let noticeTimeout: ReturnType<typeof setTimeout> | undefined;
     const handlePush = (event: Event) => {
@@ -181,7 +178,6 @@ export default function Dashboard() {
     window.addEventListener('abiatar:push', handlePush);
 
     return () => {
-      mounted = false;
       clearInterval(intervalId);
       if (noticeTimeout) clearTimeout(noticeTimeout);
       window.removeEventListener('abiatar:push', handlePush);
@@ -291,34 +287,68 @@ export default function Dashboard() {
       return (
         <View style={styles.container}>
           {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
-      {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
-          <View style={{ flex: 1 }}>
-            <ScreenCode code="CR-01" />
+          {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
+          <ScreenCode code="CR-01" />
+          <View style={[styles.header, { backgroundColor: primaryColor }]}>
+            <Text style={styles.tenantName}>{tenant?.name}</Text>
+            <Text style={styles.roleTag}>Corretor</Text>
+          </View>
+
+          <ScrollView
+            style={styles.dashboardScroll}
+            contentContainerStyle={styles.brokerScrollContent}
+            showsVerticalScrollIndicator
+          >
+            <Text style={styles.welcomeTitle}>Olá, {user?.nome_guerra}!</Text>
+            <Text style={styles.welcomeSubtitle}>Selecione o seu plantão de vendas atual para iniciar o turno.</Text>
+
             <CheckIn 
               onCheckInSuccess={(data) => {
                 setActiveSession({
-                  boothName: 'Plantão Ativo',
+                  boothName: data?.booth?.name || 'Plantão Ativo',
                   checkInAt: new Date(),
                 });
               }} 
             />
-          </View>
-          
-          <View style={styles.footerLogout}>
+
             <View style={styles.brokerPeriodsCard}>
-              <Text style={styles.brokerPeriodsTitle}>Resumo dos seus períodos</Text>
-              <Text style={styles.infoText}>Períodos válidos na semana: {brokerSummary?.validPeriods ?? '—'}</Text>
-              <Text style={styles.infoText}>Peso acumulado para elegibilidade: {brokerSummary?.weightedPeriods ?? '—'}</Text>
-              {brokerSummary?.invalidatedPeriods > 0 && <Text style={styles.invalidPeriodText}>Períodos invalidados: {brokerSummary.invalidatedPeriods}</Text>}
-              <Text style={styles.infoText}>
-                Fim de semana: {brokerSummary?.weekendEligibility?.enabled === false ? 'Não habilitado neste plantão' : brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
+              <Text style={styles.brokerPeriodsTitle}>Minhas Roletas da Semana e Elegibilidade</Text>
+              <Text style={[styles.infoText, { color: '#6b7280', fontSize: 12, marginBottom: 8 }]}>
+                Contagem semanal (Segunda a Domingo) · Elegibilidade calculada por plantão
               </Text>
-              <Text style={styles.infoText}>Mínimo configurado por período: {brokerSummary?.minimumMinutesPerPeriod ?? 120} minutos</Text>
+              
+              <Text style={styles.infoText}>Total de Roletas cumpridas na semana: <Text style={{ fontWeight: '800' }}>{brokerSummary?.validPeriods ?? 0}</Text></Text>
+              {brokerSummary?.invalidatedPeriods > 0 && <Text style={styles.invalidPeriodText}>Roletas incompletas/invalidadas: {brokerSummary.invalidatedPeriods}</Text>}
+
+              {Array.isArray(brokerSummary?.boothsEligibility) && brokerSummary.boothsEligibility.length > 0 && (
+                <View style={{ marginTop: 10, gap: 8 }}>
+                  <Text style={[styles.infoText, { fontWeight: '700', color: '#1c1c1e', marginBottom: 2 }]}>Status por Plantão de Vendas:</Text>
+                  {brokerSummary.boothsEligibility.map((booth: any) => (
+                    <View key={booth.boothId} style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                      <Text style={{ fontWeight: '700', color: '#111827', fontSize: 14 }}>{booth.boothName}</Text>
+                      <Text style={{ fontSize: 13, color: '#374151', marginTop: 2 }}>
+                        Roletas cumpridas no plantão: <Text style={{ fontWeight: '700' }}>{booth.validRoletasThisWeek}</Text>
+                      </Text>
+                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                        <View style={{ backgroundColor: booth.saturdayEligible ? '#dcfce7' : '#fef3c7', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ color: booth.saturdayEligible ? '#15803d' : '#b45309', fontSize: 11, fontWeight: '700' }}>
+                            {booth.saturdayEligible ? '🟢 Sábado: Elegível' : `🟡 Sábado: Faltam ${booth.missingSaturday} (${booth.validRoletasThisWeek}/${booth.saturdayRequired})`}
+                          </Text>
+                        </View>
+                        <View style={{ backgroundColor: booth.sundayEligible ? '#dcfce7' : '#fef3c7', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ color: booth.sundayEligible ? '#15803d' : '#b45309', fontSize: 11, fontWeight: '700' }}>
+                            {booth.sundayEligible ? '🟢 Domingo: Elegível' : `🟡 Domingo: Faltam ${booth.missingSunday} (${booth.validRoletasThisWeek}/${booth.sundayRequired})`}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )}
             </View>
-            <BrokerMaterials primaryColor={primaryColor} onOpenMaterials={handleOpenMaterials} />
-            <PushSetupButton />
+
             <TouchableOpacity 
-              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 12 }]} 
+              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]} 
               onPress={() => setCurrentView('inbox')}
             >
               <View style={styles.buttonRow}>
@@ -327,13 +357,17 @@ export default function Dashboard() {
               </View>
             </TouchableOpacity>
 
+            <BrokerMaterials primaryColor={primaryColor} onOpenMaterials={handleOpenMaterials} />
+
+            <PushSetupButton />
+
             <TouchableOpacity 
-              style={[styles.logoutButton, { borderColor: primaryColor }]} 
+              style={[styles.logoutButton, { borderColor: primaryColor, width: '100%', maxWidth: 520 }]} 
               onPress={logout}
             >
               <Text style={[styles.logoutText, { color: primaryColor }]}>Encerrar Sessão (Sair)</Text>
             </TouchableOpacity>
-          </View>
+          </ScrollView>
         </View>
       );
     }
@@ -356,8 +390,89 @@ export default function Dashboard() {
           <Text style={styles.welcomeTitle}>Olá, {user?.nome_guerra}!</Text>
           <Text style={styles.welcomeSubtitle}>Você está ativo e em plantão de vendas.</Text>
 
+          {/* DESTAQUE DA POSIÇÃO NA ROLETA / PÓS-BARRA */}
+          <View style={[styles.card, { backgroundColor: '#1c1c1e', borderColor: '#333', borderWidth: 1 }]}>
+            {brokerSummary?.activeShift?.roletaPosition ? (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <Text style={{ color: '#facc15', fontSize: 13, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    {brokerSummary.activeShift.roletaName || 'Roleta Oficial'}
+                  </Text>
+                  <View style={{ backgroundColor: brokerSummary.activeShift.roletaEntryType === 'pos_barra' ? '#f59e0b' : '#15803d', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                    <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>
+                      {brokerSummary.activeShift.roletaEntryType === 'pos_barra' ? 'PÓS-BARRA' : 'SORTEADO NA ROLETA'}
+                    </Text>
+                  </View>
+                </View>
+                <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900', marginVertical: 4 }}>
+                  🎰 {brokerSummary.activeShift.roletaPosition}º Lugar na Fila
+                </Text>
+                <Text style={{ color: '#d1d5db', fontSize: 13, lineHeight: 18 }}>
+                  {brokerSummary.activeShift.roletaEntryType === 'pos_barra'
+                    ? 'Você entrou na tolerância Pós-Barra e foi alocado ao final da fila de atendimento e leads.'
+                    : 'Ordem oficial sorteada para atendimento presencial na recepção e distribuição de novos leads.'}
+                </Text>
+              </>
+            ) : brokerSummary?.activeShift?.waitingDraw ? (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+                  <Text style={{ color: '#60a5fa', fontSize: 13, fontWeight: '800' }}>⏳ AGUARDANDO SORTEIO DA ROLETA</Text>
+                </View>
+                <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', marginVertical: 4 }}>
+                  Check-in Pontual Confirmado!
+                </Text>
+                <Text style={{ color: '#9ca3af', fontSize: 13, lineHeight: 18 }}>
+                  O sorteio aleatório das posições da roleta ocorre automaticamente às 09:01 (ou 14:01). Você será notificado com sua posição!
+                </Text>
+              </>
+            ) : (
+              <>
+                <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>Turno Ativo no Plantão</Text>
+                <Text style={{ color: '#9ca3af', fontSize: 13 }}>Você está online e apto a receber clientes e leads.</Text>
+              </>
+            )}
+          </View>
+
+          {/* FILA DE ATENDIMENTO DO PLANTÃO AO VIVO */}
+          {Array.isArray(brokerSummary?.activeShift?.boothQueue) && brokerSummary.activeShift.boothQueue.length > 0 && (
+            <View style={styles.card}>
+              <Text style={styles.infoTitle}>Fila da Roleta no Plantão ({brokerSummary.activeShift.boothQueue.length})</Text>
+              <Text style={[styles.infoText, { color: '#6b7280', fontSize: 12, marginBottom: 8 }]}>
+                Ordem da roleta para recepção presencial e fila de leads CVCRM
+              </Text>
+              <View style={{ gap: 6, marginTop: 4 }}>
+                {brokerSummary.activeShift.boothQueue.map((item: any) => (
+                  <View 
+                    key={item.brokerId} 
+                    style={[
+                      { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderRadius: 8, borderWidth: 1 },
+                      item.isCurrentBroker 
+                        ? { backgroundColor: '#eff6ff', borderColor: '#3b82f6' } 
+                        : { backgroundColor: '#f9fafb', borderColor: '#e5e7eb' }
+                    ]}
+                  >
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <View style={{ backgroundColor: '#1c1c1e', width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}>
+                        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{item.roletaPosition || '—'}º</Text>
+                      </View>
+                      <View>
+                        <Text style={{ fontWeight: '700', color: '#111827', fontSize: 14 }}>
+                          {item.nomeGuerra} {item.isCurrentBroker && <Text style={{ color: '#2563eb', fontWeight: '800' }}>(Você)</Text>}
+                        </Text>
+                        <Text style={{ fontSize: 11, color: '#6b7280' }}>
+                          {item.roletaEntryType === 'pos_barra' ? 'Pós-Barra' : 'Sorteio Pontual'} · {item.minutesActive} min cumpridos
+                        </Text>
+                      </View>
+                    </View>
+                    <Text style={{ fontSize: 12, fontWeight: '700', color: '#15803d' }}>🟢 Online</Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+          )}
+
           <View style={styles.card}>
-            <Text style={styles.infoTitle}>Informações do Turno Atual</Text>
+            <Text style={styles.infoTitle}>Informações do Plantão</Text>
             <Text style={styles.infoText}>Status: 🟢 ONLINE (Apto a receber leads)</Text>
             <Text style={styles.infoText}>Plantão: {activeSession.boothName}</Text>
             <Text style={styles.infoText}>
@@ -366,15 +481,36 @@ export default function Dashboard() {
           </View>
 
           <View style={styles.brokerPeriodsCard}>
-            <Text style={styles.brokerPeriodsTitle}>Resumo dos seus períodos</Text>
-            <Text style={styles.infoText}>Períodos acumulados na semana: {brokerSummary?.accumulatedPeriods ?? '—'}</Text>
+            <Text style={styles.brokerPeriodsTitle}>Validação da Roleta em Tempo Real</Text>
+            <Text style={styles.infoText}>Roletas acumuladas na semana: {brokerSummary?.accumulatedPeriods ?? '—'}</Text>
             <Text style={styles.infoText}>
-              Tempo do turno atual: {brokerSummary?.activeShift ? `${brokerSummary.activeShift.activeMinutes} min / ${brokerSummary.activeShift.minimumMinutes} min` : '—'}
+              Tempo cumprido na Roleta: {brokerSummary?.activeShift ? `${brokerSummary.activeShift.activeMinutes} min / ${brokerSummary.activeShift.minimumMinutes} min` : '—'}
             </Text>
-            <Text style={styles.infoText}>
-              Fim de semana: {brokerSummary?.weekendEligibility?.enabled === false ? 'Não habilitado neste plantão' : brokerSummary?.weekendEligibility?.eligible ? 'Elegível' : brokerSummary ? `Faltam ${Math.max(0, brokerSummary.weekendEligibility.required - brokerSummary.weekendEligibility.accumulated)} período(s)` : '—'}
-            </Text>
-            {brokerSummary?.activeShift?.nextConfirmationAt ? <Text style={styles.infoText}>Próxima confirmação: {new Date(brokerSummary.activeShift.nextConfirmationAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} (+5 min de tolerância)</Text> : null}
+            
+            {Array.isArray(brokerSummary?.boothsEligibility) && brokerSummary.boothsEligibility.length > 0 && (
+              <View style={{ marginTop: 10, gap: 8 }}>
+                <Text style={[styles.infoText, { fontWeight: '700', color: '#1c1c1e', marginBottom: 2 }]}>Elegibilidade Fim de Semana por Plantão:</Text>
+                {brokerSummary.boothsEligibility.map((booth: any) => (
+                  <View key={booth.boothId} style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                    <Text style={{ fontWeight: '700', color: '#111827', fontSize: 13 }}>{booth.boothName} ({booth.validRoletasThisWeek} roletas)</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
+                      <View style={{ backgroundColor: booth.saturdayEligible ? '#dcfce7' : '#fef3c7', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ color: booth.saturdayEligible ? '#15803d' : '#b45309', fontSize: 11, fontWeight: '700' }}>
+                          {booth.saturdayEligible ? '🟢 Sábado: Elegível' : `🟡 Sáb: Faltam ${booth.missingSaturday}`}
+                        </Text>
+                      </View>
+                      <View style={{ backgroundColor: booth.sundayEligible ? '#dcfce7' : '#fef3c7', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ color: booth.sundayEligible ? '#15803d' : '#b45309', fontSize: 11, fontWeight: '700' }}>
+                          {booth.sundayEligible ? '🟢 Domingo: Elegível' : `🟡 Dom: Faltam ${booth.missingSunday}`}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {brokerSummary?.activeShift?.nextConfirmationAt ? <Text style={[styles.infoText, { marginTop: 8 }]}>Próxima confirmação de presença: {new Date(brokerSummary.activeShift.nextConfirmationAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} (+5 min de tolerância)</Text> : null}
           </View>
 
           <TouchableOpacity 
@@ -608,11 +744,11 @@ const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, just
   },
   card: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 520,
     backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 20,
-    marginBottom: 32,
+    marginBottom: 20,
     borderWidth: 1,
     borderColor: '#e5e5ea',
   },
@@ -630,7 +766,7 @@ const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, just
   },
   logoutButton: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 520,
     height: 50,
     borderWidth: 2,
     borderRadius: 8,
@@ -646,7 +782,7 @@ const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, just
   },
   checkoutButton: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 520,
     height: 50,
     borderRadius: 8,
     justifyContent: 'center',
@@ -688,7 +824,7 @@ const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, just
   },
   msgButton: {
     width: '100%',
-    maxWidth: 400,
+    maxWidth: 520,
     height: 50,
     borderWidth: 2,
     borderRadius: 8,

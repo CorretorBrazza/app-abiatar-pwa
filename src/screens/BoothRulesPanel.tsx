@@ -30,37 +30,27 @@ type Booth = {
 };
 type RuleSet = {
   version: number;
+  roleta_1_time: string | null;
+  roleta_2_time: string | null;
+  roleta_3_time: string | null;
+  roleta_weekend_time: string | null;
+  checkin_early_minutes: number;
+  pos_barra_minutes: number;
   minimum_period_minutes: number;
   period_weight: number;
+  minimum_monthly_periods: number;
   saturday_required_periods: number;
   sunday_required_periods: number;
-  opening_time: string | null;
-  closing_time: string | null;
-  checkin_tolerance_minutes: number;
-  checkout_tolerance_minutes: number;
+  weekend_enabled: boolean;
+  gps_radius_meters: number;
   ping_interval_minutes: number;
   ping_response_deadline_minutes: number;
   minimum_brokers_required: number;
-  gps_radius_meters: number;
-  weekend_enabled: boolean;
-  minimum_monthly_periods: number;
+  opening_time?: string | null;
+  closing_time?: string | null;
+  checkin_tolerance_minutes?: number;
+  checkout_tolerance_minutes?: number;
 };
-
-const fields: Array<{ key: keyof RuleSet; label: string; integer?: boolean }> = [
-  { key: 'minimum_period_minutes', label: 'Mínimo do período (minutos)', integer: true },
-  { key: 'period_weight', label: 'Peso do período', integer: true },
-  { key: 'saturday_required_periods', label: 'Períodos necessários no sábado', integer: true },
-  { key: 'sunday_required_periods', label: 'Períodos necessários no domingo', integer: true },
-  { key: 'opening_time', label: 'Abertura (HH:MM)' },
-  { key: 'closing_time', label: 'Fechamento (HH:MM)' },
-  { key: 'checkin_tolerance_minutes', label: 'Tolerância de entrada (minutos)', integer: true },
-  { key: 'checkout_tolerance_minutes', label: 'Tolerância de saída (minutos)', integer: true },
-  { key: 'ping_interval_minutes', label: 'Intervalo de confirmação (minutos)', integer: true },
-  { key: 'ping_response_deadline_minutes', label: 'Prazo de resposta (minutos)', integer: true },
-  { key: 'minimum_brokers_required', label: 'Corretores mínimos na cobertura', integer: true },
-  { key: 'gps_radius_meters', label: 'Raio GPS permitido (metros)', integer: true },
-  { key: 'minimum_monthly_periods', label: 'Meta mensal de períodos', integer: true },
-];
 
 export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
   const [booths, setBooths] = useState<Booth[]>([]);
@@ -103,7 +93,15 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
     setLoading(true);
     try {
       const response = await api.get(`/booths/${boothId}/rules`);
-      setRules(response.data);
+      setRules({
+        ...response.data,
+        roleta_1_time: response.data.roleta_1_time || '09:00',
+        roleta_2_time: response.data.roleta_2_time || '14:00',
+        roleta_3_time: response.data.roleta_3_time || '',
+        roleta_weekend_time: response.data.roleta_weekend_time || '09:00',
+        checkin_early_minutes: response.data.checkin_early_minutes ?? 30,
+        pos_barra_minutes: response.data.pos_barra_minutes ?? 30,
+      });
       setReason('');
     } catch (error) {
       Alert.alert('ABIATAR', 'Não foi possível carregar as regras deste plantão.');
@@ -121,10 +119,20 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
   }
 
   function startNewBooth() {
+    const fresh: Booth = {
+      id: '',
+      name: 'Novo Plantão de Vendas',
+      address: '',
+      latitude: '',
+      longitude: '',
+      gps_radius: 100,
+      min_brokers_required: 2,
+      lifecycle_status: 'draft',
+      wifis: [],
+    };
+    setSelectedBooth(fresh);
     setSelectedBoothId('');
     setRules(null);
-    setReason('');
-    setSelectedBooth({ id: '', name: '', address: '', latitude: '', longitude: '', gps_radius: 100, min_brokers_required: 2, manager_id: null, lifecycle_status: 'draft', wifis: [] });
   }
 
   async function saveBooth() {
@@ -184,26 +192,28 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
-        minimumPeriodMinutes: Number(rules.minimum_period_minutes),
-        periodWeight: Number(rules.period_weight),
-        saturdayRequiredPeriods: Number(rules.saturday_required_periods),
-        sundayRequiredPeriods: Number(rules.sunday_required_periods),
-        openingTime: rules.opening_time || null,
-        closingTime: rules.closing_time || null,
-        checkinToleranceMinutes: Number(rules.checkin_tolerance_minutes),
-        checkoutToleranceMinutes: Number(rules.checkout_tolerance_minutes),
-        pingIntervalMinutes: Number(rules.ping_interval_minutes),
-        pingResponseDeadlineMinutes: Number(rules.ping_response_deadline_minutes),
-        minimumBrokersRequired: Number(rules.minimum_brokers_required),
-        gpsRadiusMeters: Number(rules.gps_radius_meters),
-        weekendEnabled: rules.weekend_enabled,
-        minimumMonthlyPeriods: Number(rules.minimum_monthly_periods),
-        reason: reason.trim() || 'Ajuste operacional da Diretoria',
+        roleta1Time: rules.roleta_1_time || '09:00',
+        roleta2Time: rules.roleta_2_time || '14:00',
+        roleta3Time: rules.roleta_3_time || null,
+        roletaWeekendTime: rules.roleta_weekend_time || '09:00',
+        checkinEarlyMinutes: Number(rules.checkin_early_minutes ?? 30),
+        posBarraMinutes: Number(rules.pos_barra_minutes ?? 30),
+        minimumPeriodMinutes: Number(rules.minimum_period_minutes ?? 120),
+        minimumMonthlyPeriods: Number(rules.minimum_monthly_periods ?? 20),
+        saturdayRequiredPeriods: Number(rules.saturday_required_periods ?? 5),
+        sundayRequiredPeriods: Number(rules.sunday_required_periods ?? 6),
+        weekendEnabled: rules.weekend_enabled ?? true,
+        gpsRadiusMeters: Number(rules.gps_radius_meters ?? 100),
+        pingIntervalMinutes: Number(rules.ping_interval_minutes ?? 30),
+        pingResponseDeadlineMinutes: Number(rules.ping_response_deadline_minutes ?? 5),
+        minimumBrokersRequired: Number(rules.minimum_brokers_required ?? 2),
+        periodWeight: Number(rules.period_weight ?? 1),
+        reason: reason.trim() || 'Atualização das regras da Roleta pela Diretoria',
       };
       const response = await api.patch(`/booths/${selectedBoothId}/rules`, payload);
       setRules(response.data);
       setReason('');
-      Alert.alert('ABIATAR', 'Regras do plantão salvas. Nova versão registrada na auditoria.');
+      Alert.alert('ABIATAR', 'Regras da Roleta salvas com sucesso. Nova versão registrada na auditoria.');
     } catch (error: any) {
       Alert.alert('ABIATAR', error?.response?.data?.message || 'Não foi possível salvar as regras.');
     } finally {
@@ -220,73 +230,164 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
       <ScreenCode code="DR-02" />
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack}><Text style={styles.back}>‹ Voltar</Text></TouchableOpacity>
-        <Text style={styles.title}>Regras por Plantão</Text>
+        <Text style={styles.title}>Administrar Plantões e Roletas</Text>
       </View>
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator>
-        <Text style={styles.subtitle}>Configuração White Label do tenant</Text>
-        <Text style={styles.description}>Cada plantão possui regras próprias. Alterações geram uma nova versão e não modificam presenças já iniciadas.</Text>
+        <Text style={styles.subtitle}>Configuração Operacional dos Plantões</Text>
+        <Text style={styles.description}>Configure os horários de roleta, antecedência de check-in, janelas de pós-barra e metas de fim de semana por estande.</Text>
+        
         <View style={styles.boothToolbar}>
-          <Text style={styles.label}>Selecionar plantão</Text>
+          <Text style={styles.label}>Selecionar plantão de vendas:</Text>
           <TouchableOpacity style={styles.newBoothButton} onPress={startNewBooth}><Text style={styles.newBoothText}>+ Novo plantão</Text></TouchableOpacity>
         </View>
+
         <View style={styles.boothRow}>
           {booths.map((booth) => (
-              <TouchableOpacity key={booth.id} style={[styles.boothButton, selectedBoothId === booth.id && styles.boothButtonActive]} onPress={() => setSelectedBoothId(booth.id)}>
+            <TouchableOpacity key={booth.id} style={[styles.boothButton, selectedBoothId === booth.id && styles.boothButtonActive]} onPress={() => setSelectedBoothId(booth.id)}>
               <Text style={[styles.boothText, selectedBoothId === booth.id && styles.boothTextActive]}>{booth.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
+
         {selectedBooth && (
           <>
-            <Text style={styles.sectionTitle}>Cadastro-base do plantão</Text>
-            <Text style={styles.lifecycle}>Estado: {selectedBooth.lifecycle_status || 'draft'}</Text>
-            <View style={styles.effectiveCard}>
-              <Text style={styles.effectiveTitle}>Valores operacionais</Text>
-              <Text style={styles.effectiveText}>Raio cadastrado: {selectedBooth.base_gps_radius ?? selectedBooth.gps_radius ?? '—'} m</Text>
-              <Text style={styles.effectiveText}>Raio efetivo: {selectedBooth.effective_gps_radius ?? selectedBooth.gps_radius ?? '—'} m</Text>
-              <Text style={styles.effectiveText}>Cobertura cadastrada: {selectedBooth.base_min_brokers_required ?? selectedBooth.min_brokers_required ?? '—'}</Text>
-              <Text style={styles.effectiveText}>Cobertura efetiva: {selectedBooth.effective_min_brokers_required ?? selectedBooth.min_brokers_required ?? '—'}</Text>
-            </View>
-            {(['name', 'address', 'latitude', 'longitude', 'gps_radius', 'min_brokers_required', 'manager_id'] as Array<keyof Booth>).map((key) => (
-              <View key={String(key)} style={styles.field}>
-                <Text style={styles.label}>{({ name: 'Nome', address: 'Endereço', latitude: 'Latitude', longitude: 'Longitude', gps_radius: 'Raio GPS legado', min_brokers_required: 'Cobertura mínima legada', manager_id: 'ID do gerente responsável' } as Record<string, string>)[String(key)]}</Text>
-                <TextInput value={String(selectedBooth[key] ?? '')} onChangeText={(value) => updateBoothField(key, value)} style={styles.input} />
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>1. Cadastro-Base do Plantão</Text>
+              <Text style={styles.lifecycle}>Status de Operação: {selectedBooth.lifecycle_status || 'draft'}</Text>
+              
+              <View style={styles.field}>
+                <Text style={styles.label}>Nome do Empreendimento / Plantão</Text>
+                <TextInput value={String(selectedBooth.name || '')} onChangeText={(v) => updateBoothField('name', v)} style={styles.input} />
               </View>
-            ))}
-            <Text style={styles.label}>Redes Wi-Fi autorizadas (uma por linha)</Text>
-            <TextInput value={(selectedBooth.wifis || []).map((wifi) => wifi.ssid).join('\\n')} onChangeText={(value) => setSelectedBooth({ ...selectedBooth, wifis: value.split('\\n').map((ssid) => ({ ssid: ssid.trim() })).filter((wifi) => wifi.ssid) })} style={[styles.input, styles.reason]} multiline />
-            <TouchableOpacity style={styles.saveSecondary} onPress={saveBooth} disabled={savingBooth}>
-              {savingBooth ? <ActivityIndicator color="#1c1c1e" /> : <Text style={styles.saveSecondaryText}>{selectedBoothId ? 'Salvar cadastro-base' : 'Criar plantão como rascunho'}</Text>}
-            </TouchableOpacity>
-            <View style={styles.lifecycleRow}>
-              <TouchableOpacity style={styles.lifecycleButton} onPress={() => changeLifecycle('publish')}><Text style={styles.lifecycleButtonText}>Publicar</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.lifecycleButton} onPress={() => changeLifecycle('pause')}><Text style={styles.lifecycleButtonText}>Pausar</Text></TouchableOpacity>
-              <TouchableOpacity style={styles.lifecycleButton} onPress={() => changeLifecycle('archive')}><Text style={styles.lifecycleButtonText}>Arquivar</Text></TouchableOpacity>
-            </View>
-            {rules && <>
-            <Text style={styles.sectionTitle}>Regras operacionais versionadas</Text>
-            <Text style={styles.version}>Versão ativa: {rules.version}</Text>
-            {fields.map((field) => (
-              <View key={String(field.key)} style={styles.field}>
-                <Text style={styles.label}>{field.label}</Text>
-                <TextInput
-                  value={String(rules[field.key] ?? '')}
-                  onChangeText={(value) => updateField(field.key, value)}
-                  keyboardType={field.integer ? 'numeric' : 'default'}
-                  style={styles.input}
-                  placeholder={field.label}
-                />
+
+              <View style={styles.field}>
+                <Text style={styles.label}>Endereço do Plantão</Text>
+                <TextInput value={String(selectedBooth.address || '')} onChangeText={(v) => updateBoothField('address', v)} style={styles.input} />
               </View>
-            ))}
-            <TouchableOpacity style={styles.toggle} onPress={() => setRules({ ...rules, weekend_enabled: !rules.weekend_enabled })}>
-              <Text style={styles.toggleText}>Fim de semana: {rules.weekend_enabled ? 'ATIVO' : 'INATIVO'}</Text>
-            </TouchableOpacity>
-            <Text style={styles.label}>Motivo da alteração</Text>
-            <TextInput value={reason} onChangeText={setReason} style={[styles.input, styles.reason]} multiline placeholder="Informe o motivo para a auditoria" />
-            <TouchableOpacity style={styles.save} onPress={saveRules} disabled={saving}>
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Salvar nova versão</Text>}
-            </TouchableOpacity>
-            </>}
+
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.label}>Latitude</Text>
+                  <TextInput value={String(selectedBooth.latitude || '')} onChangeText={(v) => updateBoothField('latitude', v)} style={styles.input} />
+                </View>
+                <View style={[styles.field, { flex: 1 }]}>
+                  <Text style={styles.label}>Longitude</Text>
+                  <TextInput value={String(selectedBooth.longitude || '')} onChangeText={(v) => updateBoothField('longitude', v)} style={styles.input} />
+                </View>
+              </View>
+
+              <Text style={styles.label}>Redes Wi-Fi Autorizadas (uma por linha)</Text>
+              <TextInput value={(selectedBooth.wifis || []).map((wifi) => wifi.ssid).join('\n')} onChangeText={(value) => setSelectedBooth({ ...selectedBooth, wifis: value.split('\n').map((ssid) => ({ ssid: ssid.trim() })).filter((wifi) => wifi.ssid) })} style={[styles.input, styles.reason]} multiline placeholder="Ex: Wi-Fi_Plantao_01" />
+
+              <TouchableOpacity style={styles.saveSecondary} onPress={saveBooth} disabled={savingBooth}>
+                {savingBooth ? <ActivityIndicator color="#1c1c1e" /> : <Text style={styles.saveSecondaryText}>{selectedBoothId ? 'Salvar Dados do Plantão' : 'Criar Plantão como Rascunho'}</Text>}
+              </TouchableOpacity>
+
+              <View style={styles.lifecycleRow}>
+                <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#dcfce7' }]} onPress={() => changeLifecycle('publish')}><Text style={[styles.lifecycleButtonText, { color: '#15803d' }]}>Publicar Plantão</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#fef9c3' }]} onPress={() => changeLifecycle('pause')}><Text style={[styles.lifecycleButtonText, { color: '#a16207' }]}>Pausar</Text></TouchableOpacity>
+                <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#fee2e2' }]} onPress={() => changeLifecycle('archive')}><Text style={[styles.lifecycleButtonText, { color: '#b91c1c' }]}>Arquivar</Text></TouchableOpacity>
+              </View>
+            </View>
+
+            {rules && (
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>2. Grade de Horários das Roletas</Text>
+                <Text style={styles.version}>Versão das Regras: v{rules.version}</Text>
+
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Horário Roleta 1 (Manhã)</Text>
+                    <TextInput value={String(rules.roleta_1_time || '09:00')} onChangeText={(v) => updateField('roleta_1_time', v)} style={styles.input} placeholder="09:00" />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Horário Roleta 2 (Tarde)</Text>
+                    <TextInput value={String(rules.roleta_2_time || '14:00')} onChangeText={(v) => updateField('roleta_2_time', v)} style={styles.input} placeholder="14:00" />
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Roleta 3 (Noite/Shopping - Opcional)</Text>
+                    <TextInput value={String(rules.roleta_3_time || '')} onChangeText={(v) => updateField('roleta_3_time', v)} style={styles.input} placeholder="18:00 (opcional)" />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Roleta Fim de Semana / Feriado</Text>
+                    <TextInput value={String(rules.roleta_weekend_time || '09:00')} onChangeText={(v) => updateField('roleta_weekend_time', v)} style={styles.input} placeholder="09:00" />
+                  </View>
+                </View>
+
+                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>3. Janelas de Entrada e Pós-Barra</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Check-in Liberado (Minutos antes)</Text>
+                    <TextInput value={String(rules.checkin_early_minutes ?? 30)} onChangeText={(v) => updateField('checkin_early_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="30" />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Tolerância Pós-Barra (Minutos após)</Text>
+                    <TextInput value={String(rules.pos_barra_minutes ?? 30)} onChangeText={(v) => updateField('pos_barra_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="30" />
+                  </View>
+                </View>
+
+                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>4. Validação e Cômputo da Roleta</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Tempo Mínimo para Validar (Minutos)</Text>
+                    <TextInput value={String(rules.minimum_period_minutes ?? 120)} onChangeText={(v) => updateField('minimum_period_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="120" />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Meta Mensal de Roletas</Text>
+                    <TextInput value={String(rules.minimum_monthly_periods ?? 20)} onChangeText={(v) => updateField('minimum_monthly_periods', v)} keyboardType="numeric" style={styles.input} placeholder="20" />
+                  </View>
+                </View>
+
+                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>5. Elegibilidade para Fim de Semana</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Roletas para Sábado (Seg a Sex)</Text>
+                    <TextInput value={String(rules.saturday_required_periods ?? 5)} onChangeText={(v) => updateField('saturday_required_periods', v)} keyboardType="numeric" style={styles.input} placeholder="5" />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Roletas para Domingo (Seg a Sex)</Text>
+                    <TextInput value={String(rules.sunday_required_periods ?? 6)} onChangeText={(v) => updateField('sunday_required_periods', v)} keyboardType="numeric" style={styles.input} placeholder="6" />
+                  </View>
+                </View>
+
+                <TouchableOpacity style={[styles.toggle, { marginTop: 8 }]} onPress={() => setRules({ ...rules, weekend_enabled: !rules.weekend_enabled })}>
+                  <Text style={styles.toggleText}>Habilitar Roletas em Fins de Semana: {rules.weekend_enabled ? '🟢 ATIVADO' : '🔴 DESATIVADO'}</Text>
+                </TouchableOpacity>
+
+                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>6. Parâmetros de Segurança e Presença</Text>
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Raio GPS Permitido (Metros)</Text>
+                    <TextInput value={String(rules.gps_radius_meters ?? 100)} onChangeText={(v) => updateField('gps_radius_meters', v)} keyboardType="numeric" style={styles.input} placeholder="100" />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Confirmação Presença / Pings (Minutos)</Text>
+                    <TextInput value={String(rules.ping_interval_minutes ?? 30)} onChangeText={(v) => updateField('ping_interval_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="30" />
+                  </View>
+                </View>
+
+                <View style={{ flexDirection: 'row', gap: 12 }}>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Prazo de Resposta do Alerta (Minutos)</Text>
+                    <TextInput value={String(rules.ping_response_deadline_minutes ?? 5)} onChangeText={(v) => updateField('ping_response_deadline_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="5" />
+                  </View>
+                  <View style={[styles.field, { flex: 1 }]}>
+                    <Text style={styles.label}>Corretores Mínimos na Cobertura</Text>
+                    <TextInput value={String(rules.minimum_brokers_required ?? 2)} onChangeText={(v) => updateField('minimum_brokers_required', v)} keyboardType="numeric" style={styles.input} placeholder="2" />
+                  </View>
+                </View>
+
+                <Text style={[styles.label, { marginTop: 16 }]}>Motivo da Alteração das Regras (Auditoria)</Text>
+                <TextInput value={reason} onChangeText={setReason} style={[styles.input, styles.reason]} multiline placeholder="Informe o motivo para a trilha de auditoria" />
+
+                <TouchableOpacity style={styles.save} onPress={saveRules} disabled={saving}>
+                  {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Salvar Regras da Roleta (Nova Versão)</Text>}
+                </TouchableOpacity>
+              </View>
+            )}
           </>
         )}
         {!booths.length && <Text style={styles.empty}>Nenhum plantão cadastrado neste tenant.</Text>}
@@ -320,6 +421,14 @@ const styles = StyleSheet.create({
   effectiveText: { color: '#1e40af', marginBottom: 3 },
   version: { color: '#666', marginBottom: 12 },
   field: { marginBottom: 12 },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 20,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
   input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 16 },
   reason: { minHeight: 80, textAlignVertical: 'top' },
   toggle: { padding: 14, borderRadius: 8, backgroundColor: '#ececef', marginBottom: 16 },

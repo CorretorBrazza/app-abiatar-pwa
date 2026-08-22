@@ -60,13 +60,28 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
 
   useEffect(() => { void loadRecipients(); }, []);
 
-  const managers = useMemo(() => recipients.filter((item) => item.role === 'gerencia_level_2'), [recipients]);
-  const availableScopes = (Object.keys(labels) as Scope[]).filter((item) => !isManager || item === 'individual');
+  const managerScopeLabels: Record<string, string> = {
+    specific_team: 'Toda a minha equipe',
+    individual: 'Corretores específicos da equipe',
+  };
+
+  const availableScopes = useMemo(() => {
+    return isManager ? (['specific_team', 'individual'] as Scope[]) : (Object.keys(labels) as Scope[]);
+  }, [isManager]);
+
+  useEffect(() => {
+    if (isManager) {
+      setScope('specific_team');
+      if (user?.id) setTargetManagerId(user.id);
+    }
+  }, [isManager, user]);
+
   const filteredIndividualRecipients = useMemo(() => {
+    if (isManager) return recipients.filter((item) => item.manager_id === user?.id || item.id === user?.id);
     if (scope === 'individual') return recipients;
     if (scope === 'specific_team' && targetManagerId) return recipients.filter((item) => item.id === targetManagerId || item.manager_id === targetManagerId);
     return [];
-  }, [recipients, scope, targetManagerId]);
+  }, [recipients, scope, targetManagerId, isManager, user]);
 
   const toggleRecipient = (id: string) => setSelectedIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
 
@@ -74,16 +89,17 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
     setError(''); setSuccess('');
     if (!title.trim() || !content.trim()) { setError('Informe o título e o conteúdo da mensagem.'); return; }
     if (scope === 'individual' && selectedIds.length === 0) { setError('Selecione pelo menos um destinatário.'); return; }
-    if (scope === 'specific_team' && !targetManagerId) { setError('Selecione um Gerente.'); return; }
+    const effectiveTargetManagerId = isManager ? user?.id : (scope === 'specific_team' ? targetManagerId : undefined);
+    if (scope === 'specific_team' && !effectiveTargetManagerId) { setError('Selecione um Gerente.'); return; }
     try {
       setSending(true);
       const response = await api.post('/messages', {
         title: title.trim(), content: content.trim(), isUrgent: urgent, scope,
-        targetManagerId: scope === 'specific_team' ? targetManagerId : undefined,
+        targetManagerId: effectiveTargetManagerId,
         individualRecipientIds: scope === 'individual' ? selectedIds : undefined,
       });
       setSuccess(`${response.data.totalRecipients} destinatário(s) receberam o comunicado. O registro foi salvo no inbox.`);
-      setTitle(''); setContent(''); setSelectedIds([]); setTargetManagerId(''); setUrgent(false);
+      setTitle(''); setContent(''); setSelectedIds([]); if (!isManager) setTargetManagerId(''); setUrgent(false);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Não foi possível enviar o comunicado.');
     } finally { setSending(false); }
@@ -103,13 +119,13 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Destinatários</Text>
               {availableScopes.map((item) => (
-                <TouchableOpacity key={item} style={[styles.scopeButton, scope === item && { backgroundColor: primaryColor, borderColor: primaryColor }]} onPress={() => { setScope(item); setSelectedIds([]); setTargetManagerId(''); }}>
-                  <Text style={[styles.scopeText, scope === item && styles.selectedText]}>{labels[item]}</Text>
+                <TouchableOpacity key={item} style={[styles.scopeButton, scope === item && { backgroundColor: primaryColor, borderColor: primaryColor }]} onPress={() => { setScope(item); setSelectedIds([]); if (!isManager) setTargetManagerId(''); }}>
+                  <Text style={[styles.scopeText, scope === item && styles.selectedText]}>{isManager ? managerScopeLabels[item] : labels[item]}</Text>
                 </TouchableOpacity>
               ))}
-              {scope === 'specific_team' && <>
+              {scope === 'specific_team' && !isManager && <>
                 <Text style={styles.label}>Gerente da equipe</Text>
-                {managers.map((manager) => <TouchableOpacity key={manager.id} style={[styles.personButton, targetManagerId === manager.id && { borderColor: primaryColor, backgroundColor: '#eef5ff' }]} onPress={() => setTargetManagerId(manager.id)}><Text style={styles.personName}>{manager.nome_guerra || manager.name}</Text><Text style={styles.personMeta}>Gerente</Text></TouchableOpacity>)}
+                {recipients.filter((item) => item.role === 'gerencia_level_2').map((manager) => <TouchableOpacity key={manager.id} style={[styles.personButton, targetManagerId === manager.id && { borderColor: primaryColor, backgroundColor: '#eef5ff' }]} onPress={() => setTargetManagerId(manager.id)}><Text style={styles.personName}>{manager.nome_guerra || manager.name}</Text><Text style={styles.personMeta}>Gerente</Text></TouchableOpacity>)}
               </>}
               {scope === 'individual' && <>
                 <Text style={styles.label}>Selecione uma ou mais pessoas</Text>

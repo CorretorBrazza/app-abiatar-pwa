@@ -1,5 +1,5 @@
 // src/screens/ManagerPanel.tsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -16,6 +16,17 @@ import api from '../services/api';
 import ScreenCode from '../components/ScreenCode';
 import BrokerManagementPanel from './BrokerManagementPanel';
 
+interface BrokerItem {
+  id: string;
+  name: string;
+  nome_guerra: string;
+  email: string;
+  creci?: string;
+  status: string;
+  manager_id?: string | null;
+  carencia_ends_at?: string | null;
+}
+
 interface PendingBroker {
   id: string;
   name: string;
@@ -24,15 +35,6 @@ interface PendingBroker {
   creci: string;
 }
 
-interface TeamMember {
-  id: string;
-  name: string;
-  nome_guerra: string;
-  status: string;
-  carencia_ends_at: string | null;
-}
-
-// Interface de tipagem estrita para a fila de leads em tempo real
 interface LeadsQueueItem {
   brokerId: string;
   nomeGuerra: string;
@@ -40,7 +42,18 @@ interface LeadsQueueItem {
   statusPresenca: string;
   statusCarencia: string;
   isHabilitado: string;
+  roletaPosition?: number | null;
+  roletaEntryType?: string | null;
+  minutesActive?: number;
+  minimumRequiredMinutes?: number;
   dataAtualizacao: string;
+}
+
+interface ManagerItem {
+  id: string;
+  nome_guerra: string;
+  name: string;
+  email?: string;
 }
 
 interface ManagerPanelProps {
@@ -49,49 +62,69 @@ interface ManagerPanelProps {
 
 export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const { user, tenant } = useAuth();
+  const [allBrokers, setAllBrokers] = useState<BrokerItem[]>([]);
   const [pending, setPending] = useState<PendingBroker[]>([]);
-  const [team, setTeam] = useState<TeamMember[]>([]);
-  const [leadsQueue, setLeadsQueue] = useState<LeadsQueueItem[]>([]); // <-- ADICIONADO ESTADO DA FILA
+  const [team, setTeam] = useState<BrokerItem[]>([]);
+  const [leadsQueue, setLeadsQueue] = useState<LeadsQueueItem[]>([]);
+  const [managers, setManagers] = useState<ManagerItem[]>([]);
+  const [boothsCount, setBoothsCount] = useState(0);
+  
   const [loading, setLoading] = useState(true);
   const [generatingLink, setGeneratingLink] = useState(false);
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState('');
   const [inviteRole, setInviteRole] = useState<'gerencia_level_2' | 'corretor_level_3'>('corretor_level_3');
-  const [managers, setManagers] = useState<Array<{ id: string; nome_guerra: string; name: string }>>([]);
   const [selectedManagerId, setSelectedManagerId] = useState('');
   const [error, setError] = useState('');
   const [selectedBrokerId, setSelectedBrokerId] = useState<string | null>(null);
-  const [teamPage, setTeamPage] = useState(1);
-  const [teamSearch, setTeamSearch] = useState('');
-  const [teamStatus, setTeamStatus] = useState('');
-  const [teamMeta, setTeamMeta] = useState({ page: 1, pageSize: 25, total: 0, totalPages: 1 });
+
+  // Estados exclusivos do modo Diretoria (Hierárquico / Drill-Down)
+  const [globalSearch, setGlobalSearch] = useState('');
+  const [expandedManagers, setExpandedManagers] = useState<Record<string, boolean>>({});
+  const [teamEligibility, setTeamEligibility] = useState<any | null>(null);
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const managerId = user?.id || '';
-  const isDirector = user?.role === 'diretoria_level_1';
-  const pageSize = Number((tenant as any)?.settings?.pagination?.managementPageSize) || 25;
+  const isDirector = user?.role === 'diretoria_level_1' || user?.role === 'platform_admin_level_0';
 
-  // 1. Efeito Inicial: Carrega todas as filas e a distribuição de leads ao vivo em paralelo
   const loadData = async () => {
     try {
       setError('');
-      const requests: Promise<any>[] = [
-        user?.role === 'gerencia_level_2' ? api.get(`/users/pending/${managerId}`) : Promise.resolve({ data: [] }),
-        isDirector ? api.get('/users/active-brokers', { params: { page: teamPage, pageSize, search: teamSearch || undefined, status: teamStatus || undefined } }) : api.get(`/users/team/${managerId}`, { params: { page: teamPage, pageSize, search: teamSearch || undefined, status: teamStatus || undefined } }),
-        api.get('/users/leads-queue'),
-      ];
-      if (user?.role === 'diretoria_level_1') requests.push(api.get('/users/managers/active'));
-      const [pendingRes, teamRes, queueRes, managersRes] = await Promise.all(requests);
-      setPending(Array.isArray(pendingRes.data) ? pendingRes.data : (pendingRes.data?.data || []));
-      setTeam(Array.isArray(teamRes.data) ? teamRes.data : (teamRes.data?.data || []));
-      if (teamRes.data?.totalPages) setTeamMeta(teamRes.data);
-      setLeadsQueue(queueRes.data.queue);
-      if (managersRes) {
-        setManagers(Array.isArray(managersRes.data) ? managersRes.data : []);
-        if (!selectedManagerId && managersRes.data?.[0]) setSelectedManagerId(managersRes.data[0].id);
+      if (isDirector) {
+        // Modo Diretoria: busca Gerentes, todos os Corretores e Plantões
+        const [managersRes, brokersRes, boothsRes] = await Promise.all([
+          api.get('/users/managers/active'),
+          api.get('/users/active-brokers', { params: { pageSize: 500 } }),
+          api.get('/booths'),
+        ]);
+
+        const managersData = Array.isArray(managersRes.data) ? managersRes.data : [];
+        const brokersData = Array.isArray(brokersRes.data) ? brokersRes.data : (brokersRes.data?.data || []);
+        const boothsData = Array.isArray(boothsRes.data) ? boothsRes.data : [];
+
+        setManagers(managersData);
+        setAllBrokers(brokersData);
+        setBoothsCount(boothsData.length);
+
+        if (!selectedManagerId && managersData[0]) {
+          setSelectedManagerId(managersData[0].id);
+        }
+      } else {
+        // Modo Gerente: busca pendentes, time próprio, fila de leads e elegibilidade da equipe
+        const [pendingRes, teamRes, queueRes, eligibilityRes] = await Promise.all([
+          api.get(`/users/pending/${managerId}`),
+          api.get(`/users/team/${managerId}`, { params: { pageSize: 200 } }),
+          api.get('/users/leads-queue'),
+          api.get('/presences/team-eligibility').catch(() => ({ data: null })),
+        ]);
+
+        setPending(Array.isArray(pendingRes.data) ? pendingRes.data : (pendingRes.data?.data || []));
+        setTeam(Array.isArray(teamRes.data) ? teamRes.data : (teamRes.data?.data || []));
+        setLeadsQueue(queueRes.data.queue || []);
+        if (eligibilityRes?.data) setTeamEligibility(eligibilityRes.data);
       }
     } catch (err: any) {
-      setError('Falha ao carregar os dados de gestão do time.');
+      setError('Falha ao carregar os dados operacionais.');
     } finally {
       setLoading(false);
     }
@@ -99,21 +132,23 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
 
   useEffect(() => {
     loadData();
-  }, [managerId, teamPage, teamSearch, teamStatus]);
+  }, [managerId, isDirector]);
 
-  // 2. Método para o Gerente gerar um novo link de convite único
   const handleGenerateLink = async () => {
     try {
       setGeneratingLink(true);
-      if (user?.role === 'diretoria_level_1' && inviteRole === 'corretor_level_3' && !selectedManagerId) {
+      if (isDirector && inviteRole === 'corretor_level_3' && !selectedManagerId) {
         alert('Selecione um Gerente responsável antes de convidar um Corretor.');
         return;
       }
       const response = await api.post('/users/onboarding-link', {
         invitedRole: inviteRole,
-        managerId: user?.role === 'gerencia_level_2' ? managerId : (inviteRole === 'corretor_level_3' ? selectedManagerId : undefined),
+        managerId: isDirector ? (inviteRole === 'corretor_level_3' ? selectedManagerId : undefined) : managerId,
       });
-      setInviteLink(response.data.onboarding_url);
+      const token = response.data.token;
+      const origin = (Platform.OS === 'web' && typeof window !== 'undefined' && window.location.origin) ? window.location.origin : 'https://abiatar.bitimob.com.br';
+      const formattedUrl = token ? `${origin}/cadastro/${token}` : response.data.onboarding_url;
+      setInviteLink(formattedUrl);
     } catch (err: any) {
       alert('Falha ao gerar link de convite.');
     } finally {
@@ -121,38 +156,31 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
     }
   };
 
-  // Copia o link de onboarding gerado
   const handleCopyLink = async () => {
     if (!inviteLink) return;
-
     if (Platform.OS === 'web') {
       await navigator.clipboard.writeText(inviteLink);
-      alert('Link de convite copiado! Cole no WhatsApp do corretor.');
+      alert('Link de convite copiado para a área de transferência!');
     } else {
       alert(`Copie o link: ${inviteLink}`);
     }
   };
 
-  // Copia o Nome de Guerra do corretor habilitado com um clique para facilitar a distribuição
   const handleCopyBrokerName = async (nomeGuerra: string) => {
     if (Platform.OS === 'web') {
       await navigator.clipboard.writeText(nomeGuerra);
-      alert(`Nome "${nomeGuerra}" copiado com sucesso para a área de transferência!`);
+      alert(`Nome "${nomeGuerra}" copiado com sucesso!`);
     } else {
       alert(`Corretor: ${nomeGuerra}`);
     }
   };
 
-  // 3. Método para Aprovar o Corretor definindo a Carência (A: 7 dias, B: 15 dias, C: 30 dias)
   const handleApprove = async (brokerId: string, days: number) => {
     try {
       setApprovingId(brokerId);
-      await api.patch(`/users/${brokerId}/approve`, {
-        carenciaDays: days,
-      });
-
+      await api.patch(`/users/${brokerId}/approve`, { carenciaDays: days });
       alert('Corretor aprovado e ativado com sucesso!');
-      loadData(); // Recarrega todas as informações atualizadas
+      loadData();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Falha ao aprovar corretor.');
     } finally {
@@ -160,11 +188,46 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
     }
   };
 
+  const toggleManagerAccordion = (mId: string) => {
+    setExpandedManagers((prev) => ({ ...prev, [mId]: !prev[mId] }));
+  };
+
+  // Agrupamento de corretores por gerente para o Diretor
+  const brokersByManager = useMemo(() => {
+    const map: Record<string, BrokerItem[]> = {};
+    managers.forEach((m) => { map[m.id] = []; });
+    map['unassigned'] = [];
+
+    allBrokers.forEach((broker) => {
+      if (broker.manager_id && map[broker.manager_id]) {
+        map[broker.manager_id].push(broker);
+      } else {
+        map['unassigned'].push(broker);
+      }
+    });
+    return map;
+  }, [allBrokers, managers]);
+
+  // Busca global instantânea de corretor
+  const searchFilteredBrokers = useMemo(() => {
+    const q = globalSearch.trim().toLowerCase();
+    if (!q) return [];
+    return allBrokers.filter((b) => 
+      b.name.toLowerCase().includes(q) ||
+      b.nome_guerra.toLowerCase().includes(q) ||
+      b.email.toLowerCase().includes(q) ||
+      (b.creci && b.creci.toLowerCase().includes(q))
+    );
+  }, [allBrokers, globalSearch]);
+
+  const totalActiveBrokers = useMemo(() => allBrokers.filter((b) => b.status === 'active').length, [allBrokers]);
+  const totalGraceBrokers = useMemo(() => allBrokers.filter((b) => b.status === 'grace_period').length, [allBrokers]);
+
   if (loading) {
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={primaryColor} />
-        <Text style={styles.loadingText}>Carregando painel do time...</Text>
+        <Text style={styles.loadingText}>Carregando estrutura de corretores...</Text>
       </View>
     );
   }
@@ -179,188 +242,426 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
         onSaved={() => { void loadData(); }}
       />
       <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      <ScreenCode code="GE-02" />
-      <TouchableOpacity style={styles.backHeader} onPress={onBack}>
-        <Text style={[styles.backHeaderText, { color: primaryColor }]}>← Voltar ao Painel</Text>
-      </TouchableOpacity>
+        <ScreenCode code={isDirector ? 'DR-01' : 'GE-02'} />
+        <TouchableOpacity style={styles.backHeader} onPress={onBack}>
+          <Text style={[styles.backHeaderText, { color: primaryColor }]}>← Voltar ao Dashboard</Text>
+        </TouchableOpacity>
 
-      <Text style={styles.title}>Gestão de Corretores</Text>
-      <Text style={styles.subtitle}>Gerencie convites, cadastros, aprovações e distribuição de leads</Text>
+        <Text style={styles.title}>{isDirector ? 'Gestão Executiva de Corretores' : 'Gestão de Corretores'}</Text>
+        <Text style={styles.subtitle}>
+          {isDirector 
+            ? 'Visão hierárquica por equipe de gerência, busca rápida e ações operacionais' 
+            : 'Gerencie convites, aprovações de cadastro e distribuição de leads da sua equipe'}
+        </Text>
 
-      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+        {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-      {/* SEÇÃO A: GERAR CONVITES DE CADASTRO */}
-      <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>{user?.role === 'diretoria_level_1' ? 'Convites Hierárquicos' : 'Convide Novos Corretores'}</Text>
-        <Text style={styles.sectionDesc}>Gere um link temporário único. O aceite será vinculado automaticamente à hierarquia correta.</Text>
-        {user?.role === 'diretoria_level_1' && (
-          <>
-            <Text style={styles.actionLabel}>Tipo de convite</Text>
-            <View style={styles.buttonGroup}>
-              <TouchableOpacity style={[styles.roleButton, inviteRole === 'gerencia_level_2' && styles.roleButtonActive]} onPress={() => setInviteRole('gerencia_level_2')}><Text style={inviteRole === 'gerencia_level_2' ? styles.roleButtonTextActive : styles.roleButtonText}>Gerente</Text></TouchableOpacity>
-              <TouchableOpacity style={[styles.roleButton, inviteRole === 'corretor_level_3' && styles.roleButtonActive]} onPress={() => setInviteRole('corretor_level_3')}><Text style={inviteRole === 'corretor_level_3' ? styles.roleButtonTextActive : styles.roleButtonText}>Corretor</Text></TouchableOpacity>
+        {/* MODO DIRETORIA: CARDS DE KPI DE ALTO NÍVEL */}
+        {isDirector && (
+          <View style={styles.kpiContainer}>
+            <View style={styles.kpiCard}>
+              <Text style={styles.kpiValue}>{allBrokers.length}</Text>
+              <Text style={styles.kpiLabel}>Total Corretores</Text>
+              <Text style={styles.kpiSub}>({totalActiveBrokers} ativos · {totalGraceBrokers} carência)</Text>
             </View>
-            {inviteRole === 'corretor_level_3' && (
-              <>
-                <Text style={styles.actionLabel}>Gerente responsável obrigatório</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.managerPicker}>
-                  {managers.map((manager) => (
-                    <TouchableOpacity key={manager.id} style={[styles.managerButton, selectedManagerId === manager.id && styles.managerButtonActive]} onPress={() => setSelectedManagerId(manager.id)}>
-                      <Text style={selectedManagerId === manager.id ? styles.managerButtonTextActive : styles.managerButtonText}>{manager.nome_guerra || manager.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                {!managers.length && <Text style={styles.emptyText}>Nenhum gerente ativo disponível.</Text>}
-              </>
-            )}
-          </>
-        )}
-        
-        {inviteLink ? (
-          <View style={styles.linkContainer}>
-            <Text style={styles.linkLabel} numberOfLines={1}>{inviteLink}</Text>
-            <TouchableOpacity 
-              style={[styles.copyButton, { backgroundColor: primaryColor }]} 
-              onPress={handleCopyLink}
-            >
-              <Text style={styles.copyButtonText}>Copiar Link</Text>
-            </TouchableOpacity>
+            <View style={styles.kpiCard}>
+              <Text style={styles.kpiValue}>{managers.length}</Text>
+              <Text style={styles.kpiLabel}>Gerências</Text>
+              <Text style={styles.kpiSub}>Equipes ativas</Text>
+            </View>
+            <View style={styles.kpiCard}>
+              <Text style={styles.kpiValue}>{boothsCount}</Text>
+              <Text style={styles.kpiLabel}>Plantões</Text>
+              <Text style={styles.kpiSub}>Estandes de venda</Text>
+            </View>
           </View>
-        ) : (
-          <TouchableOpacity 
-            style={[styles.generateButton, { backgroundColor: primaryColor }]} 
-            onPress={handleGenerateLink}
-            disabled={generatingLink}
-          >
-            {generatingLink ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.generateButtonText}>Gerar Novo Link de Cadastro</Text>
-            )}
-          </TouchableOpacity>
         )}
-      </View>
 
-      {/* NOVA SEÇÃO B: FILA DE DISTRIBUIÇÃO DE LEADS AO VIVO (REAL-TIME) */}
-      <Text style={styles.subHeader}>Fila de Leads Ativa (Tempo Real)</Text>
-      <FlatList
-        data={leadsQueue}
-        keyExtractor={(item) => item.brokerId}
-        style={styles.list}
-        scrollEnabled={false}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>Nenhum corretor cadastrado no sistema.</Text>
-        }
-        renderItem={({ item }) => {
-          const isHabilitado = item.isHabilitado.includes('HABILITADO');
-          return (
-            <View style={[styles.queueCard, isHabilitado ? { borderColor: '#34c759', borderWidth: 1 } : null]}>
-              <View style={styles.queueInfo}>
-                <Text style={styles.queueName}>{item.nomeGuerra}</Text>
-                <Text style={styles.queueSub}>Gerente: {item.managerName}</Text>
-                <Text style={styles.queueSub}>Presença: {item.statusPresenca}</Text>
-                <Text style={styles.queueSub}>Carência: {item.statusCarencia}</Text>
+        {/* SEÇÃO: GERAR CONVITES DE CADASTRO */}
+        <View style={styles.sectionCard}>
+          <Text style={styles.sectionTitle}>{isDirector ? 'Gerar Convite de Acesso' : 'Convide Novos Corretores'}</Text>
+          <Text style={styles.sectionDesc}>Gere links de convite únicos vinculados automaticamente à hierarquia.</Text>
+          {isDirector && (
+            <>
+              <Text style={styles.actionLabel}>Tipo de convite</Text>
+              <View style={styles.buttonGroup}>
+                <TouchableOpacity style={[styles.roleButton, inviteRole === 'gerencia_level_2' && styles.roleButtonActive]} onPress={() => setInviteRole('gerencia_level_2')}>
+                  <Text style={inviteRole === 'gerencia_level_2' ? styles.roleButtonTextActive : styles.roleButtonText}>Gerente</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.roleButton, inviteRole === 'corretor_level_3' && styles.roleButtonActive]} onPress={() => setInviteRole('corretor_level_3')}>
+                  <Text style={inviteRole === 'corretor_level_3' ? styles.roleButtonTextActive : styles.roleButtonText}>Corretor</Text>
+                </TouchableOpacity>
               </View>
-
-              <View style={styles.queueAction}>
-                <Text style={[styles.statusBadge, { color: isHabilitado ? '#34c759' : '#ff3b30' }]}>
-                  {item.isHabilitado}
-                </Text>
-                {isHabilitado && (
-                  <TouchableOpacity 
-                    style={[styles.copyNameBtn, { backgroundColor: primaryColor }]}
-                    onPress={() => handleCopyBrokerName(item.nomeGuerra)}
-                  >
-                    <Text style={styles.copyNameBtnText}>Copiar Nome</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-          );
-        }}
-      />
-
-      {!isDirector && <>
-        {/* SEÇÃO C: FILA DE APROVAÇÕES PENDENTES */}
-        <Text style={styles.subHeader}>Aprovações Pendentes ({pending.length})</Text>
-        <FlatList
-          data={pending}
-          keyExtractor={(item) => item.id}
-          style={styles.list}
-          scrollEnabled={false}
-          ListEmptyComponent={
-            <Text style={styles.emptyText}>Nenhum corretor aguardando aprovação.</Text>
-          }
-          renderItem={({ item }) => (
-            <TouchableOpacity style={styles.brokerCard} activeOpacity={0.8} onPress={() => setSelectedBrokerId(item.id)}>
-              <View style={styles.brokerInfo}>
-                <Text style={styles.brokerName}>{item.name}</Text>
-                <Text style={styles.brokerSub}>Nome de Guerra: {item.nome_guerra}</Text>
-                <Text style={styles.brokerSub}>E-mail: {item.email}</Text>
-                <Text style={styles.brokerSub}>CRECI: {item.creci}</Text>
-              </View>
-
-              {approvingId === item.id ? (
-                <ActivityIndicator color={primaryColor} />
-              ) : (
-                <View style={styles.actionContainer}>
-                  <Text style={styles.actionLabel}>Aprovar Corretor:</Text>
-                  <View style={styles.buttonGroup}>
-                    <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#15803d' }]} onPress={() => handleApprove(item.id, 0)}>
-                      <Text style={styles.approveBtnText}>Sem carência</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#34c759' }]} onPress={() => handleApprove(item.id, 7)}>
-                      <Text style={styles.approveBtnText}>7 Dias</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#ff9500' }]} onPress={() => handleApprove(item.id, 15)}>
-                      <Text style={styles.approveBtnText}>15 Dias</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#ff3b30' }]} onPress={() => handleApprove(item.id, 30)}>
-                      <Text style={styles.approveBtnText}>30 Dias</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
+              {inviteRole === 'corretor_level_3' && (
+                <>
+                  <Text style={styles.actionLabel}>Vincular ao Gerente responsável:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.managerPicker}>
+                    {managers.map((manager) => (
+                      <TouchableOpacity key={manager.id} style={[styles.managerButton, selectedManagerId === manager.id && styles.managerButtonActive]} onPress={() => setSelectedManagerId(manager.id)}>
+                        <Text style={selectedManagerId === manager.id ? styles.managerButtonTextActive : styles.managerButtonText}>{manager.nome_guerra || manager.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  {!managers.length && <Text style={styles.emptyText}>Nenhum gerente ativo disponível.</Text>}
+                </>
               )}
+            </>
+          )}
+          
+          {inviteLink ? (
+            <View style={styles.linkContainer}>
+              <Text style={styles.linkLabel} numberOfLines={1}>{inviteLink}</Text>
+              <TouchableOpacity style={[styles.copyButton, { backgroundColor: primaryColor }]} onPress={handleCopyLink}>
+                <Text style={styles.copyButtonText}>Copiar Link</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity style={[styles.generateButton, { backgroundColor: primaryColor }]} onPress={handleGenerateLink} disabled={generatingLink}>
+              {generatingLink ? <ActivityIndicator color="#FFF" /> : <Text style={styles.generateButtonText}>Gerar Link de Cadastro</Text>}
             </TouchableOpacity>
           )}
-        />
-      </>}
-
-      {/* SEÇÃO D: FILA DE EQUIPE ATIVA ATUAL */}
-      <Text style={styles.subHeader}>Time Ativo e em Carência ({teamMeta.total || team.length})</Text>
-      <View style={styles.scalableControls}>
-        <TextInput value={teamSearch} onChangeText={(value) => { setTeamPage(1); setTeamSearch(value); }} placeholder="Buscar por nome, nome de guerra ou e-mail" style={styles.searchInput} />
-        <View style={styles.filterRow}>
-          {['', 'active', 'grace_period'].map((status) => <TouchableOpacity key={status || 'all'} style={[styles.filterButton, teamStatus === status && { backgroundColor: primaryColor }]} onPress={() => { setTeamPage(1); setTeamStatus(status); }}><Text style={teamStatus === status ? styles.filterTextActive : styles.filterText}>{status === '' ? 'Todos' : status === 'active' ? 'Ativos' : 'Em carência'}</Text></TouchableOpacity>)}
         </View>
-      </View>
-      <FlatList
-        data={team}
-        keyExtractor={(item) => item.id}
-        style={styles.list}
-        scrollEnabled={false}
-        ListEmptyComponent={
-          <Text style={styles.emptyText}>Sua equipe de vendas está vazia no momento.</Text>
-        }
-        renderItem={({ item }) => {
-          const isGrace = item.status === 'grace_period';
-          return (
-            <TouchableOpacity style={styles.teamCard} activeOpacity={0.8} onPress={() => setSelectedBrokerId(item.id)}>
-              <View>
-                <Text style={styles.teamName}>{item.name} ({item.nome_guerra})</Text>
-                {isGrace && item.carencia_ends_at ? (
-                  <Text style={styles.carenciaLabel}>
-                    Carência ativa até: {new Date(item.carencia_ends_at).toLocaleDateString('pt-BR')}
-                  </Text>
-                ) : (
-                  <Text style={styles.activeLabel}>🟢 Liberado no CVCRM (Recebendo Leads)</Text>
+
+        {/* MODO DIRETORIA: BUSCA GLOBAL + GUARDA-CHUVAS DE GERÊNCIA */}
+        {isDirector && (
+          <View style={styles.directorSection}>
+            <Text style={styles.subHeader}>Busca Global de Corretor</Text>
+            <TextInput
+              style={styles.globalSearchInput}
+              placeholder="🔍 Digite Nome, Nome de Guerra ou CRECI..."
+              value={globalSearch}
+              onChangeText={setGlobalSearch}
+            />
+
+            {/* SE HOUVER BUSCA ATIVA, MOSTRA OS RESULTADOS DIRETOS */}
+            {globalSearch.trim().length > 0 ? (
+              <View style={styles.searchResultsBox}>
+                <Text style={styles.searchResultsCount}>
+                  {searchFilteredBrokers.length} corretor(es) encontrado(s):
+                </Text>
+                {searchFilteredBrokers.map((broker) => {
+                  const mgr = managers.find((m) => m.id === broker.manager_id);
+                  const isGrace = broker.status === 'grace_period';
+                  return (
+                    <TouchableOpacity 
+                      key={broker.id} 
+                      style={styles.searchResultCard}
+                      onPress={() => setSelectedBrokerId(broker.id)}
+                    >
+                      <View style={styles.brokerMainInfo}>
+                        <Text style={styles.brokerTitle}>
+                          {broker.nome_guerra} <Text style={styles.brokerRealName}>({broker.name})</Text>
+                        </Text>
+                        <Text style={styles.brokerMeta}>
+                          Gerente: <Text style={styles.boldText}>{mgr?.nome_guerra || mgr?.name || 'Não vinculado'}</Text> · CRECI: {broker.creci || '—'}
+                        </Text>
+                      </View>
+                      <View style={styles.brokerRightBadge}>
+                        <Text style={[styles.statusTag, isGrace ? styles.statusGrace : styles.statusActive]}>
+                          {isGrace ? 'Carência' : 'Ativo'}
+                        </Text>
+                        <Text style={styles.actionPromptText}>Abrir Card →</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+                {searchFilteredBrokers.length === 0 && (
+                  <Text style={styles.emptyText}>Nenhum corretor encontrado com este termo.</Text>
                 )}
               </View>
-            </TouchableOpacity>
-          );
-        }}
-      />
-      {teamMeta.totalPages > 1 && <View style={styles.pagination}><TouchableOpacity disabled={teamPage <= 1} onPress={() => setTeamPage((value) => Math.max(1, value - 1))}><Text style={[styles.pageButton, teamPage <= 1 && styles.pageDisabled]}>← Anterior</Text></TouchableOpacity><Text style={styles.pageLabel}>Página {teamPage} de {teamMeta.totalPages}</Text><TouchableOpacity disabled={teamPage >= teamMeta.totalPages} onPress={() => setTeamPage((value) => Math.min(teamMeta.totalPages, value + 1))}><Text style={[styles.pageButton, teamPage >= teamMeta.totalPages && styles.pageDisabled]}>Próxima →</Text></TouchableOpacity></View>}
+            ) : (
+              /* SE NÃO HOUVER BUSCA, EXIBE O AGRUPAMENTO HIERÁRQUICO POR GERÊNCIA */
+              <View style={styles.managerListSection}>
+                <Text style={styles.subHeader}>Equipes por Gerência ({managers.length})</Text>
+                <Text style={styles.sectionDescHeader}>Clique na equipe para expandir e gerenciar os corretores vinculados.</Text>
+
+                {managers.map((mgr) => {
+                  const teamMembers = brokersByManager[mgr.id] || [];
+                  const activeCount = teamMembers.filter((b) => b.status === 'active').length;
+                  const graceCount = teamMembers.filter((b) => b.status === 'grace_period').length;
+                  const isExpanded = Boolean(expandedManagers[mgr.id]);
+
+                  return (
+                    <View key={mgr.id} style={styles.managerAccordionCard}>
+                      <TouchableOpacity 
+                        style={styles.managerAccordionHeader}
+                        onPress={() => toggleManagerAccordion(mgr.id)}
+                        activeOpacity={0.7}
+                      >
+                        <View style={styles.managerHeaderInfo}>
+                          <Text style={styles.managerNameGuerra}>👔 {mgr.nome_guerra || mgr.name}</Text>
+                          <Text style={styles.managerEmail}>{mgr.email || mgr.name}</Text>
+                        </View>
+                        <View style={styles.managerHeaderStats}>
+                          <View style={styles.teamCountBadge}>
+                            <Text style={styles.teamCountText}>{teamMembers.length} corretores</Text>
+                          </View>
+                          <Text style={styles.accordionToggleIcon}>{isExpanded ? '▲' : '▼'}</Text>
+                        </View>
+                      </TouchableOpacity>
+
+                      {/* GAVETA DE CORRETORES EXPANSÍVEL */}
+                      {isExpanded && (
+                        <View style={styles.teamDrawer}>
+                          <View style={styles.teamDrawerSummary}>
+                            <Text style={styles.teamDrawerSummaryText}>
+                              {activeCount} ativo(s) · {graceCount} em carência
+                            </Text>
+                          </View>
+                          {teamMembers.length === 0 ? (
+                            <Text style={styles.emptyDrawerText}>Nenhum corretor vinculado a este gerente.</Text>
+                          ) : (
+                            teamMembers.map((broker) => {
+                              const isGrace = broker.status === 'grace_period';
+                              return (
+                                <TouchableOpacity 
+                                  key={broker.id} 
+                                  style={styles.brokerDrawerItem}
+                                  onPress={() => setSelectedBrokerId(broker.id)}
+                                >
+                                  <View style={styles.brokerDrawerInfo}>
+                                    <Text style={styles.brokerDrawerName}>
+                                      {broker.nome_guerra} <Text style={styles.brokerDrawerSubName}>({broker.name})</Text>
+                                    </Text>
+                                    <Text style={styles.brokerDrawerCreci}>
+                                      CRECI: {broker.creci || '—'} · {broker.email}
+                                    </Text>
+                                  </View>
+                                  <View style={styles.brokerDrawerAction}>
+                                    <Text style={[styles.statusTag, isGrace ? styles.statusGrace : styles.statusActive]}>
+                                      {isGrace ? 'Carência' : 'Ativo'}
+                                    </Text>
+                                    <Text style={styles.drawerCardBtn}>Ações →</Text>
+                                  </View>
+                                </TouchableOpacity>
+                              );
+                            })
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
+
+                {/* CORRETORES DESVINCULADOS (SE HOUVER) */}
+                {(brokersByManager['unassigned'] || []).length > 0 && (
+                  <View style={[styles.managerAccordionCard, { borderColor: '#f59e0b' }]}>
+                    <TouchableOpacity 
+                      style={styles.managerAccordionHeader}
+                      onPress={() => toggleManagerAccordion('unassigned')}
+                      activeOpacity={0.7}
+                    >
+                      <View style={styles.managerHeaderInfo}>
+                        <Text style={[styles.managerNameGuerra, { color: '#b45309' }]}>⚠️ Corretores sem Gerente Vinculado</Text>
+                        <Text style={styles.managerEmail}>Necessitam de transferência para uma gerência</Text>
+                      </View>
+                      <View style={styles.managerHeaderStats}>
+                        <View style={[styles.teamCountBadge, { backgroundColor: '#fef3c7' }]}>
+                          <Text style={[styles.teamCountText, { color: '#b45309' }]}>
+                            {brokersByManager['unassigned'].length} corretor(es)
+                          </Text>
+                        </View>
+                        <Text style={styles.accordionToggleIcon}>{expandedManagers['unassigned'] ? '▲' : '▼'}</Text>
+                      </View>
+                    </TouchableOpacity>
+
+                    {expandedManagers['unassigned'] && (
+                      <View style={styles.teamDrawer}>
+                        {brokersByManager['unassigned'].map((broker) => (
+                          <TouchableOpacity 
+                            key={broker.id} 
+                            style={styles.brokerDrawerItem}
+                            onPress={() => setSelectedBrokerId(broker.id)}
+                          >
+                            <View style={styles.brokerDrawerInfo}>
+                              <Text style={styles.brokerDrawerName}>{broker.nome_guerra} ({broker.name})</Text>
+                              <Text style={styles.brokerDrawerCreci}>CRECI: {broker.creci || '—'}</Text>
+                            </View>
+                            <Text style={styles.drawerCardBtn}>Transferir →</Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* MODO GERENTE: APROVAÇÕES PENDENTES, EQUIPE E FILA DE LEADS */}
+        {!isDirector && (
+          <>
+            {/* FILA DE APROVAÇÕES PENDENTES */}
+            <Text style={styles.subHeader}>Aprovações Pendentes ({pending.length})</Text>
+            <FlatList
+              data={pending}
+              keyExtractor={(item) => item.id}
+              style={styles.list}
+              scrollEnabled={false}
+              ListEmptyComponent={<Text style={styles.emptyText}>Nenhum corretor aguardando aprovação.</Text>}
+              renderItem={({ item }) => (
+                <TouchableOpacity style={styles.brokerCard} activeOpacity={0.8} onPress={() => setSelectedBrokerId(item.id)}>
+                  <View style={styles.brokerInfo}>
+                    <Text style={styles.brokerName}>{item.name}</Text>
+                    <Text style={styles.brokerSub}>Nome de Guerra: {item.nome_guerra}</Text>
+                    <Text style={styles.brokerSub}>E-mail: {item.email}</Text>
+                    <Text style={styles.brokerSub}>CRECI: {item.creci}</Text>
+                  </View>
+
+                  {approvingId === item.id ? (
+                    <ActivityIndicator color={primaryColor} />
+                  ) : (
+                    <View style={styles.actionContainer}>
+                      <Text style={styles.actionLabel}>Aprovar Corretor:</Text>
+                      <View style={styles.buttonGroup}>
+                        <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#15803d' }]} onPress={() => handleApprove(item.id, 0)}>
+                          <Text style={styles.approveBtnText}>Sem carência</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#34c759' }]} onPress={() => handleApprove(item.id, 7)}>
+                          <Text style={styles.approveBtnText}>7 Dias</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#ff9500' }]} onPress={() => handleApprove(item.id, 15)}>
+                          <Text style={styles.approveBtnText}>15 Dias</Text>
+                        </TouchableOpacity>
+                        <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#ff3b30' }]} onPress={() => handleApprove(item.id, 30)}>
+                          <Text style={styles.approveBtnText}>30 Dias</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+                </TouchableOpacity>
+              )}
+            />
+
+            {/* FILA DA ROLETA / LEADS AO VIVO DA GERÊNCIA */}
+            <Text style={styles.subHeader}>Fila da Roleta e Leads da Equipe ({leadsQueue.length})</Text>
+            <FlatList
+              data={leadsQueue}
+              keyExtractor={(item) => item.brokerId}
+              style={styles.list}
+              scrollEnabled={false}
+              ListEmptyComponent={<Text style={styles.emptyText}>Nenhum corretor da sua equipe ativo na fila no momento.</Text>}
+              renderItem={({ item }) => {
+                const isHabilitado = item.isHabilitado.includes('HABILITADO');
+                return (
+                  <View style={[styles.queueCard, isHabilitado ? { borderColor: '#34c759', borderWidth: 1 } : null]}>
+                    <View style={styles.queueInfo}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                        {item.roletaPosition ? (
+                          <View style={{ backgroundColor: '#1c1c1e', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
+                            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{item.roletaPosition}º Lugar</Text>
+                          </View>
+                        ) : null}
+                        {item.roletaEntryType === 'pos_barra' && (
+                          <View style={{ backgroundColor: '#fef3c7', borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2 }}>
+                            <Text style={{ color: '#b45309', fontWeight: '700', fontSize: 11 }}>Pós-Barra</Text>
+                          </View>
+                        )}
+                        <Text style={styles.queueName}>{item.nomeGuerra}</Text>
+                      </View>
+                      <Text style={styles.queueSub}>Presença: {item.statusPresenca}</Text>
+                      <Text style={styles.queueSub}>Carência: {item.statusCarencia}</Text>
+                      {item.minutesActive !== undefined && (
+                        <Text style={[styles.queueSub, { color: item.minutesActive >= (item.minimumRequiredMinutes ?? 120) ? '#15803d' : '#4b5563', fontWeight: '600', marginTop: 2 }]}>
+                          ⏱️ Validação Roleta: {item.minutesActive} / {item.minimumRequiredMinutes ?? 120} min
+                        </Text>
+                      )}
+                    </View>
+                    <View style={styles.queueAction}>
+                      <Text style={[styles.statusBadge, { color: isHabilitado ? '#34c759' : '#ff3b30' }]}>
+                        {item.isHabilitado}
+                      </Text>
+                      {isHabilitado && (
+                        <TouchableOpacity style={[styles.copyNameBtn, { backgroundColor: primaryColor }]} onPress={() => handleCopyBrokerName(item.nomeGuerra)}>
+                          <Text style={styles.copyNameBtnText}>Copiar Nome</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  </View>
+                );
+              }}
+            />
+
+            {/* ELEGIBILIDADE DE FIM DE SEMANA DA EQUIPE */}
+            <Text style={styles.subHeader}>Elegibilidade de Fim de Semana (Equipe)</Text>
+            <View style={styles.kpiContainer}>
+              <View style={[styles.kpiCard, { borderColor: '#15803d' }]}>
+                <Text style={[styles.kpiValue, { color: '#15803d' }]}>{teamEligibility?.saturdayEligibleCount ?? 0}</Text>
+                <Text style={styles.kpiLabel}>Elegíveis Sábado</Text>
+                <Text style={styles.kpiSub}>Meta de 5 roletas batida</Text>
+              </View>
+              <View style={[styles.kpiCard, { borderColor: '#15803d' }]}>
+                <Text style={[styles.kpiValue, { color: '#15803d' }]}>{teamEligibility?.sundayEligibleCount ?? 0}</Text>
+                <Text style={styles.kpiLabel}>Elegíveis Domingo</Text>
+                <Text style={styles.kpiSub}>Meta de 6 roletas batida</Text>
+              </View>
+              <View style={styles.kpiCard}>
+                <Text style={styles.kpiValue}>{teamEligibility?.inProgressCount ?? 0}</Text>
+                <Text style={styles.kpiLabel}>Em Progresso</Text>
+                <Text style={styles.kpiSub}>Acumulando roletas</Text>
+              </View>
+            </View>
+
+            {Array.isArray(teamEligibility?.members) && teamEligibility.members.length > 0 && (
+              <View style={{ marginBottom: 20, gap: 8 }}>
+                {teamEligibility.members.map((member: any) => (
+                  <View key={member.brokerId} style={{ backgroundColor: '#fff', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <Text style={{ fontWeight: '800', fontSize: 14, color: '#1c1c1e' }}>{member.nomeGuerra} ({member.name})</Text>
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        {member.isEligibleSaturday ? (
+                          <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                            <Text style={{ color: '#15803d', fontSize: 10, fontWeight: '800' }}>SÁBADO OK</Text>
+                          </View>
+                        ) : null}
+                        {member.isEligibleSunday ? (
+                          <View style={{ backgroundColor: '#dcfce7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                            <Text style={{ color: '#15803d', fontSize: 10, fontWeight: '800' }}>DOMINGO OK</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                    </View>
+                    {Array.isArray(member.boothsStatus) && (
+                      <View style={{ marginTop: 6, gap: 4 }}>
+                        {member.boothsStatus.map((b: any) => (
+                          <Text key={b.boothId} style={{ fontSize: 12, color: '#4b5563' }}>
+                            • {b.boothName}: <Text style={{ fontWeight: '700' }}>{b.validRoletasThisWeek}</Text> roletas {b.saturdayEligible ? '🟢 Elegível' : `(faltam ${b.missingSaturday} p/ Sáb)`}
+                          </Text>
+                        ))}
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </View>
+            )}
+
+            {/* MINHA EQUIPE */}
+            <Text style={styles.subHeader}>Minha Equipe ({team.length})</Text>
+            <FlatList
+              data={team}
+              keyExtractor={(item) => item.id}
+              style={styles.list}
+              scrollEnabled={false}
+              ListEmptyComponent={<Text style={styles.emptyText}>Sua equipe de vendas está vazia no momento.</Text>}
+              renderItem={({ item }) => {
+                const isGrace = item.status === 'grace_period';
+                return (
+                  <TouchableOpacity style={styles.teamCard} activeOpacity={0.8} onPress={() => setSelectedBrokerId(item.id)}>
+                    <View>
+                      <Text style={styles.teamName}>{item.nome_guerra} ({item.name})</Text>
+                      {isGrace && item.carencia_ends_at ? (
+                        <Text style={styles.carenciaLabel}>Carência ativa até: {new Date(item.carencia_ends_at).toLocaleDateString('pt-BR')}</Text>
+                      ) : (
+                        <Text style={styles.activeLabel}>🟢 Liberado no CVCRM (Recebendo Leads)</Text>
+                      )}
+                    </View>
+                  </TouchableOpacity>
+                );
+              }}
+            />
+          </>
+        )}
       </ScrollView>
     </>
   );
@@ -372,7 +673,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f7',
   },
   scrollContent: {
-    padding: 24,
+    padding: 20,
     paddingBottom: 60,
   },
   centerContainer: {
@@ -388,11 +689,11 @@ const styles = StyleSheet.create({
     color: '#8e8e93',
   },
   backHeader: {
-    marginTop: 40,
-    marginBottom: 20,
+    marginTop: 20,
+    marginBottom: 16,
   },
   backHeaderText: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
   },
   title: {
@@ -405,27 +706,57 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 14,
     color: '#4b5563',
-    marginBottom: 32,
+    marginBottom: 20,
     textAlign: 'center',
-  },
-  subHeader: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1c1c1e',
-    marginBottom: 16,
-    marginTop: 24,
-    width: '100%',
-    maxWidth: 600,
+    maxWidth: 640,
     alignSelf: 'center',
+  },
+  kpiContainer: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  kpiCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  kpiValue: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  kpiLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4b5563',
+    marginTop: 2,
+  },
+  kpiSub: {
+    fontSize: 10,
+    color: '#6b7280',
+    marginTop: 2,
+    textAlign: 'center',
   },
   sectionCard: {
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 640,
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 20,
+    padding: 18,
     borderWidth: 1,
-    borderColor: '#e5e5ea',
+    borderColor: '#e5e7eb',
     alignSelf: 'center',
     marginBottom: 16,
   },
@@ -438,22 +769,76 @@ const styles = StyleSheet.create({
   sectionDesc: {
     fontSize: 13,
     color: '#4b5563',
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  roleButton: { borderWidth: 1, borderColor: '#bbb', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14, marginRight: 8 },
-  roleButtonActive: { backgroundColor: '#1c1c1e', borderColor: '#1c1c1e' },
-  roleButtonText: { color: '#1f2937', fontWeight: '700' },
-  roleButtonTextActive: { color: '#FFFFFF', fontWeight: '800' },
-  managerPicker: { marginBottom: 12 },
-  managerButton: { backgroundColor: '#eef2ff', borderWidth: 1, borderColor: '#c7d2fe', borderRadius: 8, padding: 10, marginRight: 8 },
-  managerButtonActive: { backgroundColor: '#1e3a8a', borderColor: '#1e3a8a' },
-  managerButtonText: { color: '#1e3a8a', fontWeight: '700' },
-  managerButtonTextActive: { color: '#FFFFFF', fontWeight: '800' },
+  sectionDescHeader: {
+    fontSize: 13,
+    color: '#6b7280',
+    marginBottom: 12,
+  },
+  actionLabel: {
+    fontSize: 13,
+    color: '#374151',
+    fontWeight: '700',
+    marginBottom: 6,
+    marginTop: 8,
+  },
+  buttonGroup: {
+    flexDirection: 'row',
+    marginBottom: 10,
+  },
+  roleButton: { 
+    borderWidth: 1, 
+    borderColor: '#d1d5db', 
+    borderRadius: 8, 
+    paddingVertical: 8, 
+    paddingHorizontal: 16, 
+    marginRight: 8 
+  },
+  roleButtonActive: { 
+    backgroundColor: '#1c1c1e', 
+    borderColor: '#1c1c1e' 
+  },
+  roleButtonText: { 
+    color: '#1f2937', 
+    fontWeight: '700' 
+  },
+  roleButtonTextActive: { 
+    color: '#FFFFFF', 
+    fontWeight: '800' 
+  },
+  managerPicker: { 
+    marginBottom: 12 
+  },
+  managerButton: { 
+    backgroundColor: '#eef2ff', 
+    borderWidth: 1, 
+    borderColor: '#c7d2fe', 
+    borderRadius: 8, 
+    padding: 8, 
+    paddingHorizontal: 12,
+    marginRight: 8 
+  },
+  managerButtonActive: { 
+    backgroundColor: '#1e3a8a', 
+    borderColor: '#1e3a8a' 
+  },
+  managerButtonText: { 
+    color: '#1e3a8a', 
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  managerButtonTextActive: { 
+    color: '#FFFFFF', 
+    fontWeight: '800',
+    fontSize: 13,
+  },
   generateButton: {
-    height: 44,
+    height: 42,
     borderRadius: 8,
     justifyContent: 'center',
     alignItems: 'center',
+    marginTop: 8,
   },
   generateButtonText: {
     color: '#FFF',
@@ -469,10 +854,11 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     paddingLeft: 12,
     height: 46,
+    marginTop: 8,
   },
   linkLabel: {
     flex: 1,
-    fontSize: 14,
+    fontSize: 13,
     color: '#3a3a3c',
     paddingRight: 8,
   },
@@ -489,37 +875,232 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: 'bold',
   },
-  scalableControls: { backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 12 },
-  searchInput: { height: 44, borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, marginBottom: 10 },
-  filterRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  filterButton: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  filterText: { color: '#111827', fontWeight: '700' },
-  filterTextActive: { color: '#fff', fontWeight: '800' },
-  pagination: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 12 },
-  pageButton: { color: '#1d4ed8', fontWeight: '800' },
-  pageDisabled: { color: '#9ca3af' },
-  pageLabel: { color: '#374151', fontWeight: '700' },
+  directorSection: {
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
+  },
+  globalSearchInput: {
+    height: 46,
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#d1d5db',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    fontSize: 15,
+    marginBottom: 14,
+  },
+  searchResultsBox: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 16,
+  },
+  searchResultsCount: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 10,
+  },
+  searchResultCard: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#f3f4f6',
+  },
+  brokerMainInfo: {
+    flex: 1,
+  },
+  brokerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  brokerRealName: {
+    fontWeight: '400',
+    color: '#4b5563',
+  },
+  brokerMeta: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  boldText: {
+    fontWeight: '700',
+    color: '#111827',
+  },
+  brokerRightBadge: {
+    alignItems: 'flex-end',
+    marginLeft: 8,
+  },
+  statusTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    paddingVertical: 3,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+    overflow: 'hidden',
+  },
+  statusActive: {
+    backgroundColor: '#dcfce7',
+    color: '#15803d',
+  },
+  statusGrace: {
+    backgroundColor: '#fef3c7',
+    color: '#b45309',
+  },
+  actionPromptText: {
+    fontSize: 11,
+    color: '#2563eb',
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  managerListSection: {
+    marginTop: 6,
+  },
+  managerAccordionCard: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    marginBottom: 12,
+    overflow: 'hidden',
+  },
+  managerAccordionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 16,
+    backgroundColor: '#fff',
+  },
+  managerHeaderInfo: {
+    flex: 1,
+  },
+  managerNameGuerra: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  managerEmail: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  managerHeaderStats: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  teamCountBadge: {
+    backgroundColor: '#f3f4f6',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+  },
+  teamCountText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#374151',
+  },
+  accordionToggleIcon: {
+    fontSize: 12,
+    color: '#9ca3af',
+    fontWeight: '800',
+  },
+  teamDrawer: {
+    borderTopWidth: 1,
+    borderTopColor: '#f3f4f6',
+    backgroundColor: '#fafafc',
+    padding: 12,
+  },
+  teamDrawerSummary: {
+    marginBottom: 8,
+    paddingHorizontal: 4,
+  },
+  teamDrawerSummaryText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6b7280',
+  },
+  emptyDrawerText: {
+    fontSize: 13,
+    color: '#9ca3af',
+    padding: 12,
+    textAlign: 'center',
+  },
+  brokerDrawerItem: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 8,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  brokerDrawerInfo: {
+    flex: 1,
+  },
+  brokerDrawerName: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  brokerDrawerSubName: {
+    fontWeight: '400',
+    color: '#6b7280',
+  },
+  brokerDrawerCreci: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 2,
+  },
+  brokerDrawerAction: {
+    alignItems: 'flex-end',
+    marginLeft: 8,
+  },
+  drawerCardBtn: {
+    fontSize: 12,
+    color: '#2563eb',
+    fontWeight: '700',
+    marginTop: 4,
+  },
+  subHeader: {
+    fontSize: 17,
+    fontWeight: 'bold',
+    color: '#1c1c1e',
+    marginBottom: 8,
+    marginTop: 12,
+    width: '100%',
+    maxWidth: 640,
+    alignSelf: 'center',
+  },
   list: {
     width: '100%',
-    maxWidth: 600,
+    maxWidth: 640,
     alignSelf: 'center',
   },
   brokerCard: {
     backgroundColor: '#FFF',
     borderRadius: 12,
-    padding: 18,
-    marginBottom: 12,
+    padding: 16,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: '#e5e5ea',
   },
   brokerInfo: {
-    marginBottom: 16,
+    marginBottom: 12,
   },
   brokerName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#1c1c1e',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   brokerSub: {
     fontSize: 13,
@@ -529,94 +1110,65 @@ const styles = StyleSheet.create({
   actionContainer: {
     borderTopWidth: 1,
     borderTopColor: '#f2f2f7',
-    paddingTop: 12,
-  },
-  actionLabel: {
-    fontSize: 13,
-    color: '#374151',
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  buttonGroup: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    paddingTop: 10,
   },
   approveBtn: {
     flex: 1,
-    minWidth: 88,
-    height: 44,
+    minWidth: 70,
+    height: 38,
     borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
-    marginHorizontal: 4,
+    marginHorizontal: 3,
   },
   approveBtnText: {
     color: '#FFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: 'bold',
   },
   teamCard: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 10,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#e5e5ea',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
   },
   teamName: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: 'bold',
     color: '#1c1c1e',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   carenciaLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#ff9500',
     fontWeight: '600',
   },
   activeLabel: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#34c759',
     fontWeight: '600',
   },
-  emptyText: {
-    fontSize: 14,
-    color: '#8e8e93',
-    textAlign: 'center',
-    marginTop: 12,
-  },
-  errorText: {
-    color: '#ff3b30',
-    fontSize: 14,
-    textAlign: 'center',
-    marginBottom: 20,
-    fontWeight: 'bold',
-  },
   queueCard: {
     backgroundColor: '#FFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 8,
     borderWidth: 1,
     borderColor: '#e5e5ea',
-    flexDirection: 'column',
-    justifyContent: 'space-between',
-    alignItems: 'stretch',
   },
   queueInfo: {
-    flex: 1,
+    marginBottom: 8,
   },
   queueName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: 'bold',
     color: '#1c1c1e',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   queueSub: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#3a3a3c',
     marginBottom: 2,
   },
@@ -624,19 +1176,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingLeft: 0,
-    marginTop: 12,
-    width: '100%',
   },
   statusBadge: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
-    marginBottom: 0,
     textTransform: 'uppercase',
   },
   copyNameBtn: {
-    height: 32,
-    paddingHorizontal: 12,
+    height: 30,
+    paddingHorizontal: 10,
     borderRadius: 6,
     justifyContent: 'center',
     alignItems: 'center',
@@ -644,6 +1192,19 @@ const styles = StyleSheet.create({
   copyNameBtnText: {
     color: '#FFF',
     fontSize: 12,
+    fontWeight: 'bold',
+  },
+  emptyText: {
+    fontSize: 13,
+    color: '#8e8e93',
+    textAlign: 'center',
+    marginVertical: 12,
+  },
+  errorText: {
+    color: '#ff3b30',
+    fontSize: 14,
+    textAlign: 'center',
+    marginBottom: 16,
     fontWeight: 'bold',
   },
 });

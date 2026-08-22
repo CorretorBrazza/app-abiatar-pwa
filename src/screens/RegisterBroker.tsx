@@ -21,7 +21,8 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
   const [token, setToken] = useState(inviteToken || '');
   const [invitedRole, setInvitedRole] = useState<'gerencia_level_2' | 'corretor_level_3' | null>(null);
   const [inviteManagerName, setInviteManagerName] = useState('');
-  const [inviteLoading, setInviteLoading] = useState(Boolean(inviteToken));
+  const [validatingToken, setValidatingToken] = useState(false);
+  const [tokenValidated, setTokenValidated] = useState(false);
   const [name, setName] = useState('');
   const [nomeGuerra, setNomeGuerra] = useState('');
   const [email, setEmail] = useState('');
@@ -31,27 +32,89 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  const checkToken = async (rawToken: string) => {
+    const clean = rawToken.trim();
+    if (!clean || clean.length < 16) {
+      setInvitedRole(null);
+      setTokenValidated(false);
+      setInviteManagerName('');
+      return false;
+    }
+
+    try {
+      setValidatingToken(true);
+      setError('');
+      const response = await api.get(`/users/onboarding-link/${clean}`);
+      setInvitedRole(response.data.invited_role);
+      setInviteManagerName(response.data.manager?.nome_guerra || response.data.manager?.name || '');
+      setTokenValidated(true);
+      return true;
+    } catch (err: any) {
+      setInvitedRole(null);
+      setTokenValidated(false);
+      setInviteManagerName('');
+      setError(err.response?.data?.message || 'Código de convite inválido ou expirado.');
+      return false;
+    } finally {
+      setValidatingToken(false);
+    }
+  };
+
   useEffect(() => {
     const resolveToken = inviteToken || (typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('token') || '' : '');
-    if (!resolveToken) {
-      setInviteLoading(false);
-      return;
+    if (resolveToken) {
+      setToken(resolveToken);
+      void checkToken(resolveToken);
     }
-    setToken(resolveToken);
-    api.get(`/users/onboarding-link/${resolveToken}`)
-      .then((response) => {
-        setInvitedRole(response.data.invited_role);
-        setInviteManagerName(response.data.manager?.nome_guerra || '');
-      })
-      .catch((err) => setError(err.response?.data?.message || 'Convite inválido ou expirado.'))
-      .finally(() => setInviteLoading(false));
   }, [inviteToken]);
 
+  const handleTokenChange = (text: string) => {
+    setToken(text);
+    setError('');
+    const clean = text.trim();
+    if (clean.length >= 16) {
+      void checkToken(clean);
+    } else {
+      setInvitedRole(null);
+      setTokenValidated(false);
+    }
+  };
+
   const handleRegister = async () => {
-    if (!token || !invitedRole || !name || !nomeGuerra || !email || !password || (invitedRole === 'corretor_level_3' && !creci)) {
+    const cleanToken = token.trim();
+    if (!cleanToken) {
+      setError('Por favor, informe o código de convite.');
+      return;
+    }
+
+    let role = invitedRole;
+    if (!role) {
+      const isValid = await checkToken(cleanToken);
+      if (!isValid) {
+        setError('Código de convite inválido ou expirado.');
+        return;
+      }
+      // Wait for state or fetch again if needed
+      try {
+        const response = await api.get(`/users/onboarding-link/${cleanToken}`);
+        role = response.data.invited_role;
+        setInvitedRole(role);
+      } catch {
+        setError('Não foi possível validar o convite.');
+        return;
+      }
+    }
+
+    if (!name.trim() || !nomeGuerra.trim() || !email.trim() || !password) {
       setError('Por favor, preencha todos os campos obrigatórios.');
       return;
     }
+
+    if (role === 'corretor_level_3' && !creci.trim()) {
+      setError('O CRECI profissional é obrigatório para cadastro de Corretor.');
+      return;
+    }
+
     if (password.length < 8 || password.length > 128) {
       setError('A senha deve conter entre 8 e 128 caracteres.');
       return;
@@ -66,16 +129,19 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
       setSuccessMessage('');
       setLoading(true);
 
-      const response = await api.post(invitedRole === 'gerencia_level_2' ? '/users/register-manager' : '/users/register-broker', {
-        token,
-        name,
-        nomeGuerra,
-        email,
+      const endpoint = role === 'gerencia_level_2' ? '/users/register-manager' : '/users/register-broker';
+      const payload = {
+        token: cleanToken,
+        name: name.trim(),
+        nomeGuerra: nomeGuerra.trim().toLocaleUpperCase('pt-BR'),
+        email: email.trim().toLowerCase(),
         passwordHash: password,
-        ...(invitedRole === 'corretor_level_3' ? { creci } : {}),
-      });
+        ...(role === 'corretor_level_3' ? { creci: creci.trim() } : {}),
+      };
 
-      setSuccessMessage(response.data.message);
+      const response = await api.post(endpoint, payload);
+
+      setSuccessMessage(response.data.message || (role === 'gerencia_level_2' ? 'Cadastro de Gerente realizado com sucesso!' : 'Cadastro enviado com sucesso! Aguarde a aprovação do seu Gerente.'));
       
       // Limpa os campos após o sucesso
       setToken('');
@@ -85,6 +151,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
       setPassword('');
       setCreci('');
       setInvitedRole(null);
+      setTokenValidated(false);
     } catch (err: any) {
       const msg = err.response?.data?.message || 'Falha ao realizar o cadastro.';
       setError(msg);
@@ -93,27 +160,42 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
     }
   };
 
-  if (inviteLoading) {
-    return <View style={styles.container}><ActivityIndicator size="large" color="#1c1c1e" /></View>;
-  }
-
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
-        <Text style={styles.title}>{invitedRole === 'gerencia_level_2' ? 'Cadastro de Gerente' : invitedRole === 'corretor_level_3' ? 'Cadastro de Corretor' : 'Convite de Acesso'}</Text>
-        <Text style={styles.subtitle}>{invitedRole === 'gerencia_level_2' ? 'Seu convite foi destinado ao nível de Gerência.' : invitedRole === 'corretor_level_3' ? `Seu cadastro ficará vinculado ao Gerente ${inviteManagerName || 'responsável'}.` : 'Informe um convite válido para continuar.'}</Text>
+        <Text style={styles.title}>
+          {invitedRole === 'gerencia_level_2' ? 'Cadastro de Gerente' : invitedRole === 'corretor_level_3' ? 'Cadastro de Corretor' : 'Convite de Acesso'}
+        </Text>
+        <Text style={styles.subtitle}>
+          {invitedRole === 'gerencia_level_2'
+            ? 'Seu convite foi confirmado para o nível de Gerência.'
+            : invitedRole === 'corretor_level_3'
+            ? `Seu cadastro ficará vinculado ao Gerente ${inviteManagerName || 'responsável'}.`
+            : 'Informe o código do seu convite para liberar o formulário.'}
+        </Text>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
         {successMessage ? <Text style={styles.successText}>{successMessage}</Text> : null}
 
         <Text style={styles.label}>Código de convite *</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="Código de Convite *"
-          value={token}
-          onChangeText={setToken}
-          autoCapitalize="none"
-        />
+        <View style={styles.tokenRow}>
+          <TextInput
+            style={[styles.input, styles.tokenInput, tokenValidated && styles.inputSuccess]}
+            placeholder="Cole seu código de convite *"
+            value={token}
+            onChangeText={handleTokenChange}
+            autoCapitalize="none"
+          />
+          {validatingToken && <ActivityIndicator style={styles.tokenSpinner} color="#1c1c1e" />}
+        </View>
+
+        {tokenValidated && (
+          <View style={styles.badgeContainer}>
+            <Text style={styles.badgeText}>
+              ✓ Convite validado: {invitedRole === 'gerencia_level_2' ? 'Gerência' : `Corretor (${inviteManagerName || 'Gerente responsável'})`}
+            </Text>
+          </View>
+        )}
 
         <Text style={styles.label}>Nome completo *</Text>
         <TextInput
@@ -130,6 +212,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           placeholder="Nome de Guerra (Único na Empresa) *"
           value={nomeGuerra}
           onChangeText={(value) => setNomeGuerra(value.toLocaleUpperCase('pt-BR'))}
+          autoCapitalize="characters"
         />
 
         <Text style={styles.label}>E-mail *</Text>
@@ -153,26 +236,30 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           autoCapitalize="none"
         />
 
-        {invitedRole === 'corretor_level_3' && <>
-          <Text style={styles.label}>CRECI profissional *</Text>
-          <TextInput
-          style={styles.input}
-          placeholder="Seu CRECI profissional *"
-          value={creci}
-          onChangeText={setCreci}
-          autoCapitalize="characters"
-          />
-        </>}
+        {invitedRole === 'corretor_level_3' && (
+          <>
+            <Text style={styles.label}>CRECI profissional *</Text>
+            <TextInput
+              style={styles.input}
+              placeholder="Seu CRECI profissional *"
+              value={creci}
+              onChangeText={setCreci}
+              autoCapitalize="characters"
+            />
+          </>
+        )}
 
         <TouchableOpacity
-          style={styles.button}
+          style={[styles.button, (!token.trim() || loading) && styles.buttonDisabled]}
           onPress={handleRegister}
-          disabled={loading}
+          disabled={loading || !token.trim()}
         >
           {loading ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-              <Text style={styles.buttonText}>{invitedRole === 'gerencia_level_2' ? 'Concluir Cadastro de Gerente' : 'Enviar Cadastro de Corretor'}</Text>
+            <Text style={styles.buttonText}>
+              {invitedRole === 'gerencia_level_2' ? 'Concluir Cadastro de Gerente' : 'Enviar Cadastro de Corretor'}
+            </Text>
           )}
         </TouchableOpacity>
 
@@ -246,6 +333,36 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     backgroundColor: '#fafafc',
   },
+  tokenRow: {
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  tokenInput: {
+    paddingRight: 40,
+  },
+  tokenSpinner: {
+    position: 'absolute',
+    right: 12,
+    top: 14,
+  },
+  inputSuccess: {
+    borderColor: '#34c759',
+    backgroundColor: '#f0fdf4',
+  },
+  badgeContainer: {
+    backgroundColor: '#dcfce7',
+    borderColor: '#16a34a',
+    borderWidth: 1,
+    borderRadius: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    marginBottom: 12,
+  },
+  badgeText: {
+    color: '#15803d',
+    fontSize: 13,
+    fontWeight: '700',
+  },
   button: {
     height: 48,
     backgroundColor: '#1c1c1e',
@@ -253,6 +370,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 12,
+  },
+  buttonDisabled: {
+    opacity: 0.6,
   },
   buttonText: {
     color: '#FFF',
