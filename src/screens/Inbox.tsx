@@ -65,13 +65,14 @@ export default function Inbox({ onBack }: InboxProps) {
 
   // 2. Método para Confirmar a Leitura da Mensagem
   const handleMarkAsRead = async (msg: MessageRecipient) => {
+    const targetMsgId = msg.message?.id || msg.message_id;
     try {
       setMarkingRead(true);
-      await api.patch(`/messages/${msg.message.id}/read`);
+      await api.patch(`/messages/${targetMsgId}/read`);
       
       // Atualiza localmente o estado para mostrar lido imediatamente
       setMessages(prev => prev.map(item => 
-        item.message_id === msg.message_id 
+        (item.message_id === msg.message_id || item.id === msg.id)
           ? { ...item, read_at: new Date().toISOString() } 
           : item
       ));
@@ -89,7 +90,7 @@ export default function Inbox({ onBack }: InboxProps) {
     try {
       await api.delete(`/messages/${msgId}`);
       // Remove da lista do front-end imediatamente
-      setMessages(prev => prev.filter(item => item.message_id !== msgId));
+      setMessages(prev => prev.filter(item => (item.message?.id !== msgId && item.message_id !== msgId)));
     } catch (err: any) {
       alert(err.response?.data?.message || 'Não é possível excluir mensagens urgentes sem lê-las primeiro.');
     }
@@ -119,14 +120,15 @@ export default function Inbox({ onBack }: InboxProps) {
 
       <FlatList
         data={messages}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item) => item.id || item.message_id}
         contentContainerStyle={styles.list}
         ListEmptyComponent={
           <Text style={styles.emptyText}>Sua caixa de entrada está limpa no momento.</Text>
         }
         renderItem={({ item }) => {
           const isUnread = !item.read_at;
-          const isUrgent = item.message.is_urgent;
+          const isUrgent = !!item.message?.is_urgent;
+          const senderName = item.message?.sender?.nome_guerra || 'Diretoria / Gestão';
 
           return (
             <TouchableOpacity 
@@ -139,20 +141,20 @@ export default function Inbox({ onBack }: InboxProps) {
               <View style={styles.cardHeader}>
                 <View style={{ flexDirection: 'row', alignItems: 'center' }}>
                   {isUnread && <Text style={styles.unreadIcon}>!</Text>}
-                  <Text style={styles.senderText}>De: {item.message.sender.nome_guerra}</Text>
+                  <Text style={styles.senderText}>De: {senderName}</Text>
                 </View>
                 <Text style={isUnread ? styles.unreadStatus : styles.readStatus}>{isUnread ? 'NÃO LIDA' : 'LIDA'}</Text>
                 {isUrgent && <Text style={styles.urgentBadge}>URGENTE</Text>}
               </View>
 
-              <Text style={styles.messageTitle}>{item.message.title}</Text>
-              <Text style={styles.messageSnippet} numberOfLines={2}>{item.message.content}</Text>
+              <Text style={styles.messageTitle}>{item.message?.title || 'Sem título'}</Text>
+              <Text style={styles.messageSnippet} numberOfLines={2}>{item.message?.content || ''}</Text>
               
               <View style={styles.cardFooter}>
                 <Text style={styles.dateText}>
-                  {new Date(item.message.created_at).toLocaleDateString('pt-BR')}
+                  {item.message?.created_at ? new Date(item.message.created_at).toLocaleDateString('pt-BR') : ''}
                 </Text>
-                <TouchableOpacity onPress={() => handleDeleteMessage(item.message.id)}>
+                <TouchableOpacity onPress={() => handleDeleteMessage(item.message?.id || item.message_id)}>
                   <Text style={styles.deleteText}>Excluir</Text>
                 </TouchableOpacity>
               </View>
@@ -170,11 +172,11 @@ export default function Inbox({ onBack }: InboxProps) {
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
-            <Text style={styles.modalSender}>Remetente: {selectedMessage?.message.sender.nome_guerra}</Text>
-            <Text style={styles.modalTitle}>{selectedMessage?.message.title}</Text>
-            <Text style={styles.modalContent}>{selectedMessage?.message.content}</Text>
+            <Text style={styles.modalSender}>Remetente: {selectedMessage?.message?.sender?.nome_guerra || 'Diretoria / Gestão'}</Text>
+            <Text style={styles.modalTitle}>{selectedMessage?.message?.title || ''}</Text>
+            <Text style={styles.modalContent}>{selectedMessage?.message?.content || ''}</Text>
 
-            {selectedMessage?.message.is_urgent && !selectedMessage.read_at ? (
+            {selectedMessage?.message?.is_urgent && !selectedMessage.read_at ? (
               // Se for urgente e não lida, exige o clique no botão de leitura
               <TouchableOpacity 
                 style={[styles.readButton, { backgroundColor: primaryColor }]}
