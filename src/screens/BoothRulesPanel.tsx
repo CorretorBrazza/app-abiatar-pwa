@@ -407,8 +407,11 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
     <View style={styles.container}>
       <ScreenCode code="DR-02" />
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}><Text style={styles.back}>‹ Voltar</Text></TouchableOpacity>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
+        </TouchableOpacity>
         <Text style={styles.title}>Administrar Plantões & Roletas</Text>
+        <Text style={styles.headerSubtitle}>Grade de horários, regras operacionais e feriados</Text>
       </View>
 
       {/* SELETOR DE ABAS PRINCIPAIS */}
@@ -763,9 +766,34 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f7f7f8' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  header: { padding: 18, backgroundColor: '#1c1c1e' },
-  back: { color: '#fff', fontSize: 16, marginBottom: 10 },
-  title: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  header: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#1c1c1e',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+  },
+  backText: {
+    color: '#60a5fa',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  title: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    color: '#9ca3af',
+    fontSize: 13,
+    marginTop: 3,
+  },
   tabContainer: {
     flexDirection: 'row',
     backgroundColor: '#fff',

@@ -207,7 +207,9 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
 
       {/* HEADER DA DIRETORIA */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={onBack}><Text style={styles.back}>‹ Voltar</Text></TouchableOpacity>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
+        </TouchableOpacity>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
             <Text style={styles.title}>Torre de Controle & Relatórios</Text>
@@ -664,10 +666,26 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f7f7f8' },
   center: { padding: 40, alignItems: 'center', justifyContent: 'center' },
-  header: { padding: 18, backgroundColor: '#1c1c1e' },
-  back: { color: '#fff', fontSize: 16, marginBottom: 8 },
-  title: { color: '#fff', fontSize: 21, fontWeight: '800' },
-  headerSubtitle: { color: '#a1a1aa', fontSize: 13, marginTop: 2 },
+  header: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#1c1c1e',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+  },
+  backText: {
+    color: '#60a5fa',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  title: { color: '#fff', fontSize: 20, fontWeight: '800' },
+  headerSubtitle: { color: '#9ca3af', fontSize: 13, marginTop: 2 },
   shareSummaryButton: {
     backgroundColor: '#374151',
     paddingVertical: 8,

@@ -143,10 +143,19 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
     finally { setSaving(false); }
   };
 
-  return <View style={styles.container}><ScrollView contentContainerStyle={styles.content}>
-    <ScreenCode code="DR-04" /><TouchableOpacity onPress={onBack}><Text style={[styles.back, { color: primaryColor }]}>← Voltar ao Dashboard</Text></TouchableOpacity>
-    <Text style={styles.title}>Gestão de Usuários</Text><Text style={styles.subtitle}>Cards white label de Gerentes e Recepção</Text>
-    {error ? <Text style={styles.error}>{error}</Text> : null}
+  return (
+    <View style={styles.container}>
+      <ScreenCode code="DR-04" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Gestão de Usuários</Text>
+        <Text style={styles.headerSubtitle}>Controle de acessos de Gerentes e Recepção</Text>
+      </View>
+
+      <ScrollView contentContainerStyle={styles.content}>
+        {error ? <Text style={styles.error}>{error}</Text> : null}
     
     <View style={styles.tabs}>
       <TouchableOpacity style={[styles.tab, tab === 'gerencia_level_2' && { backgroundColor: primaryColor }]} onPress={() => setTab('gerencia_level_2')}>
@@ -287,7 +296,69 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
         ) : null}
       </View>
     ) : null}
-  </ScrollView></View>;
+      </ScrollView>
+    </View>
+  );
 }
 
-const styles = StyleSheet.create({ container: { flex: 1, backgroundColor: '#f5f5f7' }, content: { padding: 24, paddingBottom: 60, alignItems: 'center' }, back: { alignSelf: 'stretch', fontWeight: '700', fontSize: 16, marginBottom: 18 }, title: { alignSelf: 'stretch', fontSize: 26, fontWeight: '800', color: '#111827' }, subtitle: { alignSelf: 'stretch', color: '#6b7280', marginBottom: 18 }, tabs: { width: '100%', maxWidth: 620, flexDirection: 'row', gap: 8, marginBottom: 16 }, tab: { flex: 1, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 8, padding: 12, alignItems: 'center' }, tabText: { color: '#111827', fontWeight: '800' }, white: { color: '#fff', fontWeight: '800' }, card: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 16, marginBottom: 10 }, name: { fontSize: 18, fontWeight: '800', color: '#111827' }, line: { color: '#374151', marginTop: 4 }, badge: { marginTop: 8, color: '#1d4ed8', fontWeight: '700' }, empty: { color: '#6b7280', margin: 24 }, editor: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderRadius: 10, padding: 18, marginTop: 8 }, section: { fontSize: 18, fontWeight: '800', color: '#111827', marginTop: 8, marginBottom: 12 },   label: { fontWeight: '700', color: '#111827', marginTop: 8, marginBottom: 5 }, help: { color: '#6b7280', fontSize: 12, marginBottom: 6 }, input: { height: 46, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 8, paddingHorizontal: 12, marginBottom: 8 }, primary: { minHeight: 46, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 }, secondary: { minHeight: 46, borderWidth: 1, borderColor: '#1d4ed8', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 }, secondaryText: { color: '#1d4ed8', fontWeight: '800' }, danger: { minHeight: 46, borderWidth: 1, borderColor: '#b91c1c', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 }, dangerText: { color: '#b91c1c', fontWeight: '800' }, booth: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, marginBottom: 8 }, error: { width: '100%', maxWidth: 620, color: '#b91c1c', backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, marginBottom: 12, fontWeight: '700' }, scalableControls: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 12 }, filterRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' }, filterButton: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 }, filterText: { color: '#111827', fontWeight: '700' }, pagination: { width: '100%', maxWidth: 620, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 }, pageButton: { color: '#1d4ed8', fontWeight: '800' }, pageDisabled: { color: '#9ca3af' }, pageLabel: { color: '#374151', fontWeight: '700' } });
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#f7f7f8' },
+  header: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#1c1c1e',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+  },
+  backText: {
+    color: '#60a5fa',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    color: '#9ca3af',
+    fontSize: 13,
+    marginTop: 3,
+  },
+  content: { padding: 16, paddingBottom: 60, alignItems: 'center' },
+  tabs: { width: '100%', maxWidth: 620, flexDirection: 'row', gap: 8, marginBottom: 16 },
+  tab: { flex: 1, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 8, padding: 12, alignItems: 'center' },
+  tabText: { color: '#111827', fontWeight: '800' },
+  white: { color: '#fff', fontWeight: '800' },
+  card: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 16, marginBottom: 10 },
+  name: { fontSize: 18, fontWeight: '800', color: '#111827' },
+  line: { color: '#374151', marginTop: 4 },
+  badge: { marginTop: 8, color: '#1d4ed8', fontWeight: '700' },
+  empty: { color: '#6b7280', margin: 24 },
+  editor: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderRadius: 10, padding: 18, marginTop: 8 },
+  section: { fontSize: 18, fontWeight: '800', color: '#111827', marginTop: 8, marginBottom: 12 },
+  label: { fontWeight: '700', color: '#111827', marginTop: 8, marginBottom: 5 },
+  help: { color: '#6b7280', fontSize: 12, marginBottom: 6 },
+  input: { height: 46, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 8, paddingHorizontal: 12, marginBottom: 8 },
+  primary: { minHeight: 46, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  secondary: { minHeight: 46, borderWidth: 1, borderColor: '#1d4ed8', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  secondaryText: { color: '#1d4ed8', fontWeight: '800' },
+  danger: { minHeight: 46, borderWidth: 1, borderColor: '#b91c1c', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
+  dangerText: { color: '#b91c1c', fontWeight: '800' },
+  booth: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, marginBottom: 8 },
+  error: { width: '100%', maxWidth: 620, color: '#b91c1c', backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, marginBottom: 12, fontWeight: '700' },
+  scalableControls: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 12 },
+  filterRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
+  filterButton: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  filterText: { color: '#111827', fontWeight: '700' },
+  pagination: { width: '100%', maxWidth: 620, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
+  pageButton: { color: '#1d4ed8', fontWeight: '800' },
+  pageDisabled: { color: '#9ca3af' },
+  pageLabel: { color: '#374151', fontWeight: '700' },
+});

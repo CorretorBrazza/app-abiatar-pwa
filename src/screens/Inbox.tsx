@@ -108,13 +108,13 @@ export default function Inbox({ onBack }: InboxProps) {
   return (
     <View style={styles.container}>
       <ScreenCode code="IN-01" />
-      {/* Botão de Voltar para a Tela Anterior */}
-      <TouchableOpacity style={styles.backHeader} onPress={onBack}>
-        <Text style={[styles.backHeaderText, { color: primaryColor }]}>← Voltar ao Painel</Text>
-      </TouchableOpacity>
-
-      <Text style={styles.title}>Minhas Mensagens</Text>
-      <Text style={styles.subtitle}>Acompanhe os comunicados e alertas oficiais</Text>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Minhas Mensagens</Text>
+        <Text style={styles.headerSubtitle}>Acompanhe os comunicados e alertas oficiais</Text>
+      </View>
 
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
@@ -213,9 +213,36 @@ export default function Inbox({ onBack }: InboxProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    height: '100%',
-    backgroundColor: '#f5f5f7',
-    padding: 24,
+    backgroundColor: '#f7f7f8',
+  },
+  header: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#1c1c1e',
+    marginBottom: 12,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+  },
+  backText: {
+    color: '#60a5fa',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    color: '#9ca3af',
+    fontSize: 13,
+    marginTop: 3,
   },
   centerContainer: {
     flex: 1,
@@ -229,31 +256,11 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#8e8e93',
   },
-  backHeader: {
-    marginTop: 40,
-    marginBottom: 20,
-  },
-  backHeaderText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1c1c1e',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#8e8e93',
-    marginBottom: 32,
-    textAlign: 'center',
-  },
   list: {
     width: '100%',
     maxWidth: 600,
     alignSelf: 'center',
+    paddingHorizontal: 16,
   },
   messageCard: {
     backgroundColor: '#FFF',

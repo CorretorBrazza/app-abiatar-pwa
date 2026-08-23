@@ -107,11 +107,18 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
 
   return (
     <View style={styles.container}>
+      <ScreenCode code="DR-03" />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>{isManager ? 'Comunicação da Minha Equipe' : 'Comunicação Institucional'}</Text>
+        <Text style={styles.headerSubtitle}>
+          {isManager ? 'Envie comunicados persistentes para os corretores da sua equipe.' : 'Envie comunicados para toda a força de vendas ou equipes específicas.'}
+        </Text>
+      </View>
+
       <ScrollView contentContainerStyle={styles.content}>
-        <ScreenCode code="DR-03" />
-        <TouchableOpacity onPress={onBack}><Text style={[styles.back, { color: primaryColor }]}>← Voltar ao Dashboard</Text></TouchableOpacity>
-        <Text style={styles.title}>{isManager ? 'Comunicação da Minha Equipe' : 'Comunicação Institucional'}</Text>
-        <Text style={styles.subtitle}>{isManager ? 'Envie comunicados persistentes somente aos Corretores vinculados à sua equipe.' : 'Envie comunicados persistentes para usuários do próprio tenant, mesmo quando estiverem offline.'}</Text>
         {error ? <Text style={styles.error}>{error}</Text> : null}
         {success ? <Text style={styles.success}>{success}</Text> : null}
         {loading ? <ActivityIndicator size="large" color={primaryColor} /> : (
@@ -149,7 +156,54 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f7' }, content: { padding: 24, paddingBottom: 60, alignItems: 'center' },
-  back: { alignSelf: 'stretch', fontWeight: '700', fontSize: 16, marginBottom: 20 }, title: { alignSelf: 'stretch', color: '#111827', fontSize: 26, fontWeight: '800', marginBottom: 4 }, subtitle: { alignSelf: 'stretch', color: '#4b5563', fontSize: 14, lineHeight: 20, marginBottom: 20 },
-  card: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderRadius: 12, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#e5e7eb' }, sectionTitle: { color: '#111827', fontSize: 18, fontWeight: '800', marginBottom: 12 }, label: { color: '#1f2937', fontWeight: '700', marginTop: 12, marginBottom: 6 }, scopeButton: { minHeight: 44, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, justifyContent: 'center', paddingHorizontal: 12, marginBottom: 8 }, scopeText: { color: '#1f2937', fontWeight: '700' }, selectedText: { color: '#fff' }, personButton: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 11, marginBottom: 8 }, personName: { color: '#111827', fontWeight: '800' }, personMeta: { color: '#6b7280', fontSize: 12, marginTop: 3 }, input: { minHeight: 46, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 8, paddingHorizontal: 12, color: '#111827', backgroundColor: '#fff', marginBottom: 12 }, multiline: { minHeight: 120, paddingTop: 10, textAlignVertical: 'top' }, urgentRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 16 }, checkbox: { width: 24, height: 24, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 5, marginRight: 10, justifyContent: 'center', alignItems: 'center' }, check: { color: '#fff', fontWeight: '800' }, urgentTitle: { color: '#111827', fontWeight: '800' }, help: { color: '#6b7280', fontSize: 12, marginTop: 2 }, sendButton: { minHeight: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center' }, sendText: { color: '#fff', fontWeight: '800', fontSize: 15 }, error: { width: '100%', maxWidth: 620, color: '#b91c1c', backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, marginBottom: 12, fontWeight: '700' }, success: { width: '100%', maxWidth: 620, color: '#166534', backgroundColor: '#dcfce7', padding: 12, borderRadius: 8, marginBottom: 12, fontWeight: '700' },
+  container: { flex: 1, backgroundColor: '#f7f7f8' },
+  header: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#1c1c1e',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+  },
+  backText: {
+    color: '#60a5fa',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    color: '#9ca3af',
+    fontSize: 13,
+    marginTop: 3,
+  },
+  content: { padding: 16, paddingBottom: 60, alignItems: 'center' },
+  card: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderRadius: 12, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#e5e7eb' },
+  sectionTitle: { color: '#111827', fontSize: 18, fontWeight: '800', marginBottom: 12 },
+  label: { color: '#1f2937', fontWeight: '700', marginTop: 12, marginBottom: 6 },
+  scopeButton: { minHeight: 44, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, justifyContent: 'center', paddingHorizontal: 12, marginBottom: 8 },
+  scopeText: { color: '#1f2937', fontWeight: '700' },
+  selectedText: { color: '#fff' },
+  personButton: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 11, marginBottom: 8 },
+  personName: { color: '#111827', fontWeight: '800' },
+  personMeta: { color: '#6b7280', fontSize: 12, marginTop: 3 },
+  input: { minHeight: 46, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 8, paddingHorizontal: 12, color: '#111827', backgroundColor: '#fff', marginBottom: 12 },
+  multiline: { minHeight: 120, paddingTop: 10, textAlignVertical: 'top' },
+  urgentRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 16 },
+  checkbox: { width: 24, height: 24, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 5, marginRight: 10, justifyContent: 'center', alignItems: 'center' },
+  check: { color: '#fff', fontWeight: '800' },
+  urgentTitle: { color: '#111827', fontWeight: '800' },
+  help: { color: '#6b7280', fontSize: 12, marginTop: 2 },
+  sendButton: { minHeight: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
+  sendText: { color: '#fff', fontWeight: '800', fontSize: 15 },
+  error: { width: '100%', maxWidth: 620, color: '#b91c1c', backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, marginBottom: 12, fontWeight: '700' },
+  success: { width: '100%', maxWidth: 620, color: '#166534', backgroundColor: '#dcfce7', padding: 12, borderRadius: 8, marginBottom: 12, fontWeight: '700' },
 });

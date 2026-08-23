@@ -149,12 +149,18 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
 
   return (
     <Modal visible={!!brokerId} animationType="slide" onRequestClose={onClose}>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <View style={styles.container}>
         <ScreenCode code="GE-03" />
-        <TouchableOpacity onPress={onClose}><Text style={styles.back}>← Voltar para GE-02</Text></TouchableOpacity>
-        <Text style={styles.title}>Ficha do Corretor</Text>
-        <Text style={styles.subtitle}>Gestão individual, operação e vínculo hierárquico</Text>
-        {error ? <Text style={styles.error}>{error}</Text> : null}
+        <View style={styles.header}>
+          <TouchableOpacity onPress={onClose} style={styles.backButton}>
+            <Text style={styles.backText}>‹ Voltar à Lista</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Ficha do Corretor</Text>
+          <Text style={styles.headerSubtitle}>Gestão individual, operação e vínculo hierárquico</Text>
+        </View>
+
+        <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.content}>
+          {error ? <Text style={styles.error}>{error}</Text> : null}
         {loading || !profile ? <ActivityIndicator size="large" color="#1c1c1e" /> : (
           <>
             <View style={styles.card}>
@@ -249,17 +255,44 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
             )}
           </>
         )}
-      </ScrollView>
+        </ScrollView>
+      </View>
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f7' },
-  content: { padding: 24, paddingBottom: 60 },
-  back: { color: '#1d4ed8', fontWeight: '700', fontSize: 16, marginBottom: 20 },
-  title: { color: '#111827', fontSize: 26, fontWeight: '800', marginBottom: 4 },
-  subtitle: { color: '#4b5563', fontSize: 14, marginBottom: 20 },
+  container: { flex: 1, backgroundColor: '#f7f7f8' },
+  header: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#1c1c1e',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+  },
+  backText: {
+    color: '#60a5fa',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    color: '#9ca3af',
+    fontSize: 13,
+    marginTop: 3,
+  },
+  scrollContainer: { flex: 1 },
+  content: { padding: 16, paddingBottom: 60 },
   error: { color: '#b91c1c', backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, marginBottom: 12, fontWeight: '700' },
   card: { backgroundColor: '#fff', borderRadius: 12, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#e5e7eb' },
   name: { color: '#111827', fontSize: 20, fontWeight: '800', marginBottom: 8 },

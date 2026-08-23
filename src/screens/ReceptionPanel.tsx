@@ -114,8 +114,12 @@ export default function ReceptionPanel() {
     <View style={styles.container}>
       <ScreenCode code="RX-01" />
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
-        <Text style={styles.tenant}>{tenant?.name}</Text>
-        <Text style={styles.role}>Recepção / Controle de Plantão</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.tenant}>{tenant?.name || 'ABIATAR'}</Text>
+          <View style={styles.roleTag}>
+            <Text style={styles.roleTagText}>Recepção</Text>
+          </View>
+        </View>
       </View>
       <ScrollView style={styles.scroll} contentContainerStyle={styles.content}>
         <Text style={styles.title}>Olá, {user?.nome_guerra}.</Text>
@@ -165,9 +169,45 @@ export default function ReceptionPanel() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f5f5f7' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f7' },
-  header: { paddingTop: 60, paddingBottom: 24, paddingHorizontal: 24, alignItems: 'center', borderBottomLeftRadius: 16, borderBottomRightRadius: 16 },
-  tenant: { color: '#FFF', fontSize: 20, fontWeight: 'bold' },
-  role: { color: '#FFF', fontSize: 13, marginTop: 8, fontWeight: '600' },
+  header: {
+    paddingTop: 16,
+    paddingBottom: 14,
+    paddingHorizontal: 20,
+    borderBottomLeftRadius: 16,
+    borderBottomRightRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
+    elevation: 3,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  tenant: {
+    color: '#FFF',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
+  roleTag: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  roleTagText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   scroll: { flex: 1 },
   content: { padding: 24, alignItems: 'center', paddingBottom: 48 },
   title: { width: '100%', maxWidth: 520, fontSize: 24, fontWeight: 'bold', color: '#1c1c1e', marginTop: 20 },

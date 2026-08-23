@@ -290,8 +290,12 @@ export default function Dashboard() {
           {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
           <ScreenCode code="CR-01" />
           <View style={[styles.header, { backgroundColor: primaryColor }]}>
-            <Text style={styles.tenantName}>{tenant?.name}</Text>
-            <Text style={styles.roleTag}>Corretor</Text>
+            <View style={styles.headerRow}>
+              <Text style={styles.tenantName}>{tenant?.name || 'ABIATAR'}</Text>
+              <View style={styles.roleTag}>
+                <Text style={styles.roleTagText}>Corretor</Text>
+              </View>
+            </View>
           </View>
 
           <ScrollView
@@ -378,8 +382,12 @@ export default function Dashboard() {
       {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
         <ScreenCode code="CR-02" />
         <View style={[styles.header, { backgroundColor: primaryColor }]}>
-          <Text style={styles.tenantName}>{tenant?.name}</Text>
-          <Text style={styles.roleTag}>Corretor Ativo</Text>
+          <View style={styles.headerRow}>
+            <Text style={styles.tenantName}>{tenant?.name || 'ABIATAR'}</Text>
+            <View style={styles.roleTag}>
+              <Text style={styles.roleTagText}>Corretor Ativo</Text>
+            </View>
+          </View>
         </View>
 
         <ScrollView
@@ -558,8 +566,12 @@ export default function Dashboard() {
       {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
       <ScreenCode code={isManager ? 'GE-01' : isDirector ? 'DR-01' : 'AD-01'} />
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
-        <Text style={styles.tenantName}>{tenant?.name}</Text>
-        <Text style={styles.roleTag}>{isManager ? 'Gerência' : isDirector ? 'Diretoria' : 'Administrador'}</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.tenantName}>{tenant?.name || 'ABIATAR'}</Text>
+          <View style={styles.roleTag}>
+            <Text style={styles.roleTagText}>{isManager ? 'Gerência' : isDirector ? 'Diretoria' : 'Administrador'}</Text>
+          </View>
+        </View>
       </View>
 
       <ScrollView
@@ -575,10 +587,8 @@ export default function Dashboard() {
         {isManager ? (
           <>
             <View style={styles.card}>
-              <Text style={styles.infoTitle}>Resumo da Gerência</Text>
-              <Text style={styles.infoText}>Empresa: {tenant?.name}</Text>
-              <Text style={styles.infoText}>Acesso: gestão da equipe de corretores</Text>
-              <Text style={styles.infoText}>Use o painel de gestão para convites, aprovações e fila de leads.</Text>
+              <Text style={styles.infoTitle}>Painel da Gerência</Text>
+              <Text style={styles.infoText}>Acompanhe a assiduidade da sua equipe, envie convites, aprove novos corretores e gerencie a distribuição da fila de leads.</Text>
             </View>
 
             <TouchableOpacity
@@ -597,12 +607,6 @@ export default function Dashboard() {
           </>
         ) : (
           <>
-            <View style={styles.card}>
-              <Text style={styles.infoTitle}>Status da Construtora (Tenant)</Text>
-              <Text style={styles.infoText}>Sua empresa: {tenant?.name}</Text>
-              <Text style={styles.infoText}>Identificador (Slug): {tenant?.slug}</Text>
-              <Text style={styles.infoText}>ID da Nuvem: {tenant?.id}</Text>
-            </View>
 
             <TouchableOpacity
               style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
@@ -681,34 +685,43 @@ const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, just
     color: '#8e8e93',
   },
   header: {
-    paddingTop: 60,
-    paddingBottom: 24,
-    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 14,
+    paddingHorizontal: 20,
     borderBottomLeftRadius: 16,
     borderBottomRightRadius: 16,
-    alignItems: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 6,
     elevation: 3,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    maxWidth: 520,
+    width: '100%',
+    alignSelf: 'center',
   },
   tenantName: {
     color: '#FFF',
-    fontSize: 20,
-    fontWeight: 'bold',
-    textAlign: 'center',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   roleTag: {
-    color: '#FFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    paddingHorizontal: 12,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 12,
-    marginTop: 8,
+  },
+  roleTagText: {
+    color: '#FFF',
+    fontSize: 11,
+    fontWeight: '800',
     textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   content: {
     flex: 1,

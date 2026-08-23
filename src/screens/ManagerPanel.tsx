@@ -267,19 +267,21 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
         onClose={() => setSelectedBrokerId(null)}
         onSaved={() => { void loadData(); }}
       />
-      <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-        <ScreenCode code={isDirector ? 'DR-01' : 'GE-02'} />
-        <TouchableOpacity style={styles.backHeader} onPress={onBack}>
-          <Text style={[styles.backHeaderText, { color: primaryColor }]}>← Voltar ao Dashboard</Text>
+    <View style={styles.container}>
+      <ScreenCode code={isDirector ? 'DR-01' : 'GE-02'} />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={onBack} style={styles.backButton}>
+          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
-
-        <Text style={styles.title}>{isDirector ? 'Gestão Executiva de Corretores' : 'Gestão de Corretores'}</Text>
-        <Text style={styles.subtitle}>
+        <Text style={styles.headerTitle}>{isDirector ? 'Gestão Executiva de Corretores' : 'Gestão de Corretores'}</Text>
+        <Text style={styles.headerSubtitle}>
           {isDirector 
-            ? 'Visão hierárquica por equipe de gerência, busca rápida e ações operacionais' 
-            : 'Gerencie convites, aprovações de cadastro e distribuição de leads da sua equipe'}
+            ? 'Visão hierárquica por equipe de gerência e ações operacionais' 
+            : 'Gerencie convites, aprovações de cadastro e distribuição de leads'}
         </Text>
+      </View>
 
+      <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
         {/* MODO DIRETORIA: CARDS DE KPI DE ALTO NÍVEL */}
@@ -699,6 +701,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
           </>
         )}
       </ScrollView>
+    </View>
     </>
   );
 }
@@ -706,11 +709,45 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f7',
+    backgroundColor: '#f7f7f8',
+  },
+  header: {
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingHorizontal: 20,
+    backgroundColor: '#1c1c1e',
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+    alignSelf: 'flex-start',
+    paddingVertical: 2,
+  },
+  backText: {
+    color: '#60a5fa',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    color: '#9ca3af',
+    fontSize: 13,
+    marginTop: 3,
+  },
+  scrollContainer: {
+    flex: 1,
   },
   scrollContent: {
-    padding: 20,
+    padding: 16,
     paddingBottom: 60,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
   },
   centerContainer: {
     flex: 1,
@@ -723,29 +760,6 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontSize: 16,
     color: '#8e8e93',
-  },
-  backHeader: {
-    marginTop: 20,
-    marginBottom: 16,
-  },
-  backHeaderText: {
-    fontSize: 15,
-    fontWeight: 'bold',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1c1c1e',
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#4b5563',
-    marginBottom: 20,
-    textAlign: 'center',
-    maxWidth: 640,
-    alignSelf: 'center',
   },
   kpiContainer: {
     flexDirection: 'row',
