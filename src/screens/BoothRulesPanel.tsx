@@ -28,6 +28,7 @@ type Booth = {
   lifecycle_status?: 'draft' | 'published' | 'paused' | 'archived';
   wifis?: Array<{ ssid: string }>;
 };
+
 type RuleSet = {
   version: number;
   roleta_1_time: string | null;
@@ -52,7 +53,22 @@ type RuleSet = {
   checkout_tolerance_minutes?: number;
 };
 
+type Holiday = {
+  id: string;
+  date: string; // YYYY-MM-DD
+  name: string;
+  roleta_time: string;
+  scope: 'all' | 'specific';
+  boothId: string | null;
+  boothName: string;
+  createdAt: string;
+};
+
 export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
+  // Aba Ativa: 'booths' (Regras e Plantões) ou 'holidays' (Feriados - Roleta Única)
+  const [activeTab, setActiveTab] = useState<'booths' | 'holidays'>('booths');
+
+  // Estado dos Plantões e Regras
   const [booths, setBooths] = useState<Booth[]>([]);
   const [selectedBoothId, setSelectedBoothId] = useState('');
   const [rules, setRules] = useState<RuleSet | null>(null);
@@ -62,8 +78,19 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
   const [savingBooth, setSavingBooth] = useState(false);
   const [reason, setReason] = useState('');
 
+  // Estado dos Feriados
+  const [holidays, setHolidays] = useState<Holiday[]>([]);
+  const [loadingHolidays, setLoadingHolidays] = useState(false);
+  const [holidayDate, setHolidayDate] = useState(''); // DD/MM/AAAA
+  const [holidayName, setHolidayName] = useState('');
+  const [holidayRoletaTime, setHolidayRoletaTime] = useState('09:00');
+  const [holidayScope, setHolidayScope] = useState<'all' | 'specific'>('all');
+  const [selectedHolidayBoothIds, setSelectedHolidayBoothIds] = useState<string[]>([]);
+  const [creatingHoliday, setCreatingHoliday] = useState(false);
+
   useEffect(() => {
     void loadBooths();
+    void loadHolidays();
   }, []);
 
   useEffect(() => {
@@ -107,6 +134,18 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
       Alert.alert('ABIATAR', 'Não foi possível carregar as regras deste plantão.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadHolidays() {
+    setLoadingHolidays(true);
+    try {
+      const response = await api.get('/booths/holidays');
+      setHolidays(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Erro ao carregar feriados:', error);
+    } finally {
+      setLoadingHolidays(false);
     }
   }
 
@@ -192,10 +231,10 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
-        roleta1Time: rules.roleta_1_time || '09:00',
-        roleta2Time: rules.roleta_2_time || '14:00',
+        roleta1Time: rules.roleta_1_time || null,
+        roleta2Time: rules.roleta_2_time || null,
         roleta3Time: rules.roleta_3_time || null,
-        roletaWeekendTime: rules.roleta_weekend_time || '09:00',
+        roletaWeekendTime: rules.roleta_weekend_time || null,
         checkinEarlyMinutes: Number(rules.checkin_early_minutes ?? 30),
         posBarraMinutes: Number(rules.pos_barra_minutes ?? 30),
         minimumPeriodMinutes: Number(rules.minimum_period_minutes ?? 120),
@@ -221,6 +260,145 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
     }
   }
 
+  // Helper de Análise de Data e Dia da Semana
+  function parseDateInfo(raw: string): { label: string; isPast: boolean; isValid: boolean; isoDate: string } {
+    const trimmed = raw.trim();
+    let day = 0, month = 0, year = 0;
+
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(trimmed)) {
+      const p = trimmed.split('/');
+      day = Number(p[0]);
+      month = Number(p[1]);
+      year = Number(p[2]);
+    } else if (/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) {
+      const p = trimmed.split('-');
+      year = Number(p[0]);
+      month = Number(p[1]);
+      day = Number(p[2]);
+    } else {
+      return { label: '', isPast: false, isValid: false, isoDate: '' };
+    }
+
+    if (month < 1 || month > 12 || day < 1 || day > 31 || year < 2024 || year > 2099) {
+      return { label: '', isPast: false, isValid: false, isoDate: '' };
+    }
+
+    const d = new Date(year, month - 1, day);
+    if (d.getFullYear() !== year || d.getMonth() !== month - 1 || d.getDate() !== day) {
+      return { label: '', isPast: false, isValid: false, isoDate: '' };
+    }
+
+    const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    const dayName = days[d.getDay()];
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const isPast = d.getTime() < today.getTime();
+    const isoDate = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+
+    return { label: dayName, isPast, isValid: true, isoDate };
+  }
+
+  const dateInfo = parseDateInfo(holidayDate);
+
+  // Aplica máscara automática de data DD/MM/AAAA enquanto o usuário digita
+  function handleDateChange(text: string) {
+    const cleaned = text.replace(/\D/g, '');
+    let formatted = cleaned;
+    if (cleaned.length > 2 && cleaned.length <= 4) {
+      formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2)}`;
+    } else if (cleaned.length > 4) {
+      formatted = `${cleaned.slice(0, 2)}/${cleaned.slice(2, 4)}/${cleaned.slice(4, 8)}`;
+    }
+    setHolidayDate(formatted);
+  }
+
+  function toggleBoothHolidaySelection(id: string) {
+    setSelectedHolidayBoothIds((prev) =>
+      prev.includes(id) ? prev.filter((bId) => bId !== id) : [...prev, id]
+    );
+  }
+
+  async function handleCreateHoliday() {
+    if (!holidayDate.trim() || !holidayName.trim()) {
+      Alert.alert('ABIATAR', 'Por favor, preencha a data e o nome do feriado.');
+      return;
+    }
+
+    if (!dateInfo.isValid) {
+      Alert.alert('ABIATAR', 'Por favor, informe uma data válida no formato DD/MM/AAAA.');
+      return;
+    }
+
+    if (dateInfo.isPast) {
+      Alert.alert('ABIATAR', 'Apenas datas de hoje ou posteriores podem ser cadastradas como feriado.');
+      return;
+    }
+
+    if (holidayScope === 'specific' && selectedHolidayBoothIds.length === 0) {
+      Alert.alert('ABIATAR', 'Selecione ao menos um plantão para aplicar o feriado.');
+      return;
+    }
+
+    setCreatingHoliday(true);
+    try {
+      await api.post('/booths/holidays', {
+        date: dateInfo.isoDate,
+        name: holidayName.trim(),
+        roletaTime: holidayRoletaTime || '09:00',
+        scope: holidayScope,
+        boothIds: holidayScope === 'specific' ? selectedHolidayBoothIds : undefined,
+      });
+
+      Alert.alert('ABIATAR', `Feriado '${holidayName}' cadastrado com sucesso com Roleta Única às ${holidayRoletaTime || '09:00'}!`);
+      setHolidayDate('');
+      setHolidayName('');
+      setHolidayRoletaTime('09:00');
+      setHolidayScope('all');
+      setSelectedHolidayBoothIds([]);
+      await loadHolidays();
+    } catch (error: any) {
+      Alert.alert('ABIATAR', error?.response?.data?.message || 'Não foi possível cadastrar o feriado.');
+    } finally {
+      setCreatingHoliday(false);
+    }
+  }
+
+  async function handleDeleteHoliday(holiday: Holiday) {
+    Alert.alert(
+      'Remover Feriado',
+      `Deseja remover o feriado '${holiday.name}' (${formatDateDisplay(holiday.date)})?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/booths/holidays/${holiday.id}`);
+              Alert.alert('ABIATAR', 'Feriado removido com sucesso.');
+              await loadHolidays();
+            } catch (error: any) {
+              Alert.alert('ABIATAR', error?.response?.data?.message || 'Não foi possível remover o feriado.');
+            }
+          },
+        },
+      ]
+    );
+  }
+
+  function formatDateDisplay(isoDate: string): string {
+    const [y, m, d] = isoDate.split('-');
+    return `${d}/${m}/${y}`;
+  }
+
+  function getHolidayDayOfWeek(isoDate: string): string {
+    const [y, m, d] = isoDate.split('-').map(Number);
+    const date = new Date(y, m - 1, d);
+    const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    return days[date.getDay()] || '';
+  }
+
   if (loading && !rules) {
     return <View style={styles.center}><ActivityIndicator size="large" color="#1c1c1e" /></View>;
   }
@@ -230,167 +408,353 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
       <ScreenCode code="DR-02" />
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack}><Text style={styles.back}>‹ Voltar</Text></TouchableOpacity>
-        <Text style={styles.title}>Administrar Plantões e Roletas</Text>
+        <Text style={styles.title}>Administrar Plantões & Roletas</Text>
       </View>
+
+      {/* SELETOR DE ABAS PRINCIPAIS */}
+      <View style={styles.tabContainer}>
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'booths' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('booths')}
+        >
+          <Text style={[styles.tabButtonText, activeTab === 'booths' && styles.tabButtonTextActive]}>
+            🏢 Plantões & Horários
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tabButton, activeTab === 'holidays' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('holidays')}
+        >
+          <Text style={[styles.tabButtonText, activeTab === 'holidays' && styles.tabButtonTextActive]}>
+            📅 Feriados (Roleta Única)
+          </Text>
+        </TouchableOpacity>
+      </View>
+
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator>
-        <Text style={styles.subtitle}>Configuração Operacional dos Plantões</Text>
-        <Text style={styles.description}>Configure os horários de roleta, antecedência de check-in, janelas de pós-barra e metas de fim de semana por estande.</Text>
-        
-        <View style={styles.boothToolbar}>
-          <Text style={styles.label}>Selecionar plantão de vendas:</Text>
-          <TouchableOpacity style={styles.newBoothButton} onPress={startNewBooth}><Text style={styles.newBoothText}>+ Novo plantão</Text></TouchableOpacity>
-        </View>
-
-        <View style={styles.boothRow}>
-          {booths.map((booth) => (
-            <TouchableOpacity key={booth.id} style={[styles.boothButton, selectedBoothId === booth.id && styles.boothButtonActive]} onPress={() => setSelectedBoothId(booth.id)}>
-              <Text style={[styles.boothText, selectedBoothId === booth.id && styles.boothTextActive]}>{booth.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {selectedBooth && (
+        {/* ========================================================================= */}
+        {/* ABA 1: PLANTÕES & REGRAS OPERACIONAIS                                     */}
+        {/* ========================================================================= */}
+        {activeTab === 'booths' && (
           <>
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>1. Cadastro-Base do Plantão</Text>
-              <Text style={styles.lifecycle}>Status de Operação: {selectedBooth.lifecycle_status || 'draft'}</Text>
-              
-              <View style={styles.field}>
-                <Text style={styles.label}>Nome do Empreendimento / Plantão</Text>
-                <TextInput value={String(selectedBooth.name || '')} onChangeText={(v) => updateBoothField('name', v)} style={styles.input} />
-              </View>
-
-              <View style={styles.field}>
-                <Text style={styles.label}>Endereço do Plantão</Text>
-                <TextInput value={String(selectedBooth.address || '')} onChangeText={(v) => updateBoothField('address', v)} style={styles.input} />
-              </View>
-
-              <View style={{ flexDirection: 'row', gap: 12 }}>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Latitude</Text>
-                  <TextInput value={String(selectedBooth.latitude || '')} onChangeText={(v) => updateBoothField('latitude', v)} style={styles.input} />
-                </View>
-                <View style={[styles.field, { flex: 1 }]}>
-                  <Text style={styles.label}>Longitude</Text>
-                  <TextInput value={String(selectedBooth.longitude || '')} onChangeText={(v) => updateBoothField('longitude', v)} style={styles.input} />
-                </View>
-              </View>
-
-              <Text style={styles.label}>Redes Wi-Fi Autorizadas (uma por linha)</Text>
-              <TextInput value={(selectedBooth.wifis || []).map((wifi) => wifi.ssid).join('\n')} onChangeText={(value) => setSelectedBooth({ ...selectedBooth, wifis: value.split('\n').map((ssid) => ({ ssid: ssid.trim() })).filter((wifi) => wifi.ssid) })} style={[styles.input, styles.reason]} multiline placeholder="Ex: Wi-Fi_Plantao_01" />
-
-              <TouchableOpacity style={styles.saveSecondary} onPress={saveBooth} disabled={savingBooth}>
-                {savingBooth ? <ActivityIndicator color="#1c1c1e" /> : <Text style={styles.saveSecondaryText}>{selectedBoothId ? 'Salvar Dados do Plantão' : 'Criar Plantão como Rascunho'}</Text>}
-              </TouchableOpacity>
-
-              <View style={styles.lifecycleRow}>
-                <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#dcfce7' }]} onPress={() => changeLifecycle('publish')}><Text style={[styles.lifecycleButtonText, { color: '#15803d' }]}>Publicar Plantão</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#fef9c3' }]} onPress={() => changeLifecycle('pause')}><Text style={[styles.lifecycleButtonText, { color: '#a16207' }]}>Pausar</Text></TouchableOpacity>
-                <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#fee2e2' }]} onPress={() => changeLifecycle('archive')}><Text style={[styles.lifecycleButtonText, { color: '#b91c1c' }]}>Arquivar</Text></TouchableOpacity>
-              </View>
+            <Text style={styles.subtitle}>Configuração Operacional dos Plantões</Text>
+            <Text style={styles.description}>Configure os horários de roleta, antecedência de check-in, janelas de pós-barra e metas de fim de semana por estande.</Text>
+            
+            <View style={styles.boothToolbar}>
+              <Text style={styles.label}>Selecionar plantão de vendas:</Text>
+              <TouchableOpacity style={styles.newBoothButton} onPress={startNewBooth}><Text style={styles.newBoothText}>+ Novo plantão</Text></TouchableOpacity>
             </View>
 
-            {rules && (
-              <View style={styles.card}>
-                <Text style={styles.sectionTitle}>2. Grade de Horários das Roletas</Text>
-                <Text style={styles.version}>Versão das Regras: v{rules.version}</Text>
-
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Horário Roleta 1 (Manhã)</Text>
-                    <TextInput value={String(rules.roleta_1_time || '09:00')} onChangeText={(v) => updateField('roleta_1_time', v)} style={styles.input} placeholder="09:00" />
-                  </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Horário Roleta 2 (Tarde)</Text>
-                    <TextInput value={String(rules.roleta_2_time || '14:00')} onChangeText={(v) => updateField('roleta_2_time', v)} style={styles.input} placeholder="14:00" />
-                  </View>
-                </View>
-
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Roleta 3 (Noite/Shopping - Opcional)</Text>
-                    <TextInput value={String(rules.roleta_3_time || '')} onChangeText={(v) => updateField('roleta_3_time', v)} style={styles.input} placeholder="18:00 (opcional)" />
-                  </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Roleta Fim de Semana / Feriado</Text>
-                    <TextInput value={String(rules.roleta_weekend_time || '09:00')} onChangeText={(v) => updateField('roleta_weekend_time', v)} style={styles.input} placeholder="09:00" />
-                  </View>
-                </View>
-
-                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>3. Janelas de Entrada e Pós-Barra</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Check-in Liberado (Minutos antes)</Text>
-                    <TextInput value={String(rules.checkin_early_minutes ?? 30)} onChangeText={(v) => updateField('checkin_early_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="30" />
-                  </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Tolerância Pós-Barra (Minutos após)</Text>
-                    <TextInput value={String(rules.pos_barra_minutes ?? 30)} onChangeText={(v) => updateField('pos_barra_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="30" />
-                  </View>
-                </View>
-
-                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>4. Validação e Cômputo da Roleta</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Tempo Mínimo para Validar (Minutos)</Text>
-                    <TextInput value={String(rules.minimum_period_minutes ?? 120)} onChangeText={(v) => updateField('minimum_period_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="120" />
-                  </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Meta Mensal de Roletas</Text>
-                    <TextInput value={String(rules.minimum_monthly_periods ?? 20)} onChangeText={(v) => updateField('minimum_monthly_periods', v)} keyboardType="numeric" style={styles.input} placeholder="20" />
-                  </View>
-                </View>
-
-                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>5. Elegibilidade para Fim de Semana</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Roletas para Sábado (Seg a Sex)</Text>
-                    <TextInput value={String(rules.saturday_required_periods ?? 5)} onChangeText={(v) => updateField('saturday_required_periods', v)} keyboardType="numeric" style={styles.input} placeholder="5" />
-                  </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Roletas para Domingo (Seg a Sex)</Text>
-                    <TextInput value={String(rules.sunday_required_periods ?? 6)} onChangeText={(v) => updateField('sunday_required_periods', v)} keyboardType="numeric" style={styles.input} placeholder="6" />
-                  </View>
-                </View>
-
-                <TouchableOpacity style={[styles.toggle, { marginTop: 8 }]} onPress={() => setRules({ ...rules, weekend_enabled: !rules.weekend_enabled })}>
-                  <Text style={styles.toggleText}>Habilitar Roletas em Fins de Semana: {rules.weekend_enabled ? '🟢 ATIVADO' : '🔴 DESATIVADO'}</Text>
+            <View style={styles.boothRow}>
+              {booths.map((booth) => (
+                <TouchableOpacity key={booth.id} style={[styles.boothButton, selectedBoothId === booth.id && styles.boothButtonActive]} onPress={() => setSelectedBoothId(booth.id)}>
+                  <Text style={[styles.boothText, selectedBoothId === booth.id && styles.boothTextActive]}>{booth.name}</Text>
                 </TouchableOpacity>
+              ))}
+            </View>
 
-                <Text style={[styles.sectionTitle, { marginTop: 20 }]}>6. Parâmetros de Segurança e Presença</Text>
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Raio GPS Permitido (Metros)</Text>
-                    <TextInput value={String(rules.gps_radius_meters ?? 100)} onChangeText={(v) => updateField('gps_radius_meters', v)} keyboardType="numeric" style={styles.input} placeholder="100" />
+            {selectedBooth && (
+              <>
+                <View style={styles.card}>
+                  <Text style={styles.sectionTitle}>1. Cadastro-Base do Plantão</Text>
+                  <Text style={styles.lifecycle}>Status de Operação: {selectedBooth.lifecycle_status || 'draft'}</Text>
+                  
+                  <View style={styles.field}>
+                    <Text style={styles.label}>Nome do Empreendimento / Plantão</Text>
+                    <TextInput value={String(selectedBooth.name || '')} onChangeText={(v) => updateBoothField('name', v)} style={styles.input} />
                   </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Confirmação Presença / Pings (Minutos)</Text>
-                    <TextInput value={String(rules.ping_interval_minutes ?? 30)} onChangeText={(v) => updateField('ping_interval_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="30" />
+
+                  <View style={styles.field}>
+                    <Text style={styles.label}>Endereço do Plantão</Text>
+                    <TextInput value={String(selectedBooth.address || '')} onChangeText={(v) => updateBoothField('address', v)} style={styles.input} />
+                  </View>
+
+                  <View style={{ flexDirection: 'row', gap: 12 }}>
+                    <View style={[styles.field, { flex: 1 }]}>
+                      <Text style={styles.label}>Latitude</Text>
+                      <TextInput value={String(selectedBooth.latitude || '')} onChangeText={(v) => updateBoothField('latitude', v)} style={styles.input} />
+                    </View>
+                    <View style={[styles.field, { flex: 1 }]}>
+                      <Text style={styles.label}>Longitude</Text>
+                      <TextInput value={String(selectedBooth.longitude || '')} onChangeText={(v) => updateBoothField('longitude', v)} style={styles.input} />
+                    </View>
+                  </View>
+
+                  <Text style={styles.label}>Redes Wi-Fi Autorizadas (uma por linha)</Text>
+                  <TextInput value={(selectedBooth.wifis || []).map((wifi) => wifi.ssid).join('\n')} onChangeText={(value) => setSelectedBooth({ ...selectedBooth, wifis: value.split('\n').map((ssid) => ({ ssid: ssid.trim() })).filter((wifi) => wifi.ssid) })} style={[styles.input, styles.reason]} multiline placeholder="Ex: Wi-Fi_Plantao_01" />
+
+                  <TouchableOpacity style={styles.saveSecondary} onPress={saveBooth} disabled={savingBooth}>
+                    {savingBooth ? <ActivityIndicator color="#1c1c1e" /> : <Text style={styles.saveSecondaryText}>{selectedBoothId ? 'Salvar Dados do Plantão' : 'Criar Plantão como Rascunho'}</Text>}
+                  </TouchableOpacity>
+
+                  <View style={styles.lifecycleRow}>
+                    <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#dcfce7' }]} onPress={() => changeLifecycle('publish')}><Text style={[styles.lifecycleButtonText, { color: '#15803d' }]}>Publicar Plantão</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#fef9c3' }]} onPress={() => changeLifecycle('pause')}><Text style={[styles.lifecycleButtonText, { color: '#a16207' }]}>Pausar</Text></TouchableOpacity>
+                    <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#fee2e2' }]} onPress={() => changeLifecycle('archive')}><Text style={[styles.lifecycleButtonText, { color: '#b91c1c' }]}>Arquivar</Text></TouchableOpacity>
                   </View>
                 </View>
 
-                <View style={{ flexDirection: 'row', gap: 12 }}>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Prazo de Resposta do Alerta (Minutos)</Text>
-                    <TextInput value={String(rules.ping_response_deadline_minutes ?? 5)} onChangeText={(v) => updateField('ping_response_deadline_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="5" />
-                  </View>
-                  <View style={[styles.field, { flex: 1 }]}>
-                    <Text style={styles.label}>Corretores Mínimos na Cobertura</Text>
-                    <TextInput value={String(rules.minimum_brokers_required ?? 2)} onChangeText={(v) => updateField('minimum_brokers_required', v)} keyboardType="numeric" style={styles.input} placeholder="2" />
-                  </View>
-                </View>
+                {rules && (
+                  <View style={styles.card}>
+                    <Text style={styles.sectionTitle}>2. Grade de Horários das Roletas</Text>
+                    <Text style={styles.version}>Versão das Regras: v{rules.version}</Text>
 
-                <Text style={[styles.label, { marginTop: 16 }]}>Motivo da Alteração das Regras (Auditoria)</Text>
-                <TextInput value={reason} onChangeText={setReason} style={[styles.input, styles.reason]} multiline placeholder="Informe o motivo para a trilha de auditoria" />
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Horário Roleta 1 (Manhã)</Text>
+                        <TextInput value={String(rules.roleta_1_time || '09:00')} onChangeText={(v) => updateField('roleta_1_time', v)} style={styles.input} placeholder="09:00" />
+                      </View>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Horário Roleta 2 (Tarde)</Text>
+                        <TextInput value={String(rules.roleta_2_time || '14:00')} onChangeText={(v) => updateField('roleta_2_time', v)} style={styles.input} placeholder="14:00" />
+                      </View>
+                    </View>
 
-                <TouchableOpacity style={styles.save} onPress={saveRules} disabled={saving}>
-                  {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Salvar Regras da Roleta (Nova Versão)</Text>}
-                </TouchableOpacity>
-              </View>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Roleta 3 (Noite/Shopping - Opcional)</Text>
+                        <TextInput value={String(rules.roleta_3_time || '')} onChangeText={(v) => updateField('roleta_3_time', v)} style={styles.input} placeholder="18:00 (opcional)" />
+                      </View>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Roleta Fim de Semana / Feriado</Text>
+                        <TextInput value={String(rules.roleta_weekend_time || '09:00')} onChangeText={(v) => updateField('roleta_weekend_time', v)} style={styles.input} placeholder="09:00" />
+                      </View>
+                    </View>
+
+                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>3. Janelas de Entrada e Pós-Barra</Text>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Check-in Liberado (Minutos antes)</Text>
+                        <TextInput value={String(rules.checkin_early_minutes ?? 30)} onChangeText={(v) => updateField('checkin_early_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="30" />
+                      </View>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Tolerância Pós-Barra (Minutos após)</Text>
+                        <TextInput value={String(rules.pos_barra_minutes ?? 30)} onChangeText={(v) => updateField('pos_barra_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="30" />
+                      </View>
+                    </View>
+
+                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>4. Validação e Cômputo da Roleta</Text>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Tempo Mínimo para Validar (Minutos)</Text>
+                        <TextInput value={String(rules.minimum_period_minutes ?? 120)} onChangeText={(v) => updateField('minimum_period_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="120" />
+                      </View>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Meta Mensal de Roletas</Text>
+                        <TextInput value={String(rules.minimum_monthly_periods ?? 20)} onChangeText={(v) => updateField('minimum_monthly_periods', v)} keyboardType="numeric" style={styles.input} placeholder="20" />
+                      </View>
+                    </View>
+
+                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>5. Elegibilidade para Fim de Semana</Text>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Roletas para Sábado (Seg a Sex)</Text>
+                        <TextInput value={String(rules.saturday_required_periods ?? 5)} onChangeText={(v) => updateField('saturday_required_periods', v)} keyboardType="numeric" style={styles.input} placeholder="5" />
+                      </View>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Roletas para Domingo (Seg a Sex)</Text>
+                        <TextInput value={String(rules.sunday_required_periods ?? 6)} onChangeText={(v) => updateField('sunday_required_periods', v)} keyboardType="numeric" style={styles.input} placeholder="6" />
+                      </View>
+                    </View>
+
+                    <TouchableOpacity style={styles.toggle} onPress={() => setRules({ ...rules, weekend_enabled: !rules.weekend_enabled })}>
+                      <Text style={styles.toggleText}>Habilitar Roletas em Fins de Semana: {rules.weekend_enabled ? 'SIM (Ativo)' : 'NÃO (Bloqueado)'}</Text>
+                    </TouchableOpacity>
+
+                    <Text style={[styles.sectionTitle, { marginTop: 20 }]}>6. Parâmetros de Presença e Segurança</Text>
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Raio GPS Permitido (Metros)</Text>
+                        <TextInput value={String(rules.gps_radius_meters ?? 100)} onChangeText={(v) => updateField('gps_radius_meters', v)} keyboardType="numeric" style={styles.input} placeholder="100" />
+                      </View>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Mínimo de Corretores no Plantão</Text>
+                        <TextInput value={String(rules.minimum_brokers_required ?? 2)} onChangeText={(v) => updateField('minimum_brokers_required', v)} keyboardType="numeric" style={styles.input} placeholder="2" />
+                      </View>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Intervalo de Confirmação (Minutos)</Text>
+                        <TextInput value={String(rules.ping_interval_minutes ?? 30)} onChangeText={(v) => updateField('ping_interval_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="30" />
+                      </View>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Prazo de Resposta (Minutos)</Text>
+                        <TextInput value={String(rules.ping_response_deadline_minutes ?? 5)} onChangeText={(v) => updateField('ping_response_deadline_minutes', v)} keyboardType="numeric" style={styles.input} placeholder="5" />
+                      </View>
+                    </View>
+
+                    <Text style={[styles.label, { marginTop: 16 }]}>Motivo da Alteração das Regras (Auditoria)</Text>
+                    <TextInput value={reason} onChangeText={setReason} style={[styles.input, styles.reason]} multiline placeholder="Informe o motivo para a trilha de auditoria" />
+
+                    <TouchableOpacity style={styles.save} onPress={saveRules} disabled={saving}>
+                      {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Salvar Regras da Roleta (Nova Versão)</Text>}
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </>
             )}
+            {!booths.length && <Text style={styles.empty}>Nenhum plantão cadastrado neste tenant.</Text>}
           </>
         )}
-        {!booths.length && <Text style={styles.empty}>Nenhum plantão cadastrado neste tenant.</Text>}
+
+        {/* ========================================================================= */}
+        {/* ABA 2: GESTÃO DE FERIADOS (ROLETA ÚNICA)                                  */}
+        {/* ========================================================================= */}
+        {activeTab === 'holidays' && (
+          <>
+            <Text style={styles.subtitle}>Gestão de Feriados (Roleta Única)</Text>
+            <Text style={styles.description}>
+              Cadastre feriados nacionais, estaduais, municipais ou pontos facultativos. Nesses dias, os plantões configurados operarão com <Text style={{ fontWeight: 'bold' }}>Roleta Única</Text> no horário determinado.
+            </Text>
+
+            {/* FORMULÁRIO DE CADASTRO DE FERIADO */}
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>➕ Incluir Novo Feriado</Text>
+
+              {/* CAMPO DE DATA COM DIA DA SEMANA DINÂMICO */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Data do Feriado (DD/MM/AAAA) *</Text>
+                <TextInput
+                  value={holidayDate}
+                  onChangeText={handleDateChange}
+                  style={styles.input}
+                  placeholder="Ex: 07/09/2026"
+                  maxLength={10}
+                  keyboardType="numeric"
+                />
+
+                {/* BADGE DE DIA DA SEMANA / VALIDAÇÃO */}
+                {dateInfo.isValid && (
+                  <View style={[styles.dayBadge, dateInfo.isPast ? styles.dayBadgePast : styles.dayBadgeFuture]}>
+                    <Text style={[styles.dayBadgeText, dateInfo.isPast ? styles.dayBadgeTextPast : styles.dayBadgeTextFuture]}>
+                      {dateInfo.isPast
+                        ? `⚠️ ${dateInfo.label} (Data já passou - apenas datas futuras permitidas)`
+                        : `📅 ${dateInfo.label} (Roleta Única)`}
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              {/* NOME DO FERIADO */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Nome / Descrição do Feriado *</Text>
+                <TextInput
+                  value={holidayName}
+                  onChangeText={setHolidayName}
+                  style={styles.input}
+                  placeholder="Ex: Independência do Brasil / Padroeira da Cidade"
+                />
+              </View>
+
+              {/* HORÁRIO DA ROLETA ÚNICA */}
+              <View style={styles.field}>
+                <Text style={styles.label}>Horário da Roleta Única</Text>
+                <TextInput
+                  value={holidayRoletaTime}
+                  onChangeText={setHolidayRoletaTime}
+                  style={styles.input}
+                  placeholder="09:00"
+                  maxLength={5}
+                />
+              </View>
+
+              {/* ESCOPO DOS PLANTÕES */}
+              <Text style={[styles.label, { marginTop: 8 }]}>Aplicar para quais plantões?</Text>
+              <View style={styles.scopeRow}>
+                <TouchableOpacity
+                  style={[styles.scopeOption, holidayScope === 'all' && styles.scopeOptionActive]}
+                  onPress={() => setHolidayScope('all')}
+                >
+                  <Text style={[styles.scopeText, holidayScope === 'all' && styles.scopeTextActive]}>
+                    🔘 Todos os Plantões da Construtora
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.scopeOption, holidayScope === 'specific' && styles.scopeOptionActive]}
+                  onPress={() => setHolidayScope('specific')}
+                >
+                  <Text style={[styles.scopeText, holidayScope === 'specific' && styles.scopeTextActive]}>
+                    🔘 Plantões Específicos
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* SELEÇÃO DE PLANTÕES ESPECÍFICOS */}
+              {holidayScope === 'specific' && (
+                <View style={styles.specificBoothsBox}>
+                  <Text style={styles.specificBoothsTitle}>Selecione os plantões que terão Roleta Única neste feriado:</Text>
+                  {booths.map((booth) => {
+                    const isChecked = selectedHolidayBoothIds.includes(booth.id);
+                    return (
+                      <TouchableOpacity
+                        key={booth.id}
+                        style={[styles.boothCheckboxItem, isChecked && styles.boothCheckboxItemChecked]}
+                        onPress={() => toggleBoothHolidaySelection(booth.id)}
+                      >
+                        <Text style={styles.checkboxIcon}>{isChecked ? '☑️' : '⬜'}</Text>
+                        <Text style={[styles.checkboxLabel, isChecked && { fontWeight: 'bold', color: '#1c1c1e' }]}>
+                          {booth.name}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              )}
+
+              {/* BOTÃO DE CADASTRAR FERIADO */}
+              <TouchableOpacity
+                style={[styles.save, (creatingHoliday || dateInfo.isPast) && { opacity: 0.6 }]}
+                onPress={handleCreateHoliday}
+                disabled={creatingHoliday || dateInfo.isPast}
+              >
+                {creatingHoliday ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.saveText}>➕ Cadastrar Feriado com Roleta Única</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* LISTAGEM DE FERIADOS CADASTRADOS */}
+            <View style={styles.card}>
+              <Text style={styles.sectionTitle}>📋 Feriados Cadastrados no Sistema</Text>
+              {loadingHolidays ? (
+                <ActivityIndicator color="#1c1c1e" style={{ marginVertical: 16 }} />
+              ) : holidays.length === 0 ? (
+                <Text style={styles.empty}>Nenhum feriado cadastrado até o momento. Utilize o formulário acima para cadastrar.</Text>
+              ) : (
+                <View style={{ gap: 10, marginTop: 10 }}>
+                  {holidays.map((h) => (
+                    <View key={h.id} style={styles.holidayCard}>
+                      <View style={{ flex: 1 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                          <Text style={styles.holidayDate}>{formatDateDisplay(h.date)}</Text>
+                          <View style={styles.holidayDayTag}>
+                            <Text style={styles.holidayDayTagText}>{getHolidayDayOfWeek(h.date)}</Text>
+                          </View>
+                        </View>
+                        <Text style={styles.holidayName}>{h.name}</Text>
+                        <Text style={styles.holidayDetails}>
+                          ⏰ Roleta Única às <Text style={{ fontWeight: 'bold' }}>{h.roleta_time}</Text> | 📍 {h.boothName}
+                        </Text>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.deleteHolidayButton}
+                        onPress={() => handleDeleteHoliday(h)}
+                      >
+                        <Text style={styles.deleteHolidayButtonText}>🗑️</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </>
+        )}
       </ScrollView>
     </View>
   );
@@ -402,6 +766,33 @@ const styles = StyleSheet.create({
   header: { padding: 18, backgroundColor: '#1c1c1e' },
   back: { color: '#fff', fontSize: 16, marginBottom: 10 },
   title: { color: '#fff', fontSize: 22, fontWeight: '700' },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    paddingHorizontal: 16,
+    paddingTop: 8,
+    gap: 8,
+  },
+  tabButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderBottomWidth: 3,
+    borderBottomColor: 'transparent',
+  },
+  tabButtonActive: {
+    borderBottomColor: '#1c1c1e',
+  },
+  tabButtonText: {
+    fontSize: 14,
+    color: '#8e8e93',
+    fontWeight: '600',
+  },
+  tabButtonTextActive: {
+    color: '#1c1c1e',
+    fontWeight: '800',
+  },
   content: { padding: 20, paddingBottom: 48, maxWidth: 760, width: '100%', alignSelf: 'center' },
   subtitle: { fontSize: 18, fontWeight: '700', color: '#1c1c1e', marginBottom: 6 },
   description: { color: '#666', lineHeight: 20, marginBottom: 18 },
@@ -414,13 +805,10 @@ const styles = StyleSheet.create({
   boothButtonActive: { backgroundColor: '#1c1c1e', borderColor: '#1c1c1e' },
   boothText: { color: '#333' },
   boothTextActive: { color: '#fff', fontWeight: '700' },
-  sectionTitle: { color: '#1c1c1e', fontSize: 18, fontWeight: '800', marginTop: 12, marginBottom: 8 },
+  sectionTitle: { color: '#1c1c1e', fontSize: 17, fontWeight: '800', marginTop: 4, marginBottom: 8 },
   lifecycle: { color: '#0f766e', fontWeight: '800', marginBottom: 12, textTransform: 'uppercase' },
-  effectiveCard: { backgroundColor: '#eef6ff', borderWidth: 1, borderColor: '#bfdbfe', borderRadius: 10, padding: 12, marginBottom: 14 },
-  effectiveTitle: { color: '#1e3a8a', fontWeight: '800', marginBottom: 6 },
-  effectiveText: { color: '#1e40af', marginBottom: 3 },
   version: { color: '#666', marginBottom: 12 },
-  field: { marginBottom: 12 },
+  field: { marginBottom: 14 },
   card: {
     backgroundColor: '#fff',
     borderRadius: 12,
@@ -429,7 +817,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 16 },
+  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 15 },
   reason: { minHeight: 80, textAlignVertical: 'top' },
   toggle: { padding: 14, borderRadius: 8, backgroundColor: '#ececef', marginBottom: 16 },
   toggleText: { color: '#1c1c1e', fontWeight: '700' },
@@ -438,7 +826,134 @@ const styles = StyleSheet.create({
   lifecycleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 14 },
   lifecycleButton: { backgroundColor: '#dbeafe', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14 },
   lifecycleButtonText: { color: '#1e3a8a', fontWeight: '800' },
-  save: { backgroundColor: '#1c1c1e', borderRadius: 8, padding: 15, alignItems: 'center', marginTop: 8 },
-  saveText: { color: '#fff', fontWeight: '700', fontSize: 16 },
-  empty: { color: '#666', paddingVertical: 20 },
+  save: { backgroundColor: '#1c1c1e', borderRadius: 8, padding: 15, alignItems: 'center', marginTop: 12 },
+  saveText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  empty: { color: '#8e8e93', paddingVertical: 14, textAlign: 'center' },
+  dayBadge: {
+    marginTop: 6,
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+  },
+  dayBadgeFuture: {
+    backgroundColor: '#e0f2fe',
+    borderColor: '#38bdf8',
+    borderWidth: 1,
+  },
+  dayBadgePast: {
+    backgroundColor: '#fee2e2',
+    borderColor: '#f87171',
+    borderWidth: 1,
+  },
+  dayBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  dayBadgeTextFuture: {
+    color: '#0369a1',
+  },
+  dayBadgeTextPast: {
+    color: '#b91c1c',
+  },
+  scopeRow: {
+    gap: 8,
+    marginBottom: 12,
+  },
+  scopeOption: {
+    padding: 12,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    backgroundColor: '#fafafc',
+  },
+  scopeOptionActive: {
+    borderColor: '#1c1c1e',
+    backgroundColor: '#f3f4f6',
+  },
+  scopeText: {
+    fontSize: 14,
+    color: '#4b5563',
+  },
+  scopeTextActive: {
+    fontWeight: '700',
+    color: '#1c1c1e',
+  },
+  specificBoothsBox: {
+    backgroundColor: '#f9fafb',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 14,
+    gap: 8,
+  },
+  specificBoothsTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  boothCheckboxItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  boothCheckboxItemChecked: {
+    backgroundColor: '#e5e7eb',
+  },
+  checkboxIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  checkboxLabel: {
+    fontSize: 14,
+    color: '#4b5563',
+  },
+  holidayCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fafafc',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 10,
+    padding: 14,
+  },
+  holidayDate: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1c1c1e',
+  },
+  holidayDayTag: {
+    backgroundColor: '#e0f2fe',
+    borderRadius: 4,
+    paddingVertical: 2,
+    paddingHorizontal: 6,
+  },
+  holidayDayTagText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#0369a1',
+  },
+  holidayName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  holidayDetails: {
+    fontSize: 12,
+    color: '#6b7280',
+  },
+  deleteHolidayButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#fee2e2',
+    marginLeft: 10,
+  },
+  deleteHolidayButtonText: {
+    fontSize: 16,
+  },
 });
