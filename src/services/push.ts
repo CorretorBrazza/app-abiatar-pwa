@@ -90,15 +90,19 @@ export async function registerWebPushNotifications(): Promise<boolean> {
       // O Push Operacional é apresentado pelo modal persistente do PWA;
       // não criar uma segunda notificação nativa em foreground.
       if (payload.data?.type === 'operational_push') return;
-      const brandName = payload.data?.brandName || 'ABIATAR';
-      const originalTitle = payload.notification?.title;
-      const body = [originalTitle, payload.notification?.body].filter(Boolean).join(' — ') || 'Você recebeu uma nova mensagem.';
-      if (Notification.permission === 'granted') {
+
+      // Se a aba estiver visível (em primeiro plano), o toast na tela já é suficiente.
+      // Apenas cria a notificação do sistema se a aba/tela estiver em segundo plano.
+      if (typeof document !== 'undefined' && document.hidden && Notification.permission === 'granted') {
+        const brandName = payload.data?.brandName || 'ABIATAR';
+        const originalTitle = payload.notification?.title || payload.data?.title;
+        const body = [originalTitle, payload.notification?.body || payload.data?.body].filter(Boolean).join(' — ') || 'Você recebeu uma nova mensagem.';
         try {
+          const messageId = payload.data?.messageId || payload.data?.eventId || payload.data?.presenceId || 'msg';
           const notification = new Notification(brandName, {
             body,
             icon: '/icon.png',
-            tag: payload.data?.messageId ? `message-${payload.data.messageId}` : 'abiatar-message',
+            tag: `abiatar-${messageId}`,
           });
           notification.onclick = () => {
             window.focus();
