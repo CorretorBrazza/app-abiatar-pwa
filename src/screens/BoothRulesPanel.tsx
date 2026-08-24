@@ -64,6 +64,17 @@ type Holiday = {
   createdAt: string;
 };
 
+type SpecialSchedule = {
+  id: string;
+  booth_id: string;
+  scope: 'recurring' | 'one_off';
+  day_of_week: number | null;
+  specific_date: string | null;
+  description: string;
+  roleta_time: string;
+  created_at: string;
+};
+
 export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
   // Aba Ativa: 'booths' (Regras e Plantões) ou 'holidays' (Feriados - Roleta Única)
   const [activeTab, setActiveTab] = useState<'booths' | 'holidays'>('booths');
@@ -77,6 +88,17 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
   const [saving, setSaving] = useState(false);
   const [savingBooth, setSavingBooth] = useState(false);
   const [reason, setReason] = useState('');
+
+  const [roleta3Enabled, setRoleta3Enabled] = useState(false);
+
+  // Estado dos Horários Especiais do Plantão (Soberanos)
+  const [specialSchedules, setSpecialSchedules] = useState<SpecialSchedule[]>([]);
+  const [loadingSpecialSchedules, setLoadingSpecialSchedules] = useState(false);
+  const [specialScope, setSpecialScope] = useState<'recurring' | 'one_off'>('one_off');
+  const [specialDayOfWeek, setSpecialDayOfWeek] = useState<number>(0); // 0 = Domingo
+  const [specialRoletaTime, setSpecialRoletaTime] = useState('12:00');
+  const [specialDescription, setSpecialDescription] = useState('');
+  const [creatingSpecial, setCreatingSpecial] = useState(false);
 
   // Estado dos Feriados
   const [holidays, setHolidays] = useState<Holiday[]>([]);
@@ -97,6 +119,7 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
     if (selectedBoothId) {
       setSelectedBooth(booths.find((booth) => booth.id === selectedBoothId) || null);
       void loadRules(selectedBoothId);
+      void loadSpecialSchedules(selectedBoothId);
     }
   }, [selectedBoothId]);
 
@@ -120,11 +143,14 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
     setLoading(true);
     try {
       const response = await api.get(`/booths/${boothId}/rules`);
+      const r3 = response.data.roleta_3_time;
+      const isR3On = Boolean(r3 && String(r3).trim() !== '');
+      setRoleta3Enabled(isR3On);
       setRules({
         ...response.data,
         roleta_1_time: response.data.roleta_1_time || '09:00',
         roleta_2_time: response.data.roleta_2_time || '14:00',
-        roleta_3_time: response.data.roleta_3_time || '',
+        roleta_3_time: isR3On ? r3 : '',
         roleta_weekend_time: response.data.roleta_weekend_time || '09:00',
         checkin_early_minutes: response.data.checkin_early_minutes ?? 30,
         pos_barra_minutes: response.data.pos_barra_minutes ?? 30,
@@ -134,6 +160,19 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
       Alert.alert('ABIATAR', 'Não foi possível carregar as regras deste plantão.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadSpecialSchedules(boothId: string) {
+    if (!boothId) return;
+    setLoadingSpecialSchedules(true);
+    try {
+      const response = await api.get(`/booths/${boothId}/special-schedules`);
+      setSpecialSchedules(Array.isArray(response.data) ? response.data : []);
+    } catch (error) {
+      console.error('Erro ao carregar horários especiais:', error);
+    } finally {
+      setLoadingSpecialSchedules(false);
     }
   }
 
@@ -233,7 +272,7 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
       const payload: Record<string, unknown> = {
         roleta1Time: rules.roleta_1_time || null,
         roleta2Time: rules.roleta_2_time || null,
-        roleta3Time: rules.roleta_3_time || null,
+        roleta3Time: roleta3Enabled && rules.roleta_3_time && rules.roleta_3_time.trim() !== '' ? rules.roleta_3_time.trim() : null,
         roletaWeekendTime: rules.roleta_weekend_time || null,
         checkinEarlyMinutes: Number(rules.checkin_early_minutes ?? 30),
         posBarraMinutes: Number(rules.pos_barra_minutes ?? 30),
@@ -258,6 +297,61 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
     } finally {
       setSaving(false);
     }
+  }
+
+  const DAY_NAMES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+
+  async function handleCreateSpecialSchedule() {
+    if (!selectedBoothId) {
+      Alert.alert('ABIATAR', 'Selecione um plantão para cadastrar o horário especial.');
+      return;
+    }
+    if (!specialRoletaTime.trim()) {
+      Alert.alert('ABIATAR', 'Informe o horário da Roleta Especial (ex: 12:00).');
+      return;
+    }
+
+    setCreatingSpecial(true);
+    try {
+      await api.post(`/booths/${selectedBoothId}/special-schedules`, {
+        scope: specialScope,
+        dayOfWeek: specialDayOfWeek,
+        roletaTime: specialRoletaTime.trim(),
+        description: specialDescription.trim() || `Horário Especial (${DAY_NAMES[specialDayOfWeek]})`,
+      });
+
+      Alert.alert('ABIATAR', 'Horário Especial cadastrado com sucesso! Este horário tem prioridade soberana sobre o horário padrão.');
+      setSpecialDescription('');
+      setSpecialRoletaTime('12:00');
+      await loadSpecialSchedules(selectedBoothId);
+    } catch (error: any) {
+      Alert.alert('ABIATAR', error?.response?.data?.message || 'Não foi possível cadastrar o horário especial.');
+    } finally {
+      setCreatingSpecial(false);
+    }
+  }
+
+  async function handleDeleteSpecialSchedule(schedule: SpecialSchedule) {
+    Alert.alert(
+      'Remover Horário Especial',
+      `Deseja remover o horário especial '${schedule.description}' (${schedule.roleta_time})?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Remover',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.delete(`/booths/special-schedules/${schedule.id}`);
+              Alert.alert('ABIATAR', 'Horário especial removido com sucesso.');
+              if (selectedBoothId) await loadSpecialSchedules(selectedBoothId);
+            } catch (error: any) {
+              Alert.alert('ABIATAR', error?.response?.data?.message || 'Não foi possível remover.');
+            }
+          },
+        },
+      ]
+    );
   }
 
   // Helper de Análise de Data e Dia da Semana
@@ -499,7 +593,8 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
                 </View>
 
                 {rules && (
-                  <View style={styles.card}>
+                  <>
+                    <View style={styles.card}>
                     <Text style={styles.sectionTitle}>2. Grade de Horários das Roletas</Text>
                     <Text style={styles.version}>Versão das Regras: v{rules.version}</Text>
 
@@ -516,11 +611,47 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
 
                     <View style={{ flexDirection: 'row', gap: 12 }}>
                       <View style={[styles.field, { flex: 1 }]}>
-                        <Text style={styles.label}>Roleta 3 (Noite/Shopping - Opcional)</Text>
-                        <TextInput value={String(rules.roleta_3_time || '')} onChangeText={(v) => updateField('roleta_3_time', v)} style={styles.input} placeholder="18:00 (opcional)" />
+                        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                          <Text style={styles.label}>3º Período (Noite)</Text>
+                          <TouchableOpacity
+                            style={{
+                              flexDirection: 'row',
+                              alignItems: 'center',
+                              backgroundColor: roleta3Enabled ? '#dcfce7' : '#f3f4f6',
+                              paddingHorizontal: 8,
+                              paddingVertical: 3,
+                              borderRadius: 6,
+                              borderWidth: 1,
+                              borderColor: roleta3Enabled ? '#86efac' : '#d1d5db',
+                            }}
+                            onPress={() => {
+                              const next = !roleta3Enabled;
+                              setRoleta3Enabled(next);
+                              if (!next) {
+                                updateField('roleta_3_time', '');
+                              } else if (!rules.roleta_3_time) {
+                                updateField('roleta_3_time', '18:00');
+                              }
+                            }}
+                          >
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: roleta3Enabled ? '#15803d' : '#6b7280' }}>
+                              {roleta3Enabled ? '🟢 HABILITADO' : '⚪ DESABILITADO'}
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                        <TextInput
+                          value={String(rules.roleta_3_time || '')}
+                          onChangeText={(v) => updateField('roleta_3_time', v)}
+                          editable={roleta3Enabled}
+                          style={[
+                            styles.input,
+                            !roleta3Enabled && { backgroundColor: '#f3f4f6', color: '#9ca3af', borderColor: '#e5e7eb' },
+                          ]}
+                          placeholder={roleta3Enabled ? 'Ex: 18:00 ou 19:00' : 'Desabilitado (Sem 3ª roleta)'}
+                        />
                       </View>
                       <View style={[styles.field, { flex: 1 }]}>
-                        <Text style={styles.label}>Roleta Fim de Semana / Feriado</Text>
+                        <Text style={styles.label}>Roleta Padrão Fim de Semana</Text>
                         <TextInput value={String(rules.roleta_weekend_time || '09:00')} onChangeText={(v) => updateField('roleta_weekend_time', v)} style={styles.input} placeholder="09:00" />
                       </View>
                     </View>
@@ -595,7 +726,165 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
                       {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Salvar Regras da Roleta (Nova Versão)</Text>}
                     </TouchableOpacity>
                   </View>
-                )}
+
+                  {/* ========================================================================= */}
+                  {/* SEÇÃO 7: HORÁRIOS ESPECIAIS DO PLANTÃO (SOBERANOS)                       */}
+                  {/* ========================================================================= */}
+                  <View style={[styles.card, { marginTop: 16 }]}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
+                      <Text style={styles.sectionTitle}>7. Horários Especiais do Plantão (Soberanos)</Text>
+                      <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, borderWidth: 1, borderColor: '#fde68a' }}>
+                        <Text style={{ fontSize: 11, fontWeight: '800', color: '#b45309' }}>👑 SOBERANIA MÁXIMA</Text>
+                      </View>
+                    </View>
+                    <Text style={[styles.description, { marginBottom: 12 }]}>
+                      Configure horários diferenciados de abertura e <Text style={{ fontWeight: '700' }}>Roleta Única</Text> exclusivos para este plantão (ex: shoppings aos domingos, eventos ou feriados). O horário especial tem prioridade soberana e substitui a grade padrão.
+                    </Text>
+
+                    {/* SELEÇÃO DO DIA DA SEMANA */}
+                    <Text style={[styles.label, { marginBottom: 6 }]}>Dia da Semana:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                      <View style={{ flexDirection: 'row', gap: 6 }}>
+                        {DAY_NAMES.map((name, idx) => (
+                          <TouchableOpacity
+                            key={name}
+                            style={[
+                              styles.dayChip,
+                              specialDayOfWeek === idx && styles.dayChipActive,
+                            ]}
+                            onPress={() => setSpecialDayOfWeek(idx)}
+                          >
+                            <Text
+                              style={[
+                                styles.dayChipText,
+                                specialDayOfWeek === idx && styles.dayChipTextActive,
+                              ]}
+                            >
+                              {name}
+                            </Text>
+                          </TouchableOpacity>
+                        ))}
+                      </View>
+                    </ScrollView>
+
+                    {/* FREQUÊNCIA / ESCOPO */}
+                    <Text style={[styles.label, { marginBottom: 6 }]}>Frequência de Aplicação:</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
+                      <TouchableOpacity
+                        style={[styles.scopeOption, specialScope === 'one_off' && styles.scopeOptionActive, { flex: 1 }]}
+                        onPress={() => setSpecialScope('one_off')}
+                      >
+                        <Text style={[styles.scopeText, specialScope === 'one_off' && styles.scopeTextActive]}>
+                          📅 Somente o Próximo ({DAY_NAMES[specialDayOfWeek]})
+                        </Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        style={[styles.scopeOption, specialScope === 'recurring' && styles.scopeOptionActive, { flex: 1 }]}
+                        onPress={() => setSpecialScope('recurring')}
+                      >
+                        <Text style={[styles.scopeText, specialScope === 'recurring' && styles.scopeTextActive]}>
+                          🔄 Todos os ({DAY_NAMES[specialDayOfWeek]}s)
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* HORÁRIO DA ROLETA E DESCRIÇÃO */}
+                    <View style={{ flexDirection: 'row', gap: 12 }}>
+                      <View style={[styles.field, { flex: 1 }]}>
+                        <Text style={styles.label}>Horário da Roleta Única *</Text>
+                        <TextInput
+                          value={specialRoletaTime}
+                          onChangeText={setSpecialRoletaTime}
+                          style={styles.input}
+                          placeholder="12:00"
+                        />
+                      </View>
+                      <View style={[styles.field, { flex: 2 }]}>
+                        <Text style={styles.label}>Motivo / Descrição</Text>
+                        <TextInput
+                          value={specialDescription}
+                          onChangeText={setSpecialDescription}
+                          style={styles.input}
+                          placeholder="Ex: Abertura Shopping às 12h"
+                        />
+                      </View>
+                    </View>
+
+                    {/* BOTÃO ADICIONAR HORÁRIO ESPECIAL */}
+                    <TouchableOpacity
+                      style={[styles.save, { backgroundColor: '#1c1c1e', marginTop: 8 }]}
+                      onPress={handleCreateSpecialSchedule}
+                      disabled={creatingSpecial}
+                    >
+                      {creatingSpecial ? (
+                        <ActivityIndicator color="#fff" />
+                      ) : (
+                        <Text style={styles.saveText}>+ Adicionar Horário Especial Soberano</Text>
+                      )}
+                    </TouchableOpacity>
+
+                    {/* LISTA DE HORÁRIOS ESPECIAIS ATIVOS */}
+                    <View style={{ marginTop: 16 }}>
+                      <Text style={[styles.sectionTitle, { fontSize: 14, marginBottom: 8 }]}>
+                        Horários Especiais Cadastrados para {selectedBooth?.name || 'este plantão'} ({specialSchedules.length})
+                      </Text>
+
+                      {loadingSpecialSchedules ? (
+                        <ActivityIndicator size="small" color="#1c1c1e" style={{ marginVertical: 10 }} />
+                      ) : specialSchedules.length === 0 ? (
+                        <View style={{ backgroundColor: '#f9fafb', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                          <Text style={{ fontSize: 13, color: '#6b7280', textAlign: 'center' }}>
+                            Nenhum horário especial configurado para este estande. O plantão seguirá a grade regular padrão.
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={{ gap: 8 }}>
+                          {specialSchedules.map((schedule) => (
+                            <View
+                              key={schedule.id}
+                              style={{
+                                flexDirection: 'row',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                backgroundColor: '#f9fafb',
+                                padding: 12,
+                                borderRadius: 8,
+                                borderWidth: 1,
+                                borderColor: '#e5e7eb',
+                              }}
+                            >
+                              <View style={{ flex: 1 }}>
+                                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                                  <View style={{ backgroundColor: '#fef3c7', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: '800', color: '#b45309' }}>👑 SOBERANO</Text>
+                                  </View>
+                                  <Text style={{ fontSize: 13, fontWeight: '800', color: '#111827' }}>
+                                    🎰 Roleta às {schedule.roleta_time}
+                                  </Text>
+                                </View>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>
+                                  {schedule.description}
+                                </Text>
+                                <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                                  {schedule.scope === 'one_off'
+                                    ? `📅 Pontual: ${schedule.specific_date ? formatDateDisplay(schedule.specific_date) : 'Próxima data'} (${schedule.day_of_week !== null ? DAY_NAMES[schedule.day_of_week] : ''})`
+                                    : `🔄 Recorrente: Todos os ${schedule.day_of_week !== null ? DAY_NAMES[schedule.day_of_week] : ''}s`}
+                                </Text>
+                              </View>
+                              <TouchableOpacity
+                                style={styles.deleteHolidayButton}
+                                onPress={() => handleDeleteSpecialSchedule(schedule)}
+                              >
+                                <Text style={styles.deleteHolidayButtonText}>🗑️</Text>
+                              </TouchableOpacity>
+                            </View>
+                          ))}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </>
+              )}
               </>
             )}
             {!booths.length && <Text style={styles.empty}>Nenhum plantão cadastrado neste tenant.</Text>}
@@ -883,6 +1172,27 @@ const styles = StyleSheet.create({
   },
   dayBadgeTextPast: {
     color: '#b91c1c',
+  },
+  dayChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    backgroundColor: '#f3f4f6',
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
+  dayChipActive: {
+    backgroundColor: '#1c1c1e',
+    borderColor: '#1c1c1e',
+  },
+  dayChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4b5563',
+  },
+  dayChipTextActive: {
+    color: '#ffffff',
+    fontWeight: '700',
   },
   scopeRow: {
     gap: 8,
