@@ -11,6 +11,17 @@ import * as Location from 'expo-location'; // Captura GPS nativo
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 
+interface BoothRoletaStatus {
+  isOpen: boolean;
+  status: 'open_pontual' | 'open_pos_barra' | 'closed';
+  roletaName?: string;
+  roletaTime?: string;
+  drawTimeFormatted?: string;
+  earlyOpenFormatted?: string;
+  posBarraEndFormatted?: string;
+  statusLabel?: string;
+}
+
 interface Booth {
   id: string;
   name: string;
@@ -18,6 +29,7 @@ interface Booth {
   latitude: string;
   longitude: string;
   gps_radius: number;
+  roleta_status?: BoothRoletaStatus;
 }
 
 interface CheckInProps {
@@ -48,6 +60,8 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
     }
 
     loadBooths();
+    const interval = setInterval(loadBooths, 30000); // Atualiza status dos plantões a cada 30s
+    return () => clearInterval(interval);
   }, []);
 
   // 2. Método de Check-in: Solicita GPS, captura localização e envia para a API
@@ -105,27 +119,75 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
           <Text style={styles.emptyText}>Nenhum plantão ativo disponível para check-in no momento.</Text>
         </View>
       ) : (
-        booths.map((item) => (
-          <View key={item.id} style={styles.boothCard}>
-            <View style={styles.boothInfo}>
-              <Text style={styles.boothName}>{item.name}</Text>
-              <Text style={styles.boothAddress}>{item.address}</Text>
-              {showTestDiagnostics && <Text style={styles.boothRadius}>[Raio permitido: {item.gps_radius}m]</Text>}
-            </View>
+        booths.map((item) => {
+          const roleta = item.roleta_status;
+          const isCheckInOpen = roleta?.isOpen ?? true;
+          const isPontual = roleta?.status === 'open_pontual';
+          const isPosBarra = roleta?.status === 'open_pos_barra';
 
-            <TouchableOpacity
-              style={[styles.checkInButton, { backgroundColor: primaryColor }]}
-              onPress={() => handleCheckIn(item)}
-              disabled={checkingIn !== null}
-            >
-              {checkingIn === item.id ? (
-                <ActivityIndicator color="#FFF" />
-              ) : (
-                <Text style={styles.buttonText}>Fazer Check-in</Text>
-              )}
-            </TouchableOpacity>
-          </View>
-        ))
+          return (
+            <View key={item.id} style={styles.boothCard}>
+              <View style={styles.boothInfo}>
+                {/* Badge de Horário da Roleta */}
+                {isPontual && (
+                  <View style={styles.badgePontual}>
+                    <Text style={styles.badgePontualText}>
+                      🟢 CHECK-IN PONTUAL · SORTEIO ÀS {roleta?.drawTimeFormatted || '09:01'}
+                    </Text>
+                  </View>
+                )}
+                {isPosBarra && (
+                  <View style={styles.badgePosBarra}>
+                    <Text style={styles.badgePosBarraText}>
+                      🟡 PÓS-BARRA ABERTO (ATÉ ÀS {roleta?.posBarraEndFormatted || '09:30'})
+                    </Text>
+                  </View>
+                )}
+                {!isCheckInOpen && (
+                  <View style={styles.badgeClosed}>
+                    <Text style={styles.badgeClosedText}>
+                      🔒 CHECK-IN FECHADO
+                    </Text>
+                  </View>
+                )}
+
+                <Text style={styles.boothName}>{item.name}</Text>
+                <Text style={styles.boothAddress}>{item.address}</Text>
+
+                {!isCheckInOpen && roleta?.earlyOpenFormatted ? (
+                  <Text style={styles.closedHelp}>
+                    Próxima: {roleta.roletaName} (Check-in abre às {roleta.earlyOpenFormatted} · Sorteio às {roleta.drawTimeFormatted})
+                  </Text>
+                ) : null}
+
+                {isPosBarra && (
+                  <Text style={styles.posBarraHelp}>
+                    Check-in pós-roleta entra automaticamente no final da fila.
+                  </Text>
+                )}
+
+                {showTestDiagnostics && <Text style={styles.boothRadius}>[Raio permitido: {item.gps_radius}m]</Text>}
+              </View>
+
+              <TouchableOpacity
+                style={[
+                  styles.checkInButton,
+                  { backgroundColor: isCheckInOpen ? primaryColor : '#9ca3af' },
+                ]}
+                onPress={() => handleCheckIn(item)}
+                disabled={checkingIn !== null || !isCheckInOpen}
+              >
+                {checkingIn === item.id ? (
+                  <ActivityIndicator color="#FFF" />
+                ) : (
+                  <Text style={styles.buttonText}>
+                    {isPontual ? 'Fazer Check-in' : isPosBarra ? 'Entrar Pós-Barra' : '🔒 Fechado'}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          );
+        })
       )}
     </View>
   );
@@ -184,6 +246,65 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#6b7280',
     fontWeight: '600',
+  },
+  badgePontual: {
+    backgroundColor: '#dcfce7',
+    borderColor: '#86efac',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  badgePontualText: {
+    color: '#15803d',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  badgePosBarra: {
+    backgroundColor: '#fef3c7',
+    borderColor: '#fde047',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  badgePosBarraText: {
+    color: '#b45309',
+    fontSize: 11,
+    fontWeight: '800',
+  },
+  badgeClosed: {
+    backgroundColor: '#f3f4f6',
+    borderColor: '#e5e7eb',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  badgeClosedText: {
+    color: '#6b7280',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  closedHelp: {
+    fontSize: 12,
+    color: '#b91c1c',
+    fontWeight: '600',
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  posBarraHelp: {
+    fontSize: 12,
+    color: '#b45309',
+    fontWeight: '600',
+    marginTop: 2,
+    marginBottom: 4,
   },
   checkInButton: {
     height: 42,

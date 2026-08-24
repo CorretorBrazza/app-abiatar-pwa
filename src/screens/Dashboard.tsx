@@ -415,7 +415,18 @@ export default function Dashboard() {
                 <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900', marginVertical: 4 }}>
                   🎰 {brokerSummary.activeShift.roletaPosition}º Lugar na Fila
                 </Text>
-                <Text style={{ color: '#d1d5db', fontSize: 13, lineHeight: 18 }}>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 10, marginVertical: 8, gap: 4 }}>
+                  <Text style={{ color: '#d1d5db', fontSize: 12 }}>
+                    🕒 <Text style={{ fontWeight: '700', color: '#fff' }}>Check-in realizado às:</Text> {brokerSummary.activeShift.checkInAtFormatted || '—'}
+                  </Text>
+                  <Text style={{ color: '#d1d5db', fontSize: 12 }}>
+                    🎯 <Text style={{ fontWeight: '700', color: '#fff' }}>Horário do sorteio:</Text> {brokerSummary.activeShift.drawTimeFormatted || '09:01'}
+                  </Text>
+                  <Text style={{ color: '#d1d5db', fontSize: 12 }}>
+                    📌 <Text style={{ fontWeight: '700', color: '#fff' }}>Status:</Text> {brokerSummary.activeShift.roletaEntryType === 'pos_barra' ? 'Atendimento extra / Final da fila' : 'Aguarde ser anunciado na recepção'}
+                  </Text>
+                </View>
+                <Text style={{ color: '#9ca3af', fontSize: 12, lineHeight: 17 }}>
                   {brokerSummary.activeShift.roletaEntryType === 'pos_barra'
                     ? 'Você entrou na tolerância Pós-Barra e foi alocado ao final da fila de atendimento e leads.'
                     : 'Ordem oficial sorteada para atendimento presencial na recepção e distribuição de novos leads.'}
@@ -423,14 +434,27 @@ export default function Dashboard() {
               </>
             ) : brokerSummary?.activeShift?.waitingDraw ? (
               <>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                  <Text style={{ color: '#60a5fa', fontSize: 13, fontWeight: '800' }}>⏳ AGUARDANDO SORTEIO DA ROLETA</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <View style={{ backgroundColor: 'rgba(59, 130, 246, 0.2)', borderColor: '#3b82f6', borderWidth: 1, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                    <Text style={{ color: '#60a5fa', fontSize: 11, fontWeight: '800' }}>⏳ AGUARDANDO SORTEIO DA ROLETA</Text>
+                  </View>
                 </View>
                 <Text style={{ color: '#fff', fontSize: 20, fontWeight: '800', marginVertical: 4 }}>
                   Check-in Pontual Confirmado!
                 </Text>
-                <Text style={{ color: '#9ca3af', fontSize: 13, lineHeight: 18 }}>
-                  O sorteio aleatório das posições da roleta ocorre automaticamente às 09:01 (ou 14:01). Você será notificado com sua posição!
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 10, marginVertical: 8, gap: 4 }}>
+                  <Text style={{ color: '#d1d5db', fontSize: 12 }}>
+                    🕒 <Text style={{ fontWeight: '700', color: '#fff' }}>Check-in registrado às:</Text> {brokerSummary.activeShift.checkInAtFormatted || '—'}
+                  </Text>
+                  <Text style={{ color: '#facc15', fontSize: 12, fontWeight: '700' }}>
+                    🎰 Horário do Sorteio: Às {brokerSummary.activeShift.drawTimeFormatted || '09:01'}
+                  </Text>
+                  <Text style={{ color: '#d1d5db', fontSize: 12 }}>
+                    👥 <Text style={{ fontWeight: '700', color: '#fff' }}>Aguardando no estande:</Text> {brokerSummary.activeShift.waitingBrokersCount || 1} corretor(es)
+                  </Text>
+                </View>
+                <Text style={{ color: '#9ca3af', fontSize: 12, lineHeight: 18 }}>
+                  O sorteio automático das posições da roleta ocorrerá exatamente às <Text style={{ color: '#fff', fontWeight: '800' }}>{brokerSummary.activeShift.drawTimeFormatted || '09:01'}</Text>. Assim que a roleta girar, esta tela atualizará com sua posição!
                 </Text>
               </>
             ) : (
