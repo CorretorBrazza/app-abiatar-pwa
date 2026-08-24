@@ -526,7 +526,7 @@ export default function Dashboard() {
             <Text style={styles.infoText}>Status: 🟢 ONLINE (Apto a receber leads)</Text>
             <Text style={styles.infoText}>Plantão: {activeSession.boothName}</Text>
             <Text style={styles.infoText}>
-              Entrada: {new Date(activeSession.checkInAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+              Entrada: {brokerSummary?.activeShift?.checkInAtFormatted || (activeSession?.checkInAt ? new Date(activeSession.checkInAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) : '—')}
             </Text>
           </View>
 
@@ -560,7 +560,11 @@ export default function Dashboard() {
               </View>
             )}
 
-            {brokerSummary?.activeShift?.nextConfirmationAt ? <Text style={[styles.infoText, { marginTop: 8 }]}>Próxima confirmação de presença: {new Date(brokerSummary.activeShift.nextConfirmationAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })} (+5 min de tolerância)</Text> : null}
+            {brokerSummary?.activeShift?.nextConfirmationAt ? (
+              <Text style={[styles.infoText, { marginTop: 8 }]}>
+                Próxima confirmação de presença: {new Date(brokerSummary.activeShift.nextConfirmationAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })} (+5 min de tolerância)
+              </Text>
+            ) : null}
           </View>
 
           <TouchableOpacity 

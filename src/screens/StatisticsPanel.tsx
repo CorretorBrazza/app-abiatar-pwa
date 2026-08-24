@@ -418,7 +418,7 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
                                     </View>
                                   </View>
                                   <Text style={styles.brokerLiveDetails}>
-                                    {broker.roletaName} | Entrada às {new Date(broker.checkInAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                    {broker.roletaName} | Entrada às {new Date(broker.checkInAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}
                                   </Text>
                                 </View>
 
