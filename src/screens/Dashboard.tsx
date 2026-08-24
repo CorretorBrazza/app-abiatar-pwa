@@ -63,36 +63,6 @@ export default function Dashboard() {
   useEffect(() => {
     let cancelled = false;
     let retryTimer: ReturnType<typeof setTimeout> | undefined;
-    async function connectRealtime() {
-      const token = await AsyncStorage.getItem('@abiatar:token');
-      if (!token || cancelled || typeof fetch === 'undefined') return;
-      try {
-        const response = await fetch(`${apiBaseUrl}/realtime/stream`, { headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' } });
-        if (!response.ok || !response.body) throw new Error(`SSE ${response.status}`);
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
-        while (!cancelled) {
-          const { value, done } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const chunks = buffer.split('\\n\\n');
-          buffer = chunks.pop() || '';
-          for (const chunk of chunks) {
-            const dataLine = chunk.split('\\n').find((line) => line.startsWith('data:'));
-            if (!dataLine) continue;
-            try {
-              const event = JSON.parse(dataLine.replace(/^data:\s*/, ''));
-              if (event.eventType?.startsWith('presence.')) void checkCurrentSession();
-              if ((event.eventType?.includes('created') || event.eventType === 'broker.approved' || event.eventType?.startsWith('message.')) && typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('abiatar:realtime', { detail: event }));
-              void loadUnreadCount();
-            } catch { /* heartbeat ou evento inválido não interrompe a conexão */ }
-          }
-        }
-      } catch (error) {
-        if (!cancelled) retryTimer = setTimeout(connectRealtime, 5000);
-      }
-    }
 
     async function checkCurrentSession() {
       if (user?.role !== 'corretor_level_3') {
@@ -104,8 +74,6 @@ export default function Dashboard() {
         const response = await api.get('/presences/current');
         if (response.data.hasActiveSession) {
           setActiveSession(response.data.presence);
-          
-          // Se houver um ping pendente na nuvem, abre o modal de confirmação na tela na hora!
           setPendingSessionPingId(response.data.presence.pendingPingId);
         } else {
           setActiveSession(null);
@@ -121,38 +89,88 @@ export default function Dashboard() {
       }
     }
 
+    async function loadBrokerSummary() {
+      if (user?.role !== 'corretor_level_3') return;
+      try {
+        const response = await api.get('/presences/dashboard-summary');
+        setBrokerSummary(response.data);
+      } catch (error) {
+        console.warn('[BROKER SUMMARY] Falha ao atualizar períodos do corretor:', error);
+      }
+    }
+
+    async function connectRealtime() {
+      const token = await AsyncStorage.getItem('@abiatar:token');
+      if (!token || cancelled || typeof fetch === 'undefined') return;
+      try {
+        const response = await fetch(`${apiBaseUrl}/realtime/stream`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' },
+        });
+        if (!response.ok || !response.body) throw new Error(`SSE ${response.status}`);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (!cancelled) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const chunks = buffer.split('\n\n');
+          buffer = chunks.pop() || '';
+          for (const chunk of chunks) {
+            const dataLine = chunk.split('\n').find((line) => line.startsWith('data:'));
+            if (!dataLine) continue;
+            try {
+              const rawData = dataLine.replace(/^data:\s*/, '').trim();
+              if (!rawData) continue;
+              const event = JSON.parse(rawData);
+              console.log('[REALTIME SSE EVENT RECEIVED]', event.eventType, event);
+
+              // Atualiza instantaneamente a tela do corretor e plantões
+              if (
+                event.eventType?.startsWith('booth.') ||
+                event.eventType?.startsWith('presence.') ||
+                event.eventType?.startsWith('roleta.') ||
+                event.eventType?.startsWith('broker.')
+              ) {
+                void checkCurrentSession();
+                void loadBrokerSummary();
+              }
+
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('abiatar:realtime', { detail: event }));
+                if (event.eventType?.startsWith('booth.')) {
+                  window.dispatchEvent(new CustomEvent('abiatar:booth_update', { detail: event }));
+                }
+              }
+
+              if (event.eventType?.startsWith('message.')) {
+                void loadUnreadCount();
+              }
+            } catch { /* heartbeat ou evento de formato diferente */ }
+          }
+        }
+      } catch (error) {
+        if (!cancelled) retryTimer = setTimeout(connectRealtime, 4000);
+      }
+    }
+
     checkCurrentSession();
+    loadBrokerSummary();
     void connectRealtime();
 
-    // Ativa o Polling (Verificação silenciosa a cada 15 segundos) se for corretor logado
+    // Ativa o Polling (Verificação silenciosa a cada 10 segundos) se for corretor logado
     let intervalId: any;
     if (user?.role === 'corretor_level_3') {
-      intervalId = setInterval(checkCurrentSession, 15000);
+      intervalId = setInterval(() => {
+        checkCurrentSession();
+        loadBrokerSummary();
+      }, 10000);
     }
 
     return () => {
       if (intervalId) clearInterval(intervalId);
       if (retryTimer) clearTimeout(retryTimer);
       cancelled = true;
-    };
-  }, [user]);
-
-  useEffect(() => {
-    if (user?.role !== 'corretor_level_3') return;
-    let mounted = true;
-    const loadBrokerSummary = async () => {
-      try {
-        const response = await api.get('/presences/dashboard-summary');
-        if (mounted) setBrokerSummary(response.data);
-      } catch (error) {
-        console.warn('[BROKER SUMMARY] Falha ao atualizar períodos do corretor:', error);
-      }
-    };
-    void loadBrokerSummary();
-    const summaryInterval = setInterval(loadBrokerSummary, 15000);
-    return () => {
-      mounted = false;
-      clearInterval(summaryInterval);
     };
   }, [user]);
 

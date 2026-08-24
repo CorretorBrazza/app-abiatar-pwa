@@ -60,8 +60,25 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
     }
 
     loadBooths();
-    const interval = setInterval(loadBooths, 30000); // Atualiza status dos plantões a cada 30s
-    return () => clearInterval(interval);
+    const interval = setInterval(loadBooths, 10000); // Atualiza status dos plantões a cada 10s
+
+    const handleRealtime = (e: any) => {
+      console.log('[CHECKIN REALTIME EVENT]', e.detail);
+      loadBooths();
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('abiatar:booth_update', handleRealtime);
+      window.addEventListener('abiatar:realtime', handleRealtime);
+    }
+
+    return () => {
+      clearInterval(interval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('abiatar:booth_update', handleRealtime);
+        window.removeEventListener('abiatar:realtime', handleRealtime);
+      }
+    };
   }, []);
 
   // 2. Método de Check-in: Solicita GPS, captura localização e envia para a API
