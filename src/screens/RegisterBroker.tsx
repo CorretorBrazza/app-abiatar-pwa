@@ -136,7 +136,40 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
       return;
     }
 
-    // Se estiver usando convite
+    // Se for convite de Gerente
+    if (hasInviteToken && invitedRole === 'gerencia_level_2') {
+      const cleanToken = token.trim();
+      if (!cleanToken) {
+        setError('Por favor, informe o código de convite.');
+        return;
+      }
+
+      try {
+        setError('');
+        setLoading(true);
+        const payload = {
+          token: cleanToken,
+          name: name.trim(),
+          nomeGuerra: nomeGuerra.trim().toLocaleUpperCase('pt-BR'),
+          email: email.trim().toLowerCase(),
+          passwordHash: password,
+        };
+
+        const response = await api.post('/users/register-manager', payload);
+        setSuccessInfo({
+          message: response.data.message || 'Cadastro de Gerente concluído com sucesso!',
+          managerName: 'Diretoria',
+          stage: 'gerencia_level_2',
+        });
+      } catch (err: any) {
+        setError(err.response?.data?.message || 'Falha ao realizar cadastro de Gerente.');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
+
+    // Se estiver usando convite de Corretor
     if (hasInviteToken) {
       const cleanToken = token.trim();
       if (!cleanToken) {
@@ -153,7 +186,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
         }
       }
 
-      if (invitedRole === 'corretor_level_3' && brokerStage !== 'treinamento' && !creci.trim()) {
+      if (brokerStage !== 'treinamento' && !creci.trim()) {
         setError(brokerStage === 'estagiario' ? 'O CRECI de Estágio é obrigatório.' : 'O CRECI profissional é obrigatório.');
         return;
       }
@@ -161,7 +194,6 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
       try {
         setError('');
         setLoading(true);
-        const endpoint = invitedRole === 'gerencia_level_2' ? '/users/register-manager' : '/users/register-broker';
         const payload = {
           token: cleanToken,
           name: name.trim(),
@@ -172,7 +204,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           ...(creci.trim() ? { creci: creci.trim() } : {}),
         };
 
-        const response = await api.post(endpoint, payload);
+        const response = await api.post('/users/register-broker', payload);
         setSuccessInfo({
           message: response.data.message || 'Cadastro realizado com sucesso!',
           managerName: inviteManagerName || 'Gerência',
@@ -229,6 +261,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
 
   const getStageLabel = (stage: string) => {
     switch (stage) {
+      case 'gerencia_level_2': return '👑 Gerência Comercial (Diretoria)';
       case 'treinamento': return '🔵 Em Treinamento (Sem CRECI / Em formação)';
       case 'estagiario': return '🟡 Corretor Estagiário (CRECI Estágio)';
       case 'corretor_creci': default: return '🟢 Corretor com CRECI (Definitivo)';
@@ -276,43 +309,53 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
     );
   }
 
+  const isManagerInvite = hasInviteToken && invitedRole === 'gerencia_level_2';
+
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
-        <Text style={styles.title}>Cadastro de Corretor</Text>
-        <Text style={styles.subtitle}>Faça parte da equipe comercial da construtora</Text>
+        <Text style={styles.title}>{isManagerInvite ? 'Cadastro de Gerente' : 'Cadastro de Corretor'}</Text>
+        <Text style={styles.subtitle}>
+          {isManagerInvite
+            ? 'Cadastro de liderança comercial vinculado à Diretoria'
+            : 'Faça parte da equipe comercial da construtora'}
+        </Text>
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {/* 1. SELEÇÃO DO ESTÁGIO DO CORRETOR */}
-        <Text style={styles.sectionHeader}>1. Selecione o seu Estágio</Text>
-        <View style={styles.stageContainer}>
-          <TouchableOpacity
-            style={[styles.stageCard, brokerStage === 'treinamento' && styles.stageCardSelected]}
-            onPress={() => setBrokerStage('treinamento')}
-          >
-            <Text style={styles.stageTitle}>🔵 Treinamento</Text>
-            <Text style={styles.stageSubtitle}>Sem CRECI / Curso</Text>
-          </TouchableOpacity>
+        {/* 1. SELEÇÃO DO ESTÁGIO DO CORRETOR (Apenas para Corretores) */}
+        {!isManagerInvite && (
+          <>
+            <Text style={styles.sectionHeader}>1. Selecione o seu Estágio</Text>
+            <View style={styles.stageContainer}>
+              <TouchableOpacity
+                style={[styles.stageCard, brokerStage === 'treinamento' && styles.stageCardSelected]}
+                onPress={() => setBrokerStage('treinamento')}
+              >
+                <Text style={styles.stageTitle}>🔵 Treinamento</Text>
+                <Text style={styles.stageSubtitle}>Sem CRECI / Curso</Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.stageCard, brokerStage === 'estagiario' && styles.stageCardSelected]}
-            onPress={() => setBrokerStage('estagiario')}
-          >
-            <Text style={styles.stageTitle}>🟡 Estagiário</Text>
-            <Text style={styles.stageSubtitle}>CRECI Estágio</Text>
-          </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.stageCard, brokerStage === 'estagiario' && styles.stageCardSelected]}
+                onPress={() => setBrokerStage('estagiario')}
+              >
+                <Text style={styles.stageTitle}>🟡 Estagiário</Text>
+                <Text style={styles.stageSubtitle}>CRECI Estágio</Text>
+              </TouchableOpacity>
 
-          <TouchableOpacity
-            style={[styles.stageCard, brokerStage === 'corretor_creci' && styles.stageCardSelected]}
-            onPress={() => setBrokerStage('corretor_creci')}
-          >
-            <Text style={styles.stageTitle}>🟢 Corretor CRECI</Text>
-            <Text style={styles.stageSubtitle}>CRECI Definitivo</Text>
-          </TouchableOpacity>
-        </View>
+              <TouchableOpacity
+                style={[styles.stageCard, brokerStage === 'corretor_creci' && styles.stageCardSelected]}
+                onPress={() => setBrokerStage('corretor_creci')}
+              >
+                <Text style={styles.stageTitle}>🟢 Corretor CRECI</Text>
+                <Text style={styles.stageSubtitle}>CRECI Definitivo</Text>
+              </TouchableOpacity>
+            </View>
+          </>
+        )}
 
-        {/* 2. SELEÇÃO DO GERENTE */}
+        {/* 2. SELEÇÃO DO GERENTE (Apenas no cadastro direto sem token) */}
         {!hasInviteToken && (
           <View style={{ marginBottom: 16 }}>
             <Text style={styles.sectionHeader}>2. Escolha o seu Gerente</Text>
@@ -370,7 +413,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
             {tokenValidated && (
               <View style={styles.badgeContainer}>
                 <Text style={styles.badgeText}>
-                  ✓ Convite validado: {invitedRole === 'gerencia_level_2' ? 'Gerência' : `Corretor (${inviteManagerName || 'Gerente responsável'})`}
+                  ✓ Convite validado: {invitedRole === 'gerencia_level_2' ? '👑 Gerência (Diretoria)' : `Corretor (${inviteManagerName || 'Gerente responsável'})`}
                 </Text>
               </View>
             )}
@@ -378,7 +421,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
         )}
 
         {/* 3. DADOS PESSOAIS E ACESSO */}
-        <Text style={styles.sectionHeader}>3. Seus Dados de Acesso</Text>
+        <Text style={styles.sectionHeader}>{isManagerInvite ? 'Dados de Acesso da Gerência' : '3. Seus Dados de Acesso'}</Text>
 
         <Text style={styles.label}>Nome Completo *</Text>
         <TextInput
@@ -389,7 +432,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
         />
 
         <Text style={styles.label}>Nome de Guerra *</Text>
-        <Text style={styles.helpText}>Nome que será exibido nas escalas, roletas e clientes.</Text>
+        <Text style={styles.helpText}>Nome que será exibido nas escalas, relatórios e equipe.</Text>
         <TextInput
           style={styles.input}
           placeholder="Ex: SILVA"
@@ -419,21 +462,25 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           autoCapitalize="none"
         />
 
-        {/* CAMPO CRECI (OBRIGATÓRIO PARA ESTAGIÁRIO E CORRETOR CRECI; OPCIONAL PARA TREINAMENTO) */}
-        <Text style={styles.label}>
-          {brokerStage === 'treinamento'
-            ? 'CRECI (Opcional - Em Formação)'
-            : brokerStage === 'estagiario'
-            ? 'Número do CRECI de Estágio *'
-            : 'Número do CRECI Profissional *'}
-        </Text>
-        <TextInput
-          style={styles.input}
-          placeholder={brokerStage === 'treinamento' ? 'Deixe em branco ou informe se já tiver' : 'Ex: 123456-F'}
-          value={creci}
-          onChangeText={setCreci}
-          autoCapitalize="characters"
-        />
+        {/* CAMPO CRECI (Apenas para Corretores) */}
+        {!isManagerInvite && (
+          <>
+            <Text style={styles.label}>
+              {brokerStage === 'treinamento'
+                ? 'CRECI (Opcional - Em Formação)'
+                : brokerStage === 'estagiario'
+                ? 'Número do CRECI de Estágio *'
+                : 'Número do CRECI Profissional *'}
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder={brokerStage === 'treinamento' ? 'Deixe em branco ou informe se já tiver' : 'Ex: 123456-F'}
+              value={creci}
+              onChangeText={setCreci}
+              autoCapitalize="characters"
+            />
+          </>
+        )}
 
         {/* BOTÃO DE SUBMIT */}
         <TouchableOpacity
@@ -444,7 +491,13 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           {loading ? (
             <ActivityIndicator color="#FFF" />
           ) : (
-            <Text style={styles.buttonText}>Enviar Cadastro para o Gerente</Text>
+            <Text style={styles.buttonText}>
+              {isManagerInvite
+                ? 'Concluir Cadastro de Gerente'
+                : hasInviteToken
+                ? 'Concluir Cadastro de Corretor'
+                : 'Enviar Cadastro para o Gerente'}
+            </Text>
           )}
         </TouchableOpacity>
 
