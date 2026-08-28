@@ -16,6 +16,14 @@ interface BrokerProfile {
   leads_paused: boolean;
   leads_pause_reason: string | null;
   carencia_ends_at: string | null;
+  stage_expires_at?: string | null;
+  days_until_stage_expiry?: number | null;
+  is_stage_expired?: boolean;
+  last_checkin_at?: string | null;
+  days_since_last_checkin?: number | null;
+  is_inactive_90d?: boolean;
+  suspension_reason?: string | null;
+  is_suspended?: boolean;
 }
 
 interface Props {
@@ -80,6 +88,19 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
       alert(`Estágio do corretor atualizado para ${newStage === 'treinamento' ? 'Treinamento' : newStage === 'estagiario' ? 'Estagiário' : 'Corretor CRECI'} com sucesso!`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Não foi possível alterar o estágio do Corretor.');
+    } finally { setSaving(false); }
+  };
+
+  const extendStageDays = async (days: number) => {
+    if (!profile) return;
+    try {
+      setSaving(true); setError('');
+      await api.patch(`/users/${profile.id}/stage`, { extendDays: days, reason: `Renovação de +${days} dias pela Diretoria` });
+      await loadProfile();
+      onSaved();
+      alert(`Prazo de vigência do estágio renovado por mais ${days} dias! O corretor está ativo.`);
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Não foi possível renovar o prazo de estágio.');
     } finally { setSaving(false); }
   };
 
@@ -170,7 +191,28 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
               <Text style={styles.line}>CRECI: {profile.creci || 'Não informado'}</Text>
               <Text style={styles.line}>Estágio: <Text style={{ fontWeight: 'bold' }}>{getStageBadgeLabel(profile.broker_stage)}</Text></Text>
               <Text style={styles.line}>Gerente: {profile.manager_nome_guerra || 'Sem gerente'}</Text>
+              
+              {profile.broker_stage !== 'corretor_creci' && profile.stage_expires_at ? (
+                <Text style={styles.line}>
+                  📅 Vigência do Estágio: <Text style={{ fontWeight: '700' }}>{new Date(profile.stage_expires_at).toLocaleDateString('pt-BR')}</Text> ({profile.days_until_stage_expiry !== null && profile.days_until_stage_expiry !== undefined ? (profile.days_until_stage_expiry > 0 ? `${profile.days_until_stage_expiry} dias restantes` : 'EXPIRADO') : '—'})
+                </Text>
+              ) : null}
+
+              {profile.broker_stage === 'corretor_creci' ? (
+                <Text style={styles.line}>
+                  ⏱️ Último Check-in: <Text style={{ fontWeight: '700' }}>{profile.last_checkin_at ? `${profile.days_since_last_checkin ?? 0} dias atrás (${new Date(profile.last_checkin_at).toLocaleDateString('pt-BR')})` : 'Nenhum check-in registrado'}</Text>
+                </Text>
+              ) : null}
+
               <Text style={styles.line}>Status: {profile.status}</Text>
+
+              {profile.is_suspended || profile.is_stage_expired || profile.is_inactive_90d ? (
+                <View style={{ backgroundColor: '#fee2e2', borderRadius: 8, padding: 10, marginVertical: 8, borderWidth: 1, borderColor: '#f87171' }}>
+                  <Text style={{ color: '#b91c1c', fontWeight: '800', fontSize: 13 }}>⚠️ CORRETOR SUSPENSO / BLOQUEADO</Text>
+                  <Text style={{ color: '#7f1d1d', fontSize: 12, marginTop: 2 }}>{profile.suspension_reason || 'Vigência de estágio expirada ou inatividade superior a 90 dias.'}</Text>
+                </View>
+              ) : null}
+
               <Text style={[styles.state, profile.leads_paused ? styles.danger : styles.success]}>
                 {profile.leads_paused ? 'Leads pausados' : 'Elegível para leads, conforme presença'}
               </Text>
@@ -178,33 +220,58 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
 
             {/* CARD: PROMOÇÃO / ALTERAÇÃO DE ESTÁGIO */}
             <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Estágio Profissional (Evolução)</Text>
-              <Text style={styles.help}>Altere o estágio do corretor para liberar ou restringir recursos.</Text>
-              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12 }}>
-                <TouchableOpacity
-                  style={[styles.stageSelectBtn, selectedStage === 'treinamento' && styles.stageSelectBtnActive]}
-                  onPress={() => updateStage('treinamento')}
-                  disabled={saving}
-                >
-                  <Text style={selectedStage === 'treinamento' ? styles.stageSelectTextActive : styles.stageSelectText}>🔵 Treinamento</Text>
-                </TouchableOpacity>
+              <Text style={styles.sectionTitle}>Estágio Profissional & Vigência</Text>
+              {isDirector ? (
+                <>
+                  <Text style={styles.help}>Promova o corretor ou altere seu estágio profissional (real-time):</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                    <TouchableOpacity
+                      style={[styles.stageSelectBtn, selectedStage === 'treinamento' && styles.stageSelectBtnActive]}
+                      onPress={() => updateStage('treinamento')}
+                      disabled={saving}
+                    >
+                      <Text style={selectedStage === 'treinamento' ? styles.stageSelectTextActive : styles.stageSelectText}>🔵 Treinamento (90d)</Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.stageSelectBtn, selectedStage === 'estagiario' && styles.stageSelectBtnActive]}
-                  onPress={() => updateStage('estagiario')}
-                  disabled={saving}
-                >
-                  <Text style={selectedStage === 'estagiario' ? styles.stageSelectTextActive : styles.stageSelectText}>🟡 Estagiário</Text>
-                </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[styles.stageSelectBtn, selectedStage === 'estagiario' && styles.stageSelectBtnActive]}
+                      onPress={() => updateStage('estagiario')}
+                      disabled={saving}
+                    >
+                      <Text style={selectedStage === 'estagiario' ? styles.stageSelectTextActive : styles.stageSelectText}>🟡 Estagiário (6m)</Text>
+                    </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.stageSelectBtn, selectedStage === 'corretor_creci' && styles.stageSelectBtnActive]}
-                  onPress={() => updateStage('corretor_creci')}
-                  disabled={saving}
-                >
-                  <Text style={selectedStage === 'corretor_creci' ? styles.stageSelectTextActive : styles.stageSelectText}>🟢 Corretor CRECI</Text>
-                </TouchableOpacity>
-              </View>
+                    <TouchableOpacity
+                      style={[styles.stageSelectBtn, selectedStage === 'corretor_creci' && styles.stageSelectBtnActive]}
+                      onPress={() => updateStage('corretor_creci')}
+                      disabled={saving}
+                    >
+                      <Text style={selectedStage === 'corretor_creci' ? styles.stageSelectTextActive : styles.stageSelectText}>🟢 Corretor CRECI</Text>
+                    </TouchableOpacity>
+                  </View>
+
+                  {profile.broker_stage !== 'corretor_creci' && (
+                    <>
+                      <Text style={[styles.label, { marginTop: 4 }]}>Renovar Prazo de Vigência (+Dias):</Text>
+                      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                        <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(30)} disabled={saving}><Text style={styles.renewBtnText}>+30 Dias</Text></TouchableOpacity>
+                        <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(60)} disabled={saving}><Text style={styles.renewBtnText}>+60 Dias</Text></TouchableOpacity>
+                        <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(90)} disabled={saving}><Text style={styles.renewBtnText}>+90 Dias</Text></TouchableOpacity>
+                        <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(180)} disabled={saving}><Text style={styles.renewBtnText}>+180 Dias</Text></TouchableOpacity>
+                      </View>
+                    </>
+                  )}
+                </>
+              ) : (
+                <View style={{ backgroundColor: '#eff6ff', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#bfdbfe' }}>
+                  <Text style={{ color: '#1e40af', fontSize: 13, fontWeight: '700', marginBottom: 4 }}>
+                    🔒 Controle Exclusivo da Diretoria
+                  </Text>
+                  <Text style={{ color: '#1e3a8a', fontSize: 12, lineHeight: 17 }}>
+                    O Gerente não tem permissão para renovar vigências de treinamento ou estágio. Caso o corretor precise de prorrogação de prazo ou promoção para CRECI, solicite a alteração à Diretoria.
+                  </Text>
+                </View>
+              )}
             </View>
 
             <View style={styles.card}>
@@ -318,4 +385,6 @@ const styles = StyleSheet.create({
   stageSelectBtnActive: { borderColor: '#1d4ed8', backgroundColor: '#eff6ff' },
   stageSelectText: { color: '#4b5563', fontSize: 12, fontWeight: '700' },
   stageSelectTextActive: { color: '#1d4ed8', fontSize: 12, fontWeight: '800' },
+  renewBtn: { backgroundColor: '#1c1c1e', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
+  renewBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 });

@@ -26,6 +26,14 @@ interface BrokerItem {
   broker_stage?: 'treinamento' | 'estagiario' | 'corretor_creci';
   manager_id?: string | null;
   carencia_ends_at?: string | null;
+  stage_expires_at?: string | null;
+  days_until_stage_expiry?: number | null;
+  is_stage_expired?: boolean;
+  last_checkin_at?: string | null;
+  days_since_last_checkin?: number | null;
+  is_inactive_90d?: boolean;
+  suspension_reason?: string | null;
+  is_suspended?: boolean;
 }
 
 interface PendingBroker {
@@ -225,18 +233,36 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const totalActiveBrokers = useMemo(() => allBrokers.filter((b) => b.status === 'active').length, [allBrokers]);
   const totalGraceBrokers = useMemo(() => allBrokers.filter((b) => b.status === 'grace_period').length, [allBrokers]);
 
-  const renderStageBadge = (stage?: string) => {
+  const renderStageBadge = (broker: any) => {
+    const isSuspended = broker?.is_suspended || broker?.is_stage_expired || broker?.is_inactive_90d;
+    if (isSuspended) {
+      return (
+        <View style={{ backgroundColor: '#fee2e2', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: '#fca5a5' }}>
+          <Text style={{ color: '#b91c1c', fontSize: 11, fontWeight: '800' }}>
+            🔴 SUSPENSO ({broker?.suspension_reason || 'Vencido'})
+          </Text>
+        </View>
+      );
+    }
+
+    const stage = typeof broker === 'string' ? broker : broker?.broker_stage;
+    const days = typeof broker === 'object' ? broker?.days_until_stage_expiry : null;
+
     switch (stage) {
       case 'treinamento':
         return (
           <View style={styles.badgeTreinamento}>
-            <Text style={styles.badgeTextTreinamento}>🔵 Treinamento</Text>
+            <Text style={styles.badgeTextTreinamento}>
+              🔵 Treinamento {days !== null && days !== undefined ? `(${days}d)` : '(90d)'}
+            </Text>
           </View>
         );
       case 'estagiario':
         return (
           <View style={styles.badgeEstagiario}>
-            <Text style={styles.badgeTextEstagiario}>🟡 Estagiário</Text>
+            <Text style={styles.badgeTextEstagiario}>
+              🟡 Estagiário {days !== null && days !== undefined ? `(${days}d)` : '(6m)'}
+            </Text>
           </View>
         );
       case 'corretor_creci':
@@ -381,7 +407,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                           <Text style={styles.brokerTitle}>
                             {broker.nome_guerra} <Text style={styles.brokerRealName}>({broker.name})</Text>
                           </Text>
-                          {renderStageBadge(broker.broker_stage)}
+                          {renderStageBadge(broker)}
                         </View>
                         <Text style={styles.brokerMeta}>
                           Gerente: <Text style={styles.boldText}>{mgr?.nome_guerra || mgr?.name || 'Não vinculado'}</Text> · CRECI: {broker.creci || '—'}
@@ -455,7 +481,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                                       <Text style={styles.brokerDrawerName}>
                                         {broker.nome_guerra} <Text style={styles.brokerDrawerSubName}>({broker.name})</Text>
                                       </Text>
-                                      {renderStageBadge(broker.broker_stage)}
+                                      {renderStageBadge(broker)}
                                     </View>
                                     <Text style={styles.brokerDrawerCreci}>
                                       CRECI: {broker.creci || '—'} · {broker.email}
@@ -539,7 +565,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                   <View style={styles.brokerInfo}>
                     <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                       <Text style={styles.brokerName}>{item.name}</Text>
-                      {renderStageBadge(item.broker_stage)}
+                      {renderStageBadge(item)}
                     </View>
                     <Text style={styles.brokerSub}>Nome de Guerra: {item.nome_guerra}</Text>
                     <Text style={styles.brokerSub}>E-mail: {item.email}</Text>
@@ -686,7 +712,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                     <View>
                       <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
                         <Text style={styles.teamName}>{item.nome_guerra} ({item.name})</Text>
-                        {renderStageBadge(item.broker_stage)}
+                        {renderStageBadge(item)}
                       </View>
                       {isGrace && item.carencia_ends_at ? (
                         <Text style={styles.carenciaLabel}>Carência ativa até: {new Date(item.carencia_ends_at).toLocaleDateString('pt-BR')}</Text>
