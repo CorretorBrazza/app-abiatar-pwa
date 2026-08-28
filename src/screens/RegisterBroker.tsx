@@ -65,7 +65,66 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
     }
   };
 
-  const handleFileUpload = (e: any) => {
+  const compressImageIfNeeded = (file: File): Promise<{ base64: string; contentType: string; sizeFormatted: string }> => {
+    return new Promise((resolve) => {
+      if (!file.type.startsWith('image/')) {
+        // PDF ou outro documento: lê direto
+        const reader = new FileReader();
+        reader.onload = () => {
+          const full = (reader.result as string) || '';
+          const base64 = full.includes(',') ? full.split(',')[1] : full;
+          const sizeKb = Math.round(file.size / 1024);
+          const sizeFormatted = file.size < 1024 * 1024 ? `${sizeKb} KB` : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+          resolve({ base64, contentType: file.type || 'application/pdf', sizeFormatted });
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      // Imagem: redimensiona e comprime no canvas para ficar leve e rápida
+      const reader = new FileReader();
+      reader.onload = (readerEvent) => {
+        const image = new Image();
+        image.onload = () => {
+          const maxDimension = 1600;
+          let width = image.width;
+          let height = image.height;
+
+          if (width > maxDimension || height > maxDimension) {
+            if (width > height) {
+              height = Math.round((height * maxDimension) / width);
+              width = maxDimension;
+            } else {
+              width = Math.round((width * maxDimension) / height);
+              height = maxDimension;
+            }
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(image, 0, 0, width, height);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+            const base64 = dataUrl.split(',')[1];
+            const approxBytes = Math.round((base64.length * 3) / 4);
+            const sizeKb = Math.round(approxBytes / 1024);
+            const sizeFormatted = approxBytes < 1024 * 1024 ? `${sizeKb} KB` : `${(approxBytes / (1024 * 1024)).toFixed(1)} MB`;
+            resolve({ base64, contentType: 'image/jpeg', sizeFormatted });
+          } else {
+            const full = (readerEvent.target?.result as string) || '';
+            const base64 = full.includes(',') ? full.split(',')[1] : full;
+            resolve({ base64, contentType: file.type, sizeFormatted: `${Math.round(file.size / 1024)} KB` });
+          }
+        };
+        image.src = (readerEvent.target?.result as string) || '';
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleFileUpload = async (e: any) => {
     const files: FileList = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -75,33 +134,31 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
     }
 
     setError('');
-    Array.from(files).forEach((file) => {
-      if (file.size > 10 * 1024 * 1024) {
-        setError(`O arquivo ${file.name} ultrapassa o limite de 10MB.`);
-        return;
+    const fileArray = Array.from(files);
+    for (const file of fileArray) {
+      if (file.size > 15 * 1024 * 1024) {
+        setError(`O arquivo ${file.name} ultrapassa o limite de 15MB.`);
+        continue;
       }
 
-      const reader = new FileReader();
-      reader.onload = () => {
-        const fullBase64 = reader.result as string;
-        const base64Data = fullBase64.includes(',') ? fullBase64.split(',')[1] : fullBase64;
-        const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-        const sizeFormatted = file.size < 1024 * 1024 ? `${Math.round(file.size / 1024)} KB` : `${sizeMb} MB`;
+      try {
+        const result = await compressImageIfNeeded(file);
         setDocuments((prev) => {
           if (prev.length >= 5) return prev;
           return [
             ...prev,
             {
               filename: file.name,
-              contentType: file.type || 'application/octet-stream',
-              base64: base64Data,
-              sizeFormatted,
+              contentType: result.contentType,
+              base64: result.base64,
+              sizeFormatted: result.sizeFormatted,
             },
           ];
         });
-      };
-      reader.readAsDataURL(file);
-    });
+      } catch (err) {
+        console.error('Erro ao processar arquivo:', err);
+      }
+    }
   };
 
   const removeDocument = (index: number) => {
