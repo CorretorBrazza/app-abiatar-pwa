@@ -45,10 +45,25 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [creci, setCreci] = useState('');
-  const [documents, setDocuments] = useState<Array<{ filename: string; contentType: string; base64: string; sizeFormatted: string }>>([]);
+
+  // 1. Comprovante de Residência
+  const [residenceDoc, setResidenceDoc] = useState<{ filename: string; contentType: string; base64: string; sizeFormatted: string } | null>(null);
+
+  // 2. Documento de Identificação (RG ou CNH)
+  const [idDocMode, setIdDocMode] = useState<'single' | 'split'>('single');
+  const [idDocSingle, setIdDocSingle] = useState<{ filename: string; contentType: string; base64: string; sizeFormatted: string } | null>(null);
+  const [idDocFront, setIdDocFront] = useState<{ filename: string; contentType: string; base64: string; sizeFormatted: string } | null>(null);
+  const [idDocBack, setIdDocBack] = useState<{ filename: string; contentType: string; base64: string; sizeFormatted: string } | null>(null);
+
+  // 3. Carteira do CRECI (Estágio ou Definitiva)
+  const [creciDocMode, setCreciDocMode] = useState<'single' | 'split'>('single');
+  const [creciDocSingle, setCreciDocSingle] = useState<{ filename: string; contentType: string; base64: string; sizeFormatted: string } | null>(null);
+  const [creciDocFront, setCreciDocFront] = useState<{ filename: string; contentType: string; base64: string; sizeFormatted: string } | null>(null);
+  const [creciDocBack, setCreciDocBack] = useState<{ filename: string; contentType: string; base64: string; sizeFormatted: string } | null>(null);
+
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [successInfo, setSuccessInfo] = useState<{ message: string; managerName: string; stage: string } | null>(null);
+  const [successInfo, setSuccessInfo] = useState<{ message: string; managerName: string; stage: string; totalDocs: number } | null>(null);
 
   const loadManagers = async () => {
     try {
@@ -124,45 +139,99 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
     });
   };
 
-  const handleFileUpload = async (e: any) => {
-    const files: FileList = e.target.files;
-    if (!files || files.length === 0) return;
+  const handleSlotUpload = async (
+    e: any,
+    setter: (doc: { filename: string; contentType: string; base64: string; sizeFormatted: string } | null) => void,
+  ) => {
+    const file = e.target?.files?.[0];
+    if (!file) return;
 
-    if (documents.length + files.length > 5) {
-      setError('Você pode enviar no máximo 5 documentos.');
+    if (file.size > 15 * 1024 * 1024) {
+      setError(`O arquivo ${file.name} ultrapassa o limite de 15MB.`);
       return;
     }
 
-    setError('');
-    const fileArray = Array.from(files);
-    for (const file of fileArray) {
-      if (file.size > 15 * 1024 * 1024) {
-        setError(`O arquivo ${file.name} ultrapassa o limite de 15MB.`);
-        continue;
-      }
-
-      try {
-        const result = await compressImageIfNeeded(file);
-        setDocuments((prev) => {
-          if (prev.length >= 5) return prev;
-          return [
-            ...prev,
-            {
-              filename: file.name,
-              contentType: result.contentType,
-              base64: result.base64,
-              sizeFormatted: result.sizeFormatted,
-            },
-          ];
-        });
-      } catch (err) {
-        console.error('Erro ao processar arquivo:', err);
-      }
+    try {
+      setError('');
+      const result = await compressImageIfNeeded(file);
+      setter({
+        filename: file.name,
+        contentType: result.contentType,
+        base64: result.base64,
+        sizeFormatted: result.sizeFormatted,
+      });
+    } catch (err) {
+      console.error('Erro ao processar arquivo:', err);
     }
   };
 
-  const removeDocument = (index: number) => {
-    setDocuments((prev) => prev.filter((_, i) => i !== index));
+  const renderUploadSlot = (
+    title: string,
+    doc: { filename: string; contentType: string; base64: string; sizeFormatted: string } | null,
+    onUpload: (e: any) => void,
+    onRemove: () => void,
+    hint?: string,
+  ) => {
+    return (
+      <View style={{ marginBottom: 12 }}>
+        <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b', marginBottom: 2 }}>{title}</Text>
+        {hint ? <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>{hint}</Text> : null}
+
+        {doc ? (
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              backgroundColor: '#f0fdf4',
+              padding: 12,
+              borderRadius: 8,
+              borderWidth: 1,
+              borderColor: '#86efac',
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+              <Text style={{ fontSize: 16, marginRight: 8 }}>✅</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontSize: 13, fontWeight: '700', color: '#14532d' }} numberOfLines={1}>
+                  {doc.filename}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#16a34a' }}>{doc.sizeFormatted} · Pronto para envio</Text>
+              </View>
+            </View>
+            <TouchableOpacity onPress={onRemove}>
+              <Text style={{ color: '#ef4444', fontWeight: '700', fontSize: 13 }}>✕ Remover</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '12px 14px',
+              backgroundColor: '#f8fafc',
+              border: '1.5px dashed #cbd5e1',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontWeight: '600',
+              fontSize: '13px',
+              color: '#334155',
+              width: '100%',
+              boxSizing: 'border-box',
+            }}
+          >
+            <span>📎 Anexar Documento (PDF ou Foto)</span>
+            <input
+              type="file"
+              accept="image/*,application/pdf"
+              style={{ display: 'none' }}
+              onChange={onUpload}
+            />
+          </label>
+        )}
+      </View>
+    );
   };
 
   // Carrega a lista de gerentes reais na montagem
@@ -328,9 +397,92 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
       return;
     }
 
-    if (documents.length === 0) {
-      setError('Por favor, anexe ao menos um documento (RG/CNH, CRECI ou Comprovante de Residência) antes de enviar o cadastro.');
+    // 1. Validação de Comprovante de Residência
+    if (!residenceDoc) {
+      setError('Por favor, anexe o seu Comprovante de Residência.');
       return;
+    }
+
+    // 2. Validação de Documento de Identificação (RG / CNH)
+    if (idDocMode === 'single' && !idDocSingle) {
+      setError('Por favor, anexe o seu Documento de Identificação (RG ou CNH).');
+      return;
+    }
+    if (idDocMode === 'split' && (!idDocFront || !idDocBack)) {
+      setError('Por favor, anexe a Foto da Frente e a Foto do Verso do seu documento de identificação.');
+      return;
+    }
+
+    // 3. Validação de Carteira CRECI (quando não for treinamento)
+    if (brokerStage !== 'treinamento') {
+      if (creciDocMode === 'single' && !creciDocSingle) {
+        setError(brokerStage === 'estagiario' ? 'Por favor, anexe a sua Carteira de Estágio CRECI.' : 'Por favor, anexe a sua Carteira CRECI Definitiva.');
+        return;
+      }
+      if (creciDocMode === 'split' && (!creciDocFront || !creciDocBack)) {
+        setError('Por favor, anexe a Foto da Frente e a Foto do Verso da sua Carteira CRECI.');
+        return;
+      }
+    }
+
+    // Montagem do payload de documentos estruturados
+    const compiledDocs: Array<{ filename: string; contentType: string; base64: string }> = [];
+
+    // Comprovante
+    compiledDocs.push({
+      filename: `Comprovante_Residencia_${residenceDoc.filename}`,
+      contentType: residenceDoc.contentType,
+      base64: residenceDoc.base64,
+    });
+
+    // Identificação
+    if (idDocMode === 'single' && idDocSingle) {
+      compiledDocs.push({
+        filename: `Doc_Identificacao_${idDocSingle.filename}`,
+        contentType: idDocSingle.contentType,
+        base64: idDocSingle.base64,
+      });
+    } else if (idDocMode === 'split') {
+      if (idDocFront) {
+        compiledDocs.push({
+          filename: `Doc_Identificacao_Frente_${idDocFront.filename}`,
+          contentType: idDocFront.contentType,
+          base64: idDocFront.base64,
+        });
+      }
+      if (idDocBack) {
+        compiledDocs.push({
+          filename: `Doc_Identificacao_Verso_${idDocBack.filename}`,
+          contentType: idDocBack.contentType,
+          base64: idDocBack.base64,
+        });
+      }
+    }
+
+    // CRECI
+    if (brokerStage !== 'treinamento') {
+      if (creciDocMode === 'single' && creciDocSingle) {
+        compiledDocs.push({
+          filename: `Carteira_CRECI_${creciDocSingle.filename}`,
+          contentType: creciDocSingle.contentType,
+          base64: creciDocSingle.base64,
+        });
+      } else if (creciDocMode === 'split') {
+        if (creciDocFront) {
+          compiledDocs.push({
+            filename: `Carteira_CRECI_Frente_${creciDocFront.filename}`,
+            contentType: creciDocFront.contentType,
+            base64: creciDocFront.base64,
+          });
+        }
+        if (creciDocBack) {
+          compiledDocs.push({
+            filename: `Carteira_CRECI_Verso_${creciDocBack.filename}`,
+            contentType: creciDocBack.contentType,
+            base64: creciDocBack.base64,
+          });
+        }
+      }
     }
 
     try {
@@ -345,21 +497,18 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
         email: email.trim().toLowerCase(),
         passwordHash: password,
         ...(creci.trim() ? { creci: creci.trim() } : {}),
-        documents: documents.map((d) => ({
-          filename: d.filename,
-          contentType: d.contentType,
-          base64: d.base64,
-        })),
+        documents: compiledDocs,
       };
 
       const response = await api.post('/users/register-broker', payload);
-      const chosenManager = managers.find(m => m.id === selectedManagerId);
+      const chosenManager = managers.find((m) => m.id === selectedManagerId);
       const managerLabel = chosenManager ? (chosenManager.nome_guerra || chosenManager.name) : 'Gerência';
 
       setSuccessInfo({
         message: response.data.message || 'Cadastro enviado com sucesso! Aguarde a validação do RH e aprovação da Gerência.',
         managerName: managerLabel,
         stage: brokerStage,
+        totalDocs: compiledDocs.length,
       });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Falha ao realizar o cadastro.');
@@ -399,7 +548,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
             <Text style={styles.summaryValue}>{getStageLabel(successInfo.stage)}</Text>
 
             <Text style={styles.summaryLabel}>Documentos Anexados:</Text>
-            <Text style={styles.summaryValue}>{documents.length} arquivo(s)</Text>
+            <Text style={styles.summaryValue}>{successInfo.totalDocs} arquivo(s) enviados</Text>
 
             {creci.trim() ? (
               <>
@@ -613,78 +762,141 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           </>
         )}
 
-        {/* 4. UPLOAD DE DOCUMENTOS (MÁXIMO 5 DOCUMENTOS) */}
+        {/* 4. UPLOAD DE DOCUMENTOS OBRIGATÓRIOS SEPARADOS POR ÁREA */}
         {!isManagerInvite && (
           <View style={{ marginVertical: 14 }}>
-            <Text style={styles.sectionHeader}>4. Envio de Documentos (Máx. 5 arquivos)</Text>
+            <Text style={styles.sectionHeader}>4. Documentos Obrigatórios para Triagem</Text>
             <Text style={styles.helpText}>
-              Envie fotos ou PDFs dos seus documentos para validação pelo RH (RG/CNH, Carteira CRECI e Comprovante de Residência).
+              Anexe os documentos nas áreas correspondentes abaixo. Seus arquivos serão enviados diretamente ao RH da construtora para validação.
             </Text>
 
-            <View style={{ marginTop: 8 }}>
-              {/* Botão de Anexo */}
-              <label
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  padding: '12px 18px',
-                  backgroundColor: '#f4f4f5',
-                  border: '1px dashed #71717a',
-                  borderRadius: '8px',
-                  cursor: documents.length >= 5 ? 'not-allowed' : 'pointer',
-                  fontWeight: '600',
-                  fontSize: '13px',
-                  color: '#18181b',
-                  width: '100%',
-                  boxSizing: 'border-box',
-                }}
-              >
-                <span>📎 {documents.length >= 5 ? 'Limite de 5 documentos atingido' : 'Escolher Arquivos (PDF, JPG, PNG)'}</span>
-                <input
-                  type="file"
-                  multiple
-                  accept="image/*,application/pdf"
-                  style={{ display: 'none' }}
-                  onChange={handleFileUpload}
-                  disabled={documents.length >= 5}
-                />
-              </label>
+            {/* ÁREA 1: COMPROVANTE DE RESIDÊNCIA */}
+            <View style={styles.uploadCategoryBox}>
+              {renderUploadSlot(
+                '🏠 Comprovante de Residência *',
+                residenceDoc,
+                (e) => handleSlotUpload(e, setResidenceDoc),
+                () => setResidenceDoc(null),
+                'Conta recente de consumo (luz, água, gás, internet) ou declaração.'
+              )}
+            </View>
 
-              {/* Lista de Documentos Anexados */}
-              {documents.length > 0 && (
-                <View style={{ marginTop: 10, gap: 6 }}>
-                  {documents.map((doc, idx) => (
-                    <View
-                      key={idx}
-                      style={{
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        backgroundColor: '#f8fafc',
-                        padding: 10,
-                        borderRadius: 6,
-                        borderWidth: 1,
-                        borderColor: '#e2e8f0',
-                      }}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
-                        <Text style={{ fontSize: 14, marginRight: 6 }}>📄</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }} numberOfLines={1}>
-                            {doc.filename}
-                          </Text>
-                          <Text style={{ fontSize: 11, color: '#64748b' }}>{doc.sizeFormatted}</Text>
-                        </View>
-                      </View>
-                      <TouchableOpacity onPress={() => removeDocument(idx)}>
-                        <Text style={{ color: '#ef4444', fontWeight: '700', fontSize: 13 }}>✕ Remover</Text>
-                      </TouchableOpacity>
-                    </View>
-                  ))}
+            {/* ÁREA 2: DOCUMENTO PESSOAL (RG OU CNH) */}
+            <View style={styles.uploadCategoryBox}>
+              <Text style={{ fontSize: 14, fontWeight: '800', color: '#0f172a', marginBottom: 4 }}>
+                🪪 Documento de Identificação (RG ou CNH) *
+              </Text>
+              <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+                Escolha se prefere enviar um arquivo único (PDF/CNH) ou tirar fotos separadas da frente e do verso:
+              </Text>
+
+              {/* Toggle modo único vs frente e verso */}
+              <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+                <TouchableOpacity
+                  style={[styles.uploadModeBtn, idDocMode === 'single' && styles.uploadModeBtnActive]}
+                  onPress={() => setIdDocMode('single')}
+                >
+                  <Text style={idDocMode === 'single' ? styles.uploadModeTextActive : styles.uploadModeText}>
+                    📄 Arquivo Único (PDF / CNH Aberta)
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.uploadModeBtn, idDocMode === 'split' && styles.uploadModeBtnActive]}
+                  onPress={() => setIdDocMode('split')}
+                >
+                  <Text style={idDocMode === 'split' ? styles.uploadModeTextActive : styles.uploadModeText}>
+                    📷 Frente e Verso (2 Fotos)
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              {idDocMode === 'single' ? (
+                renderUploadSlot(
+                  'Arquivo Único do RG ou CNH *',
+                  idDocSingle,
+                  (e) => handleSlotUpload(e, setIdDocSingle),
+                  () => setIdDocSingle(null),
+                  'PDF com frente e verso ou foto da CNH aberta.'
+                )
+              ) : (
+                <View style={{ gap: 4 }}>
+                  {renderUploadSlot(
+                    'Foto da Frente (RG/CNH) *',
+                    idDocFront,
+                    (e) => handleSlotUpload(e, setIdDocFront),
+                    () => setIdDocFront(null),
+                    'Foto nítida da parte frontal do documento.'
+                  )}
+                  {renderUploadSlot(
+                    'Foto do Verso (RG/CNH) *',
+                    idDocBack,
+                    (e) => handleSlotUpload(e, setIdDocBack),
+                    () => setIdDocBack(null),
+                    'Foto nítida do verso do documento.'
+                  )}
                 </View>
               )}
             </View>
+
+            {/* ÁREA 3: CARTEIRA CRECI (APENAS ESTAGIÁRIO OU CORRETOR CRECI) */}
+            {brokerStage !== 'treinamento' && (
+              <View style={styles.uploadCategoryBox}>
+                <Text style={{ fontSize: 14, fontWeight: '800', color: '#0f172a', marginBottom: 4 }}>
+                  {brokerStage === 'estagiario' ? '📑 Carteira de Estágio CRECI *' : '📑 Carteira CRECI Definitiva *'}
+                </Text>
+                <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+                  Envie o documento em PDF/Digital ou as fotos da frente e verso da sua carteira profissional:
+                </Text>
+
+                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 10 }}>
+                  <TouchableOpacity
+                    style={[styles.uploadModeBtn, creciDocMode === 'single' && styles.uploadModeBtnActive]}
+                    onPress={() => setCreciDocMode('single')}
+                  >
+                    <Text style={creciDocMode === 'single' ? styles.uploadModeTextActive : styles.uploadModeText}>
+                      📄 Arquivo Único (PDF / Carteira Digital)
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.uploadModeBtn, creciDocMode === 'split' && styles.uploadModeBtnActive]}
+                    onPress={() => setCreciDocMode('split')}
+                  >
+                    <Text style={creciDocMode === 'split' ? styles.uploadModeTextActive : styles.uploadModeText}>
+                      📷 Frente e Verso (2 Fotos)
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {creciDocMode === 'single' ? (
+                  renderUploadSlot(
+                    'Arquivo Único da Carteira CRECI *',
+                    creciDocSingle,
+                    (e) => handleSlotUpload(e, setCreciDocSingle),
+                    () => setCreciDocSingle(null),
+                    'PDF da certidão/carteira digital ou foto completa.'
+                  )
+                ) : (
+                  <View style={{ gap: 4 }}>
+                    {renderUploadSlot(
+                      'Foto da Frente da Carteira CRECI *',
+                      creciDocFront,
+                      (e) => handleSlotUpload(e, setCreciDocFront),
+                      () => setCreciDocFront(null),
+                      'Foto nítida da frente da carteira.'
+                    )}
+                    {renderUploadSlot(
+                      'Foto do Verso da Carteira CRECI *',
+                      creciDocBack,
+                      (e) => handleSlotUpload(e, setCreciDocBack),
+                      () => setCreciDocBack(null),
+                      'Foto nítida do verso da carteira.'
+                    )}
+                  </View>
+                )}
+              </View>
+            )}
           </View>
         )}
 
@@ -982,6 +1194,46 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#1e3a8a',
     lineHeight: 17,
+  },
+  uploadCategoryBox: {
+    backgroundColor: '#ffffff',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+    borderRadius: 10,
+    padding: 14,
+    marginBottom: 14,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  uploadModeBtn: {
+    flex: 1,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f8fafc',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  uploadModeBtnActive: {
+    borderColor: '#2563eb',
+    backgroundColor: '#eff6ff',
+  },
+  uploadModeText: {
+    fontSize: 11,
+    color: '#64748b',
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  uploadModeTextActive: {
+    fontSize: 11,
+    color: '#1d4ed8',
+    fontWeight: '700',
+    textAlign: 'center',
   },
 });
 
