@@ -246,14 +246,35 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
       </View>
     </View>
 
-    {loading ? <ActivityIndicator size="large" color={primaryColor} /> : users.map((person) => (
-      <TouchableOpacity key={person.id} style={styles.card} onPress={() => void open(person)}>
-        <Text style={styles.name}>{person.nome_guerra || person.name}</Text>
-        <Text style={styles.line}>{person.name}</Text>
-        <Text style={styles.line}>{person.email}</Text>
-        <Text style={styles.badge}>{roleLabel(person.role)} · {person.status}</Text>
-      </TouchableOpacity>
-    ))}
+    {loading ? <ActivityIndicator size="large" color={primaryColor} /> : users.map((person) => {
+      const isSelected = selected?.id === person.id;
+      return (
+        <TouchableOpacity
+          key={person.id}
+          style={[
+            styles.card,
+            isSelected && {
+              borderColor: primaryColor,
+              borderWidth: 2,
+              backgroundColor: '#f8fafc',
+            },
+          ]}
+          onPress={() => void open(person)}
+        >
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Text style={[styles.name, isSelected && { color: primaryColor }]}>{person.nome_guerra || person.name}</Text>
+            {isSelected && (
+              <View style={{ backgroundColor: primaryColor, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4 }}>
+                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>SELECIONADO</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.line}>{person.name}</Text>
+          <Text style={styles.line}>{person.email}</Text>
+          <Text style={styles.badge}>{roleLabel(person.role)} · {person.status}</Text>
+        </TouchableOpacity>
+      );
+    })}
 
     {!loading && users.length === 0 ? <Text style={styles.empty}>Nenhum usuário deste perfil cadastrado.</Text> : null}
     {meta.totalPages > 1 ? (
