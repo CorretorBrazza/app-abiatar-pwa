@@ -438,21 +438,21 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={{ gap: 8 }}>
-                {/* Dropdown nativo/web para seleção limpa */}
+              <View style={{ marginTop: 4 }}>
+                {/* Dropdown limpo e único para seleção do Gerente */}
                 <select
                   style={{
                     width: '100%',
-                    padding: '12px 14px',
+                    padding: '14px 16px',
                     borderRadius: '8px',
-                    border: selectedManagerId ? '2px solid #000' : '1px solid #d4d4d8',
-                    backgroundColor: selectedManagerId ? '#fafafa' : '#ffffff',
-                    fontSize: '14px',
+                    border: selectedManagerId ? '2px solid #18181b' : '1px solid #d4d4d8',
+                    backgroundColor: selectedManagerId ? '#f8fafc' : '#ffffff',
+                    fontSize: '15px',
                     fontWeight: selectedManagerId ? '600' : '400',
-                    color: selectedManagerId ? '#000000' : '#71717a',
+                    color: selectedManagerId ? '#0f172a' : '#71717a',
                     cursor: 'pointer',
                     outline: 'none',
-                    marginBottom: '6px',
+                    boxSizing: 'border-box',
                   }}
                   value={selectedManagerId}
                   onChange={(e) => setSelectedManagerId(e.target.value)}
@@ -464,29 +464,6 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
                     </option>
                   ))}
                 </select>
-
-                <View style={styles.managersGrid}>
-                  {managers.map((m) => {
-                    const isSelected = selectedManagerId === m.id;
-                    return (
-                      <TouchableOpacity
-                        key={m.id}
-                        style={[styles.managerCard, isSelected && styles.managerCardSelected]}
-                        onPress={() => setSelectedManagerId(isSelected ? '' : m.id)}
-                      >
-                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                          <Text style={styles.managerIcon}>{isSelected ? '✓' : '👤'}</Text>
-                          <View style={{ marginLeft: 8, flex: 1 }}>
-                            <Text style={[styles.managerNomeGuerra, isSelected && { color: '#000' }]}>
-                              Gerente {m.nome_guerra || m.name}
-                            </Text>
-                            <Text style={styles.managerFullName}>{m.name}</Text>
-                          </View>
-                        </View>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
               </View>
             )}
           </View>
