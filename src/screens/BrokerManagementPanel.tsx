@@ -29,12 +29,13 @@ interface BrokerProfile {
 interface Props {
   brokerId: string | null;
   isDirector: boolean;
+  isRh?: boolean;
   managers: Array<{ id: string; nome_guerra: string; name: string }>;
   onClose: () => void;
   onSaved: () => void;
 }
 
-export default function BrokerManagementPanel({ brokerId, isDirector, managers, onClose, onSaved }: Props) {
+export default function BrokerManagementPanel({ brokerId, isDirector, isRh, managers, onClose, onSaved }: Props) {
   const [profile, setProfile] = useState<BrokerProfile | null>(null);
   const [nomeGuerra, setNomeGuerra] = useState('');
   const [creci, setCreci] = useState('');
@@ -171,13 +172,13 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
   return (
     <Modal visible={!!brokerId} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
-        <ScreenCode code="GE-03" />
+        <ScreenCode code={isRh ? 'RH-03' : isDirector ? 'DR-04' : 'GE-03'} />
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.backButton}>
             <Text style={styles.backText}>‹ Voltar à Lista</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Ficha do Corretor</Text>
-          <Text style={styles.headerSubtitle}>Gestão individual, operação e vínculo hierárquico</Text>
+          <Text style={styles.headerTitle}>{isRh ? 'Gestão de Estágio do Corretor' : 'Ficha do Corretor'}</Text>
+          <Text style={styles.headerSubtitle}>{isRh ? 'Evolução de carreira, vigência de estágio e dados cadastrais' : 'Gestão individual, operação e vínculo hierárquico'}</Text>
         </View>
 
         <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.content}>
@@ -213,15 +214,17 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
                 </View>
               ) : null}
 
-              <Text style={[styles.state, profile.leads_paused ? styles.danger : styles.success]}>
-                {profile.leads_paused ? 'Leads pausados' : 'Elegível para leads, conforme presença'}
-              </Text>
+              {!isRh && (
+                <Text style={[styles.state, profile.leads_paused ? styles.danger : styles.success]}>
+                  {profile.leads_paused ? 'Leads pausados' : 'Elegível para leads, conforme presença'}
+                </Text>
+              )}
             </View>
 
-            {/* CARD: PROMOÇÃO / ALTERAÇÃO DE ESTÁGIO */}
+            {/* CARD: PROMOÇÃO / ALTERAÇÃO DE ESTÁGIO (HABILITADO PARA DIRETORIA E RH) */}
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Estágio Profissional & Vigência</Text>
-              {isDirector ? (
+              {(isDirector || isRh) ? (
                 <>
                   <Text style={styles.help}>Promova o corretor ou altere seu estágio profissional (real-time):</Text>
                   <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -265,10 +268,10 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
               ) : (
                 <View style={{ backgroundColor: '#eff6ff', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#bfdbfe' }}>
                   <Text style={{ color: '#1e40af', fontSize: 13, fontWeight: '700', marginBottom: 4 }}>
-                    🔒 Controle Exclusivo da Diretoria
+                    🔒 Controle da Diretoria e RH
                   </Text>
                   <Text style={{ color: '#1e3a8a', fontSize: 12, lineHeight: 17 }}>
-                    O Gerente não tem permissão para renovar vigências de treinamento ou estágio. Caso o corretor precise de prorrogação de prazo ou promoção para CRECI, solicite a alteração à Diretoria.
+                    O Gerente não tem permissão para renovar vigências de treinamento ou estágio. Caso o corretor precise de prorrogação de prazo ou promoção para CRECI, solicite a alteração à Diretoria ou ao RH.
                   </Text>
                 </View>
               )}
@@ -286,17 +289,19 @@ export default function BrokerManagementPanel({ brokerId, isDirector, managers, 
               <TouchableOpacity style={styles.primaryButton} onPress={updateProfile} disabled={saving}><Text style={styles.buttonText}>Salvar dados cadastrais</Text></TouchableOpacity>
             </View>
 
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Operação de leads</Text>
-              <Text style={styles.label}>Motivo da ação</Text>
-              <TextInput style={[styles.input, styles.multiline]} value={reason} onChangeText={setReason} multiline placeholder="Informe o motivo" />
-              {profile.leads_paused ? (
-                <TouchableOpacity style={styles.successButton} onPress={() => setPause(false)} disabled={saving}><Text style={styles.buttonText}>Retomar recebimento de leads</Text></TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={styles.warningButton} onPress={() => setPause(true)} disabled={saving}><Text style={styles.buttonText}>Pausar recebimento de leads</Text></TouchableOpacity>
-              )}
-              <TouchableOpacity style={styles.dangerButton} onPress={removeBroker} disabled={saving}><Text style={styles.buttonText}>Excluir Corretor da operação</Text></TouchableOpacity>
-            </View>
+            {!isRh && (
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Operação de leads</Text>
+                <Text style={styles.label}>Motivo da ação</Text>
+                <TextInput style={[styles.input, styles.multiline]} value={reason} onChangeText={setReason} multiline placeholder="Informe o motivo" />
+                {profile.leads_paused ? (
+                  <TouchableOpacity style={styles.successButton} onPress={() => setPause(false)} disabled={saving}><Text style={styles.buttonText}>Retomar recebimento de leads</Text></TouchableOpacity>
+                ) : (
+                  <TouchableOpacity style={styles.warningButton} onPress={() => setPause(true)} disabled={saving}><Text style={styles.buttonText}>Pausar recebimento de leads</Text></TouchableOpacity>
+                )}
+                <TouchableOpacity style={styles.dangerButton} onPress={removeBroker} disabled={saving}><Text style={styles.buttonText}>Excluir Corretor da operação</Text></TouchableOpacity>
+              </View>
+            )}
 
             <View style={styles.card}>
               <Text style={styles.sectionTitle}>Segurança da conta</Text>

@@ -8,11 +8,11 @@ interface ManagedUser { id: string; name: string; nome_guerra: string; email: st
 interface Booth { id: string; name: string; }
 interface Props { primaryColor: string; onBack: () => void; }
 
-const roleLabel = (role: string) => role === 'gerencia_level_2' ? 'Gerente' : 'Recepção';
+const roleLabel = (role: string) => role === 'gerencia_level_2' ? 'Gerente' : (role === 'rh_level_2' || role === 'rh_level_1') ? 'Recursos Humanos (RH)' : 'Recepção';
 
 export default function UserManagementPanel({ primaryColor, onBack }: Props) {
   const { tenant } = useAuth();
-  const [tab, setTab] = useState<'gerencia_level_2' | 'recepcao_level_3'>('gerencia_level_2');
+  const [tab, setTab] = useState<'gerencia_level_2' | 'recepcao_level_3' | 'rh_level_2'>('gerencia_level_2');
   const [users, setUsers] = useState<ManagedUser[]>([]);
   const [booths, setBooths] = useState<Booth[]>([]);
   const [selected, setSelected] = useState<ManagedUser | null>(null);
@@ -95,6 +95,26 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
     } finally { setSaving(false); }
   };
 
+  const createRhUser = async () => {
+    if (!newName.trim() || !newNomeGuerra.trim() || !newEmail.trim() || newPassword.length < 8) {
+      setError('Preencha nome, Nome de Guerra, e-mail e uma senha inicial com pelo menos 8 caracteres.');
+      return;
+    }
+    try {
+      setSaving(true); setError('');
+      await api.post('/users/rh', {
+        name: newName.trim(),
+        nomeGuerra: newNomeGuerra.trim().toLocaleUpperCase('pt-BR'),
+        email: newEmail.trim().toLowerCase(),
+        passwordHash: newPassword,
+      });
+      alert('Usuário de RH cadastrado com sucesso! A senha informada é temporária e deverá ser trocada no primeiro acesso.');
+      setNewName(''); setNewNomeGuerra(''); setNewEmail(''); setNewPassword('12345678'); setShowCreate(false); setTab('rh_level_2'); await load();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Não foi possível cadastrar o usuário de RH.');
+    } finally { setSaving(false); }
+  };
+
   const generateManagerInvite = async () => {
     try {
       setGeneratingInvite(true); setError('');
@@ -171,6 +191,9 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
       <TouchableOpacity style={[styles.tab, tab === 'recepcao_level_3' && { backgroundColor: primaryColor }]} onPress={() => setTab('recepcao_level_3')}>
         <Text style={[styles.tabText, tab === 'recepcao_level_3' && styles.white]}>Recepção</Text>
       </TouchableOpacity>
+      <TouchableOpacity style={[styles.tab, tab === 'rh_level_2' && { backgroundColor: primaryColor }]} onPress={() => setTab('rh_level_2')}>
+        <Text style={[styles.tabText, tab === 'rh_level_2' && styles.white]}>RH</Text>
+      </TouchableOpacity>
     </View>
 
     {tab === 'gerencia_level_2' ? (
@@ -193,9 +216,13 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
           </View>
         ) : null}
       </View>
-    ) : (
+    ) : tab === 'recepcao_level_3' ? (
       <TouchableOpacity style={[styles.primary, { backgroundColor: primaryColor, width: '100%', maxWidth: 620, marginBottom: 14 }]} onPress={() => setShowCreate((value) => !value)}>
         <Text style={styles.white}>{showCreate ? 'Fechar cadastro' : 'Cadastrar Recepção'}</Text>
+      </TouchableOpacity>
+    ) : (
+      <TouchableOpacity style={[styles.primary, { backgroundColor: primaryColor, width: '100%', maxWidth: 620, marginBottom: 14 }]} onPress={() => setShowCreate((value) => !value)}>
+        <Text style={styles.white}>{showCreate ? 'Fechar cadastro' : 'Cadastrar Usuário de RH'}</Text>
       </TouchableOpacity>
     )}
 
@@ -238,6 +265,24 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
         ))}
         <TouchableOpacity style={[styles.primary, { backgroundColor: primaryColor }]} onPress={() => void createReceptionist()} disabled={saving}>
           <Text style={styles.white}>Criar Recepção</Text>
+        </TouchableOpacity>
+      </View>
+    ) : null}
+
+    {showCreate && tab === 'rh_level_2' ? (
+      <View style={styles.editor}>
+        <Text style={styles.section}>Novo Usuário de RH</Text>
+        <Text style={styles.label}>Nome completo</Text>
+        <TextInput style={styles.input} value={newName} onChangeText={setNewName} placeholder="Nome completo" />
+        <Text style={styles.label}>Nome de Guerra</Text>
+        <TextInput style={styles.input} value={newNomeGuerra} onChangeText={(value) => setNewNomeGuerra(value.toLocaleUpperCase('pt-BR'))} placeholder="NOME DE GUERRA" autoCapitalize="characters" />
+        <Text style={styles.label}>E-mail de acesso</Text>
+        <TextInput style={styles.input} value={newEmail} onChangeText={setNewEmail} placeholder="rh@empresa.com" keyboardType="email-address" autoCapitalize="none" />
+        <Text style={styles.label}>Senha temporária</Text>
+        <Text style={styles.help}>Mínimo de 8 caracteres. A troca será obrigatória no primeiro acesso.</Text>
+        <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} secureTextEntry autoCapitalize="none" />
+        <TouchableOpacity style={[styles.primary, { backgroundColor: primaryColor }]} onPress={() => void createRhUser()} disabled={saving}>
+          <Text style={styles.white}>Criar Usuário de RH</Text>
         </TouchableOpacity>
       </View>
     ) : null}

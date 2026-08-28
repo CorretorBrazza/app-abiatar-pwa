@@ -47,7 +47,8 @@ export default function Dashboard() {
 
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const isManager = user?.role === 'gerencia_level_2';
-  const isDirector = user?.role === 'diretoria_level_1';
+  const isDirector = user?.role === 'diretoria_level_1' || user?.role === 'platform_admin_level_0';
+  const isRh = user?.role === 'rh_level_2' || user?.role === 'rh_level_1';
   const canManageUsers = tenant?.settings?.features?.manager_management !== false || tenant?.settings?.features?.reception_management !== false;
 
   const loadUnreadCount = async () => {
@@ -610,12 +611,12 @@ export default function Dashboard() {
     <View style={styles.container}>
       {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
       {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
-      <ScreenCode code={isManager ? 'GE-01' : isDirector ? 'DR-01' : 'AD-01'} />
+      <ScreenCode code={isManager ? 'GE-01' : isDirector ? 'DR-01' : isRh ? 'RH-01' : 'AD-01'} />
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <View style={styles.headerRow}>
           <Text style={styles.tenantName}>{tenant?.name || 'ABIATAR'}</Text>
           <View style={styles.roleTag}>
-            <Text style={styles.roleTagText}>{isManager ? 'Gerência' : isDirector ? 'Diretoria' : 'Administrador'}</Text>
+            <Text style={styles.roleTagText}>{isManager ? 'Gerência' : isDirector ? 'Diretoria' : isRh ? 'Recursos Humanos (RH)' : 'Administrador'}</Text>
           </View>
         </View>
       </View>
@@ -627,7 +628,11 @@ export default function Dashboard() {
       >
         <Text style={styles.welcomeTitle}>Olá, {user?.nome_guerra}!</Text>
         <Text style={styles.welcomeSubtitle}>
-          {isManager ? 'Acompanhe sua equipe, os corretores e as comunicações do plantão.' : 'Seja bem-vindo à sua área de trabalho administrativa.'}
+          {isManager 
+            ? 'Acompanhe sua equipe, os corretores e as comunicações do plantão.' 
+            : isRh 
+              ? 'Painel de Recursos Humanos: Gestão de carreiras, acompanhamento de estágios e renovação de vigências.'
+              : 'Seja bem-vindo à sua área de trabalho administrativa.'}
         </Text>
 
         {isManager ? (
@@ -651,9 +656,22 @@ export default function Dashboard() {
               <Text style={[styles.msgText, { color: primaryColor }]}>Enviar Mensagem à Minha Equipe</Text>
             </TouchableOpacity>
           </>
+        ) : isRh ? (
+          <>
+            <View style={styles.card}>
+              <Text style={styles.infoTitle}>Painel de Recursos Humanos (RH)</Text>
+              <Text style={styles.infoText}>Acompanhe a evolução de corretores em treinamento, estagiários e CRECI de todas as equipes. Realize upgrades, downgrades e renove prazos de vigência.</Text>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+              onPress={() => setCurrentView('manager_panel')}
+            >
+              <Text style={[styles.msgText, { color: primaryColor }]}>Gerenciar Carreiras e Estágios (RH)</Text>
+            </TouchableOpacity>
+          </>
         ) : (
           <>
-
             <TouchableOpacity
               style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
               onPress={() => setCurrentView('booth_rules')}

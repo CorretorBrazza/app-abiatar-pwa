@@ -6,25 +6,18 @@ firebase.initializeApp({"apiKey":"AIzaSyDSqzU4jOQZ-7zLrjyc-r8JIlQqq7MGmPw","auth
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
-  // Se o payload já contém o bloco 'notification', o FCM Service Worker do navegador já exibe a notificação automaticamente.
-  // Evitamos chamar self.registration.showNotification para impedir duplicidade na tela do usuário.
-  if (payload.notification) {
-    return;
-  }
   const brandName = payload.data?.brandName || 'ABIATAR';
-  const title = payload.data?.title || brandName;
-  const body = payload.data?.body || (payload.data?.type === 'operational_push' ? 'Alerta operacional do plantão.' : 'Você recebeu uma nova mensagem.');
-  const messageId = payload.data?.messageId || payload.data?.eventId || payload.data?.presenceId || payload.data?.pingId || 'msg-' + Date.now();
+  const originalTitle = payload.notification?.title;
+  const messageId = payload.data?.messageId || payload.messageId || 'message-' + Date.now();
   const isOperational = payload.data?.type === 'operational_push';
-
-  self.registration.showNotification(title, {
-    body,
+  self.registration.showNotification(brandName, {
+    body: [originalTitle, payload.notification?.body].filter(Boolean).join(' — ') || (isOperational ? 'Alerta operacional do plantão.' : 'Você recebeu uma nova mensagem.'),
     icon: '/icon.png',
     badge: '/icon.png',
     tag: 'abiatar-' + messageId,
-    renotify: false,
+    renotify: true,
     requireInteraction: isOperational,
-    data: { ...(payload.data || {}), url: payload.data?.url || 'https://abiatar.bitimob.com.br/#/inbox' },
+    data: { ...(payload.data || {}), url: 'https://abiatar.bitimob.com.br/#/inbox' },
   });
 });
 

@@ -96,12 +96,14 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const managerId = user?.id || '';
   const isDirector = user?.role === 'diretoria_level_1' || user?.role === 'platform_admin_level_0';
+  const isRh = user?.role === 'rh_level_2' || user?.role === 'rh_level_1';
+  const isDirectorOrRh = isDirector || isRh;
 
   const loadData = async () => {
     try {
       setError('');
-      if (isDirector) {
-        // Modo Diretoria: busca Gerentes, todos os Corretores e Plantões
+      if (isDirectorOrRh) {
+        // Modo Diretoria / RH: busca Gerentes, todos os Corretores e Plantões
         const [managersRes, brokersRes, boothsRes] = await Promise.all([
           api.get('/users/managers/active'),
           api.get('/users/active-brokers', { params: { pageSize: 500 } }),
@@ -289,29 +291,32 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
       <BrokerManagementPanel
         brokerId={selectedBrokerId}
         isDirector={isDirector}
+        isRh={isRh}
         managers={managers}
         onClose={() => setSelectedBrokerId(null)}
         onSaved={() => { void loadData(); }}
       />
     <View style={styles.container}>
-      <ScreenCode code={isDirector ? 'DR-01' : 'GE-02'} />
+      <ScreenCode code={isRh ? 'RH-02' : isDirector ? 'DR-01' : 'GE-02'} />
       <View style={styles.header}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isDirector ? 'Gestão Executiva de Corretores' : 'Gestão de Corretores'}</Text>
+        <Text style={styles.headerTitle}>{isRh ? 'Gestão de Estágios e Carreiras (RH)' : isDirector ? 'Gestão Executiva de Corretores' : 'Gestão de Corretores'}</Text>
         <Text style={styles.headerSubtitle}>
-          {isDirector 
-            ? 'Visão hierárquica por equipe de gerência e ações operacionais' 
-            : 'Gerencie convites, aprovações de cadastro e distribuição de leads'}
+          {isRh
+            ? 'Acompanhamento de corretores, evolução de estágios e renovação de vigências'
+            : isDirector 
+              ? 'Visão hierárquica por equipe de gerência e ações operacionais' 
+              : 'Gerencie convites, aprovações de cadastro e distribuição de leads'}
         </Text>
       </View>
 
       <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        {/* MODO DIRETORIA: CARDS DE KPI DE ALTO NÍVEL */}
-        {isDirector && (
+        {/* MODO DIRETORIA / RH: CARDS DE KPI DE ALTO NÍVEL */}
+        {isDirectorOrRh && (
           <View style={styles.kpiContainer}>
             <View style={styles.kpiCard}>
               <Text style={styles.kpiValue}>{allBrokers.length}</Text>
@@ -376,8 +381,8 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
           )}
         </View>
 
-        {/* MODO DIRETORIA: BUSCA GLOBAL + GUARDA-CHUVAS DE GERÊNCIA */}
-        {isDirector && (
+        {/* MODO DIRETORIA / RH: BUSCA GLOBAL + GUARDA-CHUVAS DE GERÊNCIA */}
+        {isDirectorOrRh && (
           <View style={styles.directorSection}>
             <Text style={styles.subHeader}>Busca Global de Corretor</Text>
             <TextInput
@@ -550,7 +555,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
         )}
 
         {/* MODO GERENTE: APROVAÇÕES PENDENTES, EQUIPE E FILA DE LEADS */}
-        {!isDirector && (
+        {!isDirectorOrRh && (
           <>
             {/* FILA DE APROVAÇÕES PENDENTES */}
             <Text style={styles.subHeader}>Aprovações Pendentes ({pending.length})</Text>
