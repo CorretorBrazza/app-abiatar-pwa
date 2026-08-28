@@ -52,6 +52,13 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
   useEffect(() => { void load(); setSelected(null); setShowCreate(false); setManagerInviteLink(''); }, [tab, page, search, status]);
 
   const open = async (person: ManagedUser) => {
+    if (selected?.id === person.id) {
+      setSelected(null);
+      setName('');
+      setNomeGuerra('');
+      setAssigned([]);
+      return;
+    }
     setSelected(person); setName(person.name); setNomeGuerra(person.nome_guerra);
     if (person.role !== 'recepcao_level_3') { setAssigned([]); return; }
     try {
