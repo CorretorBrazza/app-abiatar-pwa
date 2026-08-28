@@ -45,6 +45,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [creci, setCreci] = useState('');
+  const [documents, setDocuments] = useState<Array<{ filename: string; contentType: string; base64: string; sizeFormatted: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successInfo, setSuccessInfo] = useState<{ message: string; managerName: string; stage: string } | null>(null);
@@ -55,15 +56,56 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
       const res = await api.get('/users/public-managers');
       if (res.data?.managers && Array.isArray(res.data.managers)) {
         setManagers(res.data.managers);
-        if (res.data.managers.length > 0) {
-          setSelectedManagerId((prev) => prev || res.data.managers[0].id);
-        }
+        // NÃO pré-seleciona nenhum gerente por padrão, obrigando o corretor a escolher
       }
     } catch (err) {
       console.error('Erro ao carregar gerentes públicos:', err);
     } finally {
       setLoadingManagers(false);
     }
+  };
+
+  const handleFileUpload = (e: any) => {
+    const files: FileList = e.target.files;
+    if (!files || files.length === 0) return;
+
+    if (documents.length + files.length > 5) {
+      setError('Você pode enviar no máximo 5 documentos.');
+      return;
+    }
+
+    setError('');
+    Array.from(files).forEach((file) => {
+      if (file.size > 10 * 1024 * 1024) {
+        setError(`O arquivo ${file.name} ultrapassa o limite de 10MB.`);
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        const fullBase64 = reader.result as string;
+        const base64Data = fullBase64.includes(',') ? fullBase64.split(',')[1] : fullBase64;
+        const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
+        const sizeFormatted = file.size < 1024 * 1024 ? `${Math.round(file.size / 1024)} KB` : `${sizeMb} MB`;
+        setDocuments((prev) => {
+          if (prev.length >= 5) return prev;
+          return [
+            ...prev,
+            {
+              filename: file.name,
+              contentType: file.type || 'application/octet-stream',
+              base64: base64Data,
+              sizeFormatted,
+            },
+          ];
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const removeDocument = (index: number) => {
+    setDocuments((prev) => prev.filter((_, i) => i !== index));
   };
 
   // Carrega a lista de gerentes reais na montagem
@@ -229,6 +271,11 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
       return;
     }
 
+    if (documents.length === 0) {
+      setError('Por favor, anexe ao menos um documento (RG/CNH, CRECI ou Comprovante de Residência) antes de enviar o cadastro.');
+      return;
+    }
+
     try {
       setError('');
       setLoading(true);
@@ -241,6 +288,11 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
         email: email.trim().toLowerCase(),
         passwordHash: password,
         ...(creci.trim() ? { creci: creci.trim() } : {}),
+        documents: documents.map((d) => ({
+          filename: d.filename,
+          contentType: d.contentType,
+          base64: d.base64,
+        })),
       };
 
       const response = await api.post('/users/register-broker', payload);
@@ -248,7 +300,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
       const managerLabel = chosenManager ? (chosenManager.nome_guerra || chosenManager.name) : 'Gerência';
 
       setSuccessInfo({
-        message: response.data.message || 'Cadastro enviado com sucesso! Aguarde a aprovação do seu Gerente.',
+        message: response.data.message || 'Cadastro enviado com sucesso! Aguarde a validação do RH e aprovação da Gerência.',
         managerName: managerLabel,
         stage: brokerStage,
       });
@@ -276,7 +328,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           <Text style={styles.successIcon}>🎉</Text>
           <Text style={styles.title}>Cadastro Enviado!</Text>
           <Text style={styles.successDesc}>
-            Seu cadastro foi enviado para a equipe do Gerente <Text style={{ fontWeight: 'bold' }}>{successInfo.managerName}</Text>.
+            Seu cadastro e documentos foram enviados para triagem do <Text style={{ fontWeight: 'bold' }}>Recursos Humanos (RH)</Text> e para a equipe do Gerente <Text style={{ fontWeight: 'bold' }}>{successInfo.managerName}</Text>.
           </Text>
 
           <View style={styles.successSummaryCard}>
@@ -289,6 +341,9 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
             <Text style={styles.summaryLabel}>Estágio:</Text>
             <Text style={styles.summaryValue}>{getStageLabel(successInfo.stage)}</Text>
 
+            <Text style={styles.summaryLabel}>Documentos Anexados:</Text>
+            <Text style={styles.summaryValue}>{documents.length} arquivo(s)</Text>
+
             {creci.trim() ? (
               <>
                 <Text style={styles.summaryLabel}>CRECI:</Text>
@@ -298,11 +353,11 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           </View>
 
           <Text style={styles.approvalNote}>
-            Assim que o seu Gerente confirmar a sua entrada, você receberá a liberação para acessar o aplicativo com o seu e-mail e senha.
+            O RH fará a conferência dos seus documentos para liberar sua conta para aprovação do Gerente.
           </Text>
 
           <TouchableOpacity style={styles.button} onPress={onBackToLogin}>
-            <Text style={styles.buttonText}>Ir para o Login</Text>
+            <Text style={styles.buttonText}>Voltar para o Login</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -314,7 +369,9 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
       <View style={styles.card}>
-        <Text style={styles.title}>{isManagerInvite ? 'Cadastro de Gerente' : 'Cadastro de Corretor'}</Text>
+        <Text style={styles.title}>
+          {isManagerInvite ? 'Cadastro da Gerência' : 'Cadastre-se na ABIATAR'}
+        </Text>
         <Text style={styles.subtitle}>
           {isManagerInvite
             ? 'Cadastro de liderança comercial vinculado à Diretoria'
@@ -326,7 +383,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
         {/* 1. SELEÇÃO DO ESTÁGIO DO CORRETOR (Apenas para Corretores) */}
         {!isManagerInvite && (
           <>
-            <Text style={styles.sectionHeader}>1. Selecione o seu Estágio</Text>
+            <Text style={styles.sectionHeader}>1. Selecione o seu Estágio Profissional</Text>
             <View style={styles.stageContainer}>
               <TouchableOpacity
                 style={[styles.stageCard, brokerStage === 'treinamento' && styles.stageCardSelected]}
@@ -352,13 +409,25 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
                 <Text style={styles.stageSubtitle}>CRECI Definitivo</Text>
               </TouchableOpacity>
             </View>
+
+            {/* AVISO DE DOCUMENTOS ESPECÍFICOS POR ESTÁGIO */}
+            <View style={styles.docNoticeBox}>
+              <Text style={styles.docNoticeTitle}>📄 Documentos Obrigatórios para este estágio:</Text>
+              <Text style={styles.docNoticeText}>
+                {brokerStage === 'treinamento'
+                  ? 'Separe já seus documentos pessoais (RG, CPF ou CNH) e um comprovante de residência atualizado.'
+                  : brokerStage === 'estagiario'
+                  ? 'Separe já sua carteira de estagiário CRECI e um comprovante de residência atualizado.'
+                  : 'Separe já sua carteira CRECI definitiva e um comprovante de residência atualizado.'}
+              </Text>
+            </View>
           </>
         )}
 
         {/* 2. SELEÇÃO DO GERENTE (Apenas no cadastro direto sem token) */}
         {!hasInviteToken && (
           <View style={{ marginBottom: 16 }}>
-            <Text style={styles.sectionHeader}>2. Escolha o seu Gerente</Text>
+            <Text style={styles.sectionHeader}>2. Escolha o seu Gerente *</Text>
             {loadingManagers ? (
               <ActivityIndicator color="#1c1c1e" style={{ marginVertical: 12 }} />
             ) : managers.length === 0 ? (
@@ -369,27 +438,55 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
                 </TouchableOpacity>
               </View>
             ) : (
-              <View style={styles.managersGrid}>
-                {managers.map((m) => {
-                  const isSelected = selectedManagerId === m.id;
-                  return (
-                    <TouchableOpacity
-                      key={m.id}
-                      style={[styles.managerCard, isSelected && styles.managerCardSelected]}
-                      onPress={() => setSelectedManagerId(m.id)}
-                    >
-                      <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                        <Text style={styles.managerIcon}>{isSelected ? '✓' : '👤'}</Text>
-                        <View style={{ marginLeft: 8, flex: 1 }}>
-                          <Text style={[styles.managerNomeGuerra, isSelected && { color: '#000' }]}>
-                            Gerente {m.nome_guerra || m.name}
-                          </Text>
-                          <Text style={styles.managerFullName}>{m.name}</Text>
+              <View style={{ gap: 8 }}>
+                {/* Dropdown nativo/web para seleção limpa */}
+                <select
+                  style={{
+                    width: '100%',
+                    padding: '12px 14px',
+                    borderRadius: '8px',
+                    border: selectedManagerId ? '2px solid #000' : '1px solid #d4d4d8',
+                    backgroundColor: selectedManagerId ? '#fafafa' : '#ffffff',
+                    fontSize: '14px',
+                    fontWeight: selectedManagerId ? '600' : '400',
+                    color: selectedManagerId ? '#000000' : '#71717a',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    marginBottom: '6px',
+                  }}
+                  value={selectedManagerId}
+                  onChange={(e) => setSelectedManagerId(e.target.value)}
+                >
+                  <option value="">-- Selecione o seu Gerente Responsável * --</option>
+                  {managers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      Gerente {m.nome_guerra || m.name} ({m.name})
+                    </option>
+                  ))}
+                </select>
+
+                <View style={styles.managersGrid}>
+                  {managers.map((m) => {
+                    const isSelected = selectedManagerId === m.id;
+                    return (
+                      <TouchableOpacity
+                        key={m.id}
+                        style={[styles.managerCard, isSelected && styles.managerCardSelected]}
+                        onPress={() => setSelectedManagerId(isSelected ? '' : m.id)}
+                      >
+                        <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                          <Text style={styles.managerIcon}>{isSelected ? '✓' : '👤'}</Text>
+                          <View style={{ marginLeft: 8, flex: 1 }}>
+                            <Text style={[styles.managerNomeGuerra, isSelected && { color: '#000' }]}>
+                              Gerente {m.nome_guerra || m.name}
+                            </Text>
+                            <Text style={styles.managerFullName}>{m.name}</Text>
+                          </View>
                         </View>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
               </View>
             )}
           </View>
@@ -482,6 +579,81 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
           </>
         )}
 
+        {/* 4. UPLOAD DE DOCUMENTOS (MÁXIMO 5 DOCUMENTOS) */}
+        {!isManagerInvite && (
+          <View style={{ marginVertical: 14 }}>
+            <Text style={styles.sectionHeader}>4. Envio de Documentos (Máx. 5 arquivos)</Text>
+            <Text style={styles.helpText}>
+              Envie fotos ou PDFs dos seus documentos para validação pelo RH (RG/CNH, Carteira CRECI e Comprovante de Residência).
+            </Text>
+
+            <View style={{ marginTop: 8 }}>
+              {/* Botão de Anexo */}
+              <label
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  padding: '12px 18px',
+                  backgroundColor: '#f4f4f5',
+                  border: '1px dashed #71717a',
+                  borderRadius: '8px',
+                  cursor: documents.length >= 5 ? 'not-allowed' : 'pointer',
+                  fontWeight: '600',
+                  fontSize: '13px',
+                  color: '#18181b',
+                  width: '100%',
+                  boxSizing: 'border-box',
+                }}
+              >
+                <span>📎 {documents.length >= 5 ? 'Limite de 5 documentos atingido' : 'Escolher Arquivos (PDF, JPG, PNG)'}</span>
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*,application/pdf"
+                  style={{ display: 'none' }}
+                  onChange={handleFileUpload}
+                  disabled={documents.length >= 5}
+                />
+              </label>
+
+              {/* Lista de Documentos Anexados */}
+              {documents.length > 0 && (
+                <View style={{ marginTop: 10, gap: 6 }}>
+                  {documents.map((doc, idx) => (
+                    <View
+                      key={idx}
+                      style={{
+                        flexDirection: 'row',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        backgroundColor: '#f8fafc',
+                        padding: 10,
+                        borderRadius: 6,
+                        borderWidth: 1,
+                        borderColor: '#e2e8f0',
+                      }}
+                    >
+                      <View style={{ flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: 8 }}>
+                        <Text style={{ fontSize: 14, marginRight: 6 }}>📄</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ fontSize: 13, fontWeight: '600', color: '#1e293b' }} numberOfLines={1}>
+                            {doc.filename}
+                          </Text>
+                          <Text style={{ fontSize: 11, color: '#64748b' }}>{doc.sizeFormatted}</Text>
+                        </View>
+                      </View>
+                      <TouchableOpacity onPress={() => removeDocument(idx)}>
+                        <Text style={{ color: '#ef4444', fontWeight: '700', fontSize: 13 }}>✕ Remover</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              )}
+            </View>
+          </View>
+        )}
+
         {/* BOTÃO DE SUBMIT */}
         <TouchableOpacity
           style={[styles.button, loading && styles.buttonDisabled]}
@@ -494,9 +666,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
             <Text style={styles.buttonText}>
               {isManagerInvite
                 ? 'Concluir Cadastro de Gerente'
-                : hasInviteToken
-                ? 'Concluir Cadastro de Corretor'
-                : 'Enviar Cadastro para o Gerente'}
+                : 'Enviar cadastro'}
             </Text>
           )}
         </TouchableOpacity>
@@ -759,6 +929,25 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 16,
+  },
+  docNoticeBox: {
+    backgroundColor: '#eff6ff',
+    borderWidth: 1,
+    borderColor: '#bfdbfe',
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 14,
+  },
+  docNoticeTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1d4ed8',
+    marginBottom: 2,
+  },
+  docNoticeText: {
+    fontSize: 12,
+    color: '#1e3a8a',
+    lineHeight: 17,
   },
 });
 

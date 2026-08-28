@@ -9,7 +9,8 @@ import {
   FlatList, 
   Platform,
   ScrollView,
-  TextInput
+  TextInput,
+  Modal
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
@@ -93,6 +94,16 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const [expandedManagers, setExpandedManagers] = useState<Record<string, boolean>>({});
   const [teamEligibility, setTeamEligibility] = useState<any | null>(null);
 
+  // Estados de Triagem Documental do RH / Diretoria
+  const [pendingHrReview, setPendingHrReview] = useState<any[]>([]);
+  const [editingCandidate, setEditingCandidate] = useState<any | null>(null);
+  const [editName, setEditName] = useState('');
+  const [editNomeGuerra, setEditNomeGuerra] = useState('');
+  const [editCreci, setEditCreci] = useState('');
+  const [editStage, setEditStage] = useState<'treinamento' | 'estagiario' | 'corretor_creci'>('treinamento');
+  const [editManagerId, setEditManagerId] = useState('');
+  const [processingCandidateId, setProcessingCandidateId] = useState<string | null>(null);
+
   const primaryColor = tenant?.primary_color || '#1c1c1e';
   const managerId = user?.id || '';
   const isDirector = user?.role === 'diretoria_level_1' || user?.role === 'platform_admin_level_0';
@@ -103,20 +114,23 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
     try {
       setError('');
       if (isDirectorOrRh) {
-        // Modo Diretoria / RH: busca Gerentes, todos os Corretores e Plantões
-        const [managersRes, brokersRes, boothsRes] = await Promise.all([
+        // Modo Diretoria / RH: busca Gerentes, todos os Corretores, Plantões e Triagem Documental
+        const [managersRes, brokersRes, boothsRes, hrReviewRes] = await Promise.all([
           api.get('/users/managers/active'),
           api.get('/users/active-brokers', { params: { pageSize: 500 } }),
           api.get('/booths'),
+          api.get('/users/pending-hr-review').catch(() => ({ data: [] })),
         ]);
 
         const managersData = Array.isArray(managersRes.data) ? managersRes.data : [];
         const brokersData = Array.isArray(brokersRes.data) ? brokersRes.data : (brokersRes.data?.data || []);
         const boothsData = Array.isArray(boothsRes.data) ? boothsRes.data : [];
+        const hrReviewData = Array.isArray(hrReviewRes.data) ? hrReviewRes.data : [];
 
         setManagers(managersData);
         setAllBrokers(brokersData);
         setBoothsCount(boothsData.length);
+        setPendingHrReview(hrReviewData);
 
         if (!selectedManagerId && managersData[0]) {
           setSelectedManagerId(managersData[0].id);
@@ -139,6 +153,74 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
       setError('Falha ao carregar os dados operacionais.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleApproveByHr = async (candidate: any) => {
+    try {
+      setProcessingCandidateId(candidate.id);
+      setError('');
+      const res = await api.patch(`/users/${candidate.id}/hr-approve`);
+      alert(res.data?.message || `Documentação de ${candidate.nome_guerra} aprovada! O corretor foi encaminhado para a Gerência.`);
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Falha ao aprovar documentação.');
+    } finally {
+      setProcessingCandidateId(null);
+    }
+  };
+
+  const handleOpenEditCandidate = (candidate: any) => {
+    setEditingCandidate(candidate);
+    setEditName(candidate.name || '');
+    setEditNomeGuerra(candidate.nome_guerra || '');
+    setEditCreci(candidate.creci || '');
+    setEditStage(candidate.broker_stage || 'treinamento');
+    setEditManagerId(candidate.manager_id || (managers[0]?.id || ''));
+  };
+
+  const handleSaveEditCandidate = async () => {
+    if (!editingCandidate) return;
+    if (!editNomeGuerra.trim()) {
+      alert('Nome de Guerra é obrigatório.');
+      return;
+    }
+    try {
+      setProcessingCandidateId(editingCandidate.id);
+      setError('');
+      await api.patch(`/users/${editingCandidate.id}/hr-update`, {
+        name: editName.trim(),
+        nomeGuerra: editNomeGuerra.trim().toLocaleUpperCase('pt-BR'),
+        creci: editCreci.trim() ? editCreci.trim().toUpperCase() : null,
+        brokerStage: editStage,
+        managerId: editManagerId || undefined,
+      });
+      alert('Dados do candidato atualizados com sucesso!');
+      setEditingCandidate(null);
+      await loadData();
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Falha ao atualizar dados.');
+    } finally {
+      setProcessingCandidateId(null);
+    }
+  };
+
+  const handleHardDeleteCandidate = async (candidate: any) => {
+    const confirmed = typeof window === 'undefined' ? true : window.confirm(
+      `Excluir DEFINITIVAMENTE o cadastro de ${candidate.nome_guerra}?\n\nEsta ação apagará o cadastro e LIBERARÁ o Nome de Guerra e o E-mail imediatamente para novo uso.`
+    );
+    if (!confirmed) return;
+
+    try {
+      setProcessingCandidateId(candidate.id);
+      setError('');
+      const res = await api.delete(`/users/${candidate.id}/hard-delete`);
+      alert(res.data?.message || 'Cadastro excluído com sucesso.');
+      await loadData();
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Falha ao excluir cadastro.');
+    } finally {
+      setProcessingCandidateId(null);
     }
   };
 
@@ -288,6 +370,117 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
 
   return (
     <>
+      {/* MODAL DE AJUSTE DE CADASTRO NA TRIAGEM */}
+      {editingCandidate && (
+        <Modal visible={!!editingCandidate} transparent animationType="fade" onRequestClose={() => setEditingCandidate(null)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+            <View style={{ backgroundColor: '#ffffff', borderRadius: 12, padding: 24, width: '100%', maxWidth: 500, maxHeight: '90%' }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#0f172a', marginBottom: 4 }}>
+                ✏️ Ajustar Cadastro na Triagem
+              </Text>
+              <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+                Faça as correções cadastrais necessárias antes de encaminhar para a Gerência.
+              </Text>
+
+              <ScrollView style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155', marginBottom: 4 }}>Nome Completo</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editName}
+                  onChangeText={setEditName}
+                  placeholder="Nome Completo"
+                />
+
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155', marginBottom: 4 }}>Nome de Guerra *</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editNomeGuerra}
+                  onChangeText={(v) => setEditNomeGuerra(v.toLocaleUpperCase('pt-BR'))}
+                  placeholder="NOME DE GUERRA"
+                  autoCapitalize="characters"
+                />
+
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155', marginBottom: 4 }}>Estágio Profissional</Text>
+                <View style={{ flexDirection: 'row', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                  <TouchableOpacity
+                    style={[styles.stageSelectBtn, editStage === 'treinamento' && styles.stageSelectBtnActive]}
+                    onPress={() => setEditStage('treinamento')}
+                  >
+                    <Text style={editStage === 'treinamento' ? styles.stageSelectTextActive : styles.stageSelectText}>🔵 Treinamento</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.stageSelectBtn, editStage === 'estagiario' && styles.stageSelectBtnActive]}
+                    onPress={() => setEditStage('estagiario')}
+                  >
+                    <Text style={editStage === 'estagiario' ? styles.stageSelectTextActive : styles.stageSelectText}>🟡 Estagiário</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.stageSelectBtn, editStage === 'corretor_creci' && styles.stageSelectBtnActive]}
+                    onPress={() => setEditStage('corretor_creci')}
+                  >
+                    <Text style={editStage === 'corretor_creci' ? styles.stageSelectTextActive : styles.stageSelectText}>🟢 Corretor CRECI</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155', marginBottom: 4 }}>Número do CRECI</Text>
+                <TextInput
+                  style={styles.input}
+                  value={editCreci}
+                  onChangeText={(v) => setEditCreci(v.toUpperCase())}
+                  placeholder="Ex: 123456-F"
+                  autoCapitalize="characters"
+                />
+
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155', marginBottom: 4 }}>Gerente Responsável</Text>
+                <select
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px',
+                    borderRadius: '8px',
+                    border: '1px solid #cbd5e1',
+                    fontSize: '14px',
+                    marginBottom: '10px',
+                    backgroundColor: '#f8fafc',
+                  }}
+                  value={editManagerId}
+                  onChange={(e) => setEditManagerId(e.target.value)}
+                >
+                  {managers.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      Gerente {m.nome_guerra || m.name} ({m.name})
+                    </option>
+                  ))}
+                </select>
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
+                <TouchableOpacity
+                  style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6, backgroundColor: '#f1f5f9' }}
+                  onPress={() => setEditingCandidate(null)}
+                  disabled={!!processingCandidateId}
+                >
+                  <Text style={{ color: '#475569', fontWeight: '700', fontSize: 13 }}>Cancelar</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={{ paddingHorizontal: 18, paddingVertical: 10, borderRadius: 6, backgroundColor: '#2563eb' }}
+                  onPress={handleSaveEditCandidate}
+                  disabled={!!processingCandidateId}
+                >
+                  {processingCandidateId ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 13 }}>Salvar Ajustes</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       <BrokerManagementPanel
         brokerId={selectedBrokerId}
         isDirector={isDirector}
@@ -333,6 +526,82 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
               <Text style={styles.kpiLabel}>Plantões</Text>
               <Text style={styles.kpiSub}>Estandes de venda</Text>
             </View>
+          </View>
+        )}
+
+        {/* MODO DIRETORIA / RH: FILA DE TRIAGEM DOCUMENTAL DE NOVOS CADASTROS */}
+        {isDirectorOrRh && (
+          <View style={[styles.sectionCard, { borderColor: '#3b82f6', borderWidth: 1.5 }]}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text style={[styles.sectionTitle, { color: '#1d4ed8', marginBottom: 0 }]}>
+                📑 Triagem Documental de Novos Cadastros ({pendingHrReview.length})
+              </Text>
+              {pendingHrReview.length > 0 && (
+                <View style={{ backgroundColor: '#dbeafe', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
+                  <Text style={{ color: '#1e40af', fontWeight: '800', fontSize: 12 }}>Aguardando RH</Text>
+                </View>
+              )}
+            </View>
+            <Text style={styles.sectionDesc}>
+              Corretores que enviaram cadastro público com documentos. Valide os dados e aprove para liberar o cadastro para o Gerente responsável.
+            </Text>
+
+            {pendingHrReview.length === 0 ? (
+              <View style={{ paddingVertical: 14, alignItems: 'center' }}>
+                <Text style={styles.emptyText}>Nenhum corretor aguardando triagem documental no momento.</Text>
+              </View>
+            ) : (
+              <View style={{ gap: 10, marginTop: 10 }}>
+                {pendingHrReview.map((candidate) => (
+                  <View key={candidate.id} style={{ backgroundColor: '#f8fafc', borderRadius: 8, padding: 14, borderWidth: 1, borderColor: '#cbd5e1' }}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
+                      <View style={{ flex: 1, minWidth: 220 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+                          <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a' }}>{candidate.nome_guerra}</Text>
+                          <Text style={{ fontSize: 13, color: '#64748b' }}>({candidate.name})</Text>
+                          {renderStageBadge(candidate)}
+                        </View>
+                        <Text style={{ fontSize: 12, color: '#334155', marginTop: 4 }}>
+                          📧 {candidate.email} · CRECI: <Text style={{ fontWeight: '600' }}>{candidate.creci || '—'}</Text>
+                        </Text>
+                        <Text style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                          👤 Gerente Indicado: <Text style={{ fontWeight: '700' }}>Gerente {candidate.manager_nome_guerra || 'Sem gerente'}</Text>
+                        </Text>
+                        <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                          🕒 Enviado em: {new Date(candidate.created_at).toLocaleString('pt-BR')}
+                        </Text>
+                      </View>
+
+                      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#16a34a', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 }}
+                          onPress={() => handleApproveByHr(candidate)}
+                          disabled={processingCandidateId === candidate.id}
+                        >
+                          <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 12 }}>✓ Aprovar</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#2563eb', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 6 }}
+                          onPress={() => handleOpenEditCandidate(candidate)}
+                          disabled={processingCandidateId === candidate.id}
+                        >
+                          <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 12 }}>✏️ Ajustar</Text>
+                        </TouchableOpacity>
+
+                        <TouchableOpacity
+                          style={{ backgroundColor: '#ef4444', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 6 }}
+                          onPress={() => handleHardDeleteCandidate(candidate)}
+                          disabled={processingCandidateId === candidate.id}
+                        >
+                          <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 12 }}>🗑️ Excluir</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
           </View>
         )}
 
@@ -1325,6 +1594,38 @@ const styles = StyleSheet.create({
   badgeTextCreci: {
     color: '#15803d',
     fontSize: 11,
+    fontWeight: '700',
+  },
+  input: {
+    height: 42,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: 14,
+    marginBottom: 10,
+    backgroundColor: '#f8fafc',
+  },
+  stageSelectBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#cbd5e1',
+    backgroundColor: '#f1f5f9',
+  },
+  stageSelectBtnActive: {
+    borderColor: '#2563eb',
+    backgroundColor: '#eff6ff',
+  },
+  stageSelectText: {
+    fontSize: 12,
+    color: '#475569',
+    fontWeight: '600',
+  },
+  stageSelectTextActive: {
+    fontSize: 12,
+    color: '#1d4ed8',
     fontWeight: '700',
   },
 });
