@@ -485,6 +485,11 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
       }
     }
 
+    if (compiledDocs.length < 2) {
+      setError('É obrigatório anexar no mínimo 2 arquivos de documentos (Comprovante de Residência e Documento de Identificação).');
+      return;
+    }
+
     try {
       setError('');
       setLoading(true);
