@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ABIATAR — Guia Executivo da Diretoria & RH</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-body: #09090b;
+      --bg-card: #121215;
+      --bg-card-alt: #18181c;
+      --border-color: #27272a;
+      --border-highlight: #3f3f46;
+      --text-main: #f4f4f5;
+      --text-muted: #a1a1aa;
+      --text-sub: #71717a;
+      --accent-gold: #eab308;
+      --accent-gold-bg: rgba(234, 179, 8, 0.1);
+      --accent-blue: #3b82f6;
+      --accent-blue-bg: rgba(59, 130, 246, 0.1);
+      --accent-green: #22c55e;
+      --accent-green-bg: rgba(34, 197, 94, 0.1);
+      --accent-purple: #a855f7;
+      --accent-purple-bg: rgba(168, 85, 247, 0.1);
+      --radius: 12px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      line-height: 1.6;
+      padding: 32px 16px;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    /* HEADER */
+    .header {
+      background: linear-gradient(135deg, #18181b 0%, #09090b 100%);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 36px 32px;
+      margin-bottom: 28px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -50px;
+      right: -50px;
+      width: 180px;
+      height: 180px;
+      background: radial-gradient(circle, rgba(234, 179, 8, 0.15) 0%, rgba(0,0,0,0) 70%);
+      border-radius: 50%;
+    }
+
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent-gold-bg);
+      color: var(--accent-gold);
+      border: 1px solid rgba(234, 179, 8, 0.3);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 16px;
+    }
+
+    .header-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+      letter-spacing: -0.5px;
+      margin-bottom: 8px;
+    }
+
+    .header-subtitle {
+      font-size: 15px;
+      color: var(--text-muted);
+      max-width: 680px;
+    }
+
+    /* QUICK NAV */
+    .nav-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 28px;
+      position: sticky;
+      top: 16px;
+      z-index: 100;
+      background: rgba(9, 9, 11, 0.85);
+      backdrop-filter: blur(12px);
+      padding: 10px;
+      border-radius: var(--radius);
+      border: 1px solid var(--border-color);
+    }
+
+    .nav-item {
+      padding: 8px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      transition: all 0.2s ease;
+    }
+
+    .nav-item:hover {
+      color: #ffffff;
+      border-color: var(--border-highlight);
+      background: var(--bg-card-alt);
+    }
+
+    /* CARD SECTIONS */
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius);
+      padding: 30px;
+      margin-bottom: 24px;
+    }
+
+    .section-title {
+      font-size: 20px;
+      font-weight: 800;
+      color: #ffffff;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .section-desc {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 22px;
+    }
+
+    /* GRID */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+      gap: 16px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
+
+    /* SUB-CARDS */
+    .sub-card {
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 18px;
+    }
+
+    .sub-card-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .sub-card-text {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+
+    /* STEPS */
+    .step-list {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      margin-top: 12px;
+    }
+
+    .step-item {
+      display: flex;
+      gap: 14px;
+      background: var(--bg-card-alt);
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .step-number {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--accent-gold-bg);
+      color: var(--accent-gold);
+      border: 1px solid rgba(234, 179, 8, 0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 800;
+      flex-shrink: 0;
+    }
+
+    .step-content h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 4px;
+    }
+
+    .step-content p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    /* CODE BOX */
+    .code-box {
+      font-family: 'JetBrains Mono', monospace;
+      background: #000000;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      padding: 14px;
+      font-size: 13px;
+      color: #38bdf8;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    .code-box code {
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      background: #27272a;
+      color: #ffffff;
+      border: none;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .copy-btn:hover {
+      background: #3f3f46;
+    }
+
+    /* BADGES */
+    .badge {
+      display: inline-block;
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-right: 4px;
+    }
+
+    .badge-blue { background: var(--accent-blue-bg); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+    .badge-gold { background: var(--accent-gold-bg); color: #facc15; border: 1px solid rgba(234, 179, 8, 0.3); }
+    .badge-green { background: var(--accent-green-bg); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .badge-purple { background: var(--accent-purple-bg); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+    /* BUTTONS */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #ffffff;
+      color: #000000;
+      border: 1px solid #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #e4e4e7;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: #ffffff;
+      border: 1px solid var(--border-highlight);
+    }
+
+    .btn-outline:hover {
+      background: var(--bg-card-alt);
+    }
+
+    /* FOOTER */
+    .footer {
+      text-align: center;
+      font-size: 13px;
+      color: var(--text-sub);
+      padding: 24px 0;
+      border-top: 1px solid var(--border-color);
+      margin-top: 32px;
+    }
+
+    @media print {
+      body { background: #fff; color: #000; padding: 0; }
+      .nav-bar, .copy-btn { display: none; }
+      .header, .section-card, .sub-card, .step-item { background: #fff; border: 1px solid #ccc; color: #000; }
+      .header-title, .section-title, .sub-card-title, .step-content h4 { color: #000; }
+      .header-subtitle, .section-desc, .sub-card-text, .step-content p { color: #444; }
+      .code-box { background: #f4f4f5; color: #000; border: 1px solid #ccc; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- HEADER -->
+    <header class="header">
+      <div class="header-badge">👑 Gestão Estratégica & Governança</div>
+      <h1 class="header-title">ABIATAR · Painel Executivo da Diretoria</h1>
+      <p class="header-subtitle">
+        Manual operacional completo para Mamede, Diretoria e Recursos Humanos: acessos, governança de equipes, triagem documental e gestão de carreiras.
+      </p>
+    </header>
+
+    <!-- NAVEGAÇÃO RÁPIDA -->
+    <nav class="nav-bar">
+      <a href="#diretoria" class="nav-item">👑 Acesso Diretoria</a>
+      <a href="#rh" class="nav-item">🏢 Perfil do RH</a>
+      <a href="#triagem" class="nav-item">📑 Triagem de Documentos</a>
+      <a href="#carreiras" class="nav-item">🎓 Gestão de Carreiras</a>
+      <a href="#links" class="nav-item">🌐 Links & Infraestrutura</a>
+    </nav>
+
+    <!-- SEÇÃO 1: ACESSO DA DIRETORIA -->
+    <section id="diretoria" class="section-card">
+      <h2 class="section-title">👑 1. Acesso da Diretoria (Mamede)</h2>
+      <p class="section-desc">
+        A conta da Diretoria possui visão 360° da operação, com autoridade para gerenciar todas as equipes, aprovar exceções, alterar regras e configurar acessos.
+      </p>
+
+      <div class="grid-2">
+        <div class="sub-card">
+          <div class="sub-card-title">🔑 Credenciais de Produção</div>
+          <p class="sub-card-text">Utilize estas credenciais para acessar o painel principal:</p>
+          <div class="code-box">
+            <code>E-mail: mamede@abiatar.com.br</code>
+          </div>
+          <div class="code-box" style="margin-top: 6px;">
+            <code>Link: https://abiatar.bitimob.com.br</code>
+          </div>
+          <div style="margin-top: 14px;">
+            <a href="https://abiatar.bitimob.com.br" target="_blank" class="btn btn-primary">Abrir ABIATAR em Nova Aba ↗</a>
+          </div>
+        </div>
+
+        <div class="sub-card">
+          <div class="sub-card-title">⚡ O que a Diretoria pode fazer:</div>
+          <ul style="padding-left: 18px; font-size: 13px; color: var(--text-muted); line-height: 1.8;">
+            <li>Ver e gerenciar todas as equipes e gerentes de vendas.</li>
+            <li>Acessar diretamente a <strong style="color: #fff;">Fila de Triagem Documental</strong>.</li>
+            <li>Fazer <strong style="color: #fff;">Upgrades e Downgrades</strong> de qualquer corretor.</li>
+            <li>Cadastrar novos <strong style="color: #fff;">Gerentes, Recepcionistas e membros do RH</strong>.</li>
+            <li>Configurar regras de plantão, horários de roleta e carências.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 2: CRIANDO ACESSOS PARA O RH -->
+    <section id="rh" class="section-card">
+      <h2 class="section-title">🏢 2. Como Criar e Delegar Acessos para o RH</h2>
+      <p class="section-desc">
+        Você pode delegar a rotina de conferência de documentos e gestão de vigências para a sua equipe de Recursos Humanos sem compartilhar sua senha da Diretoria.
+      </p>
+
+      <div class="step-list">
+        <div class="step-item">
+          <div class="step-number">1</div>
+          <div class="step-content">
+            <h4>Acesse a Gestão de Usuários</h4>
+            <p>Faça login com a conta da Diretoria e clique no botão <strong>"Gerenciar Gerentes e Recepção"</strong>.</p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-number">2</div>
+          <div class="step-content">
+            <h4>Selecione a Aba Recursos Humanos</h4>
+            <p>Clique na aba <strong>"Recursos Humanos (RH)"</strong> no topo do painel administrativo.</p>
+          </div>
+        </div>
+
+        <div class="step-item">
+          <div class="step-number">3</div>
+          <div class="step-content">
+            <h4>Cadastre o Membro do RH</h4>
+            <p>Informe o Nome Completo, E-mail corporativo e a Senha de acesso inicial. O novo membro receberá permissões automáticas de RH.</p>
+          </div>
+        </div>
+      </div>
+
+      <div style="background: var(--accent-purple-bg); border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 10px; padding: 16px; margin-top: 18px;">
+        <h4 style="color: #c084fc; font-size: 14px; font-weight: 700; margin-bottom: 4px;">🛡️ Isolamento e Segurança do Perfil RH</h4>
+        <p style="font-size: 13px; color: var(--text-muted);">
+          O perfil de RH tem acesso focado exclusivamente na <strong>Triagem Documental</strong> e na <strong>Gestão de Carreiras</strong> de todas as equipes, sem acesso a alterações financeiras críticas ou exclusão de outros diretores.
+        </p>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 3: TRIAGEM DOCUMENTAL -->
+    <section id="triagem" class="section-card">
+      <h2 class="section-title">📑 3. Fluxo de Triagem Documental e Aprovação</h2>
+      <p class="section-desc">
+        Como funciona o pipeline seguro contra fraudes desde o cadastro público até a ativação do corretor no plantão.
+      </p>
+
+      <div class="grid-3">
+        <div class="sub-card">
+          <div class="sub-card-title"><span class="badge badge-blue">Passo 1</span> Cadastro Público</div>
+          <p class="sub-card-text">
+            O corretor acessa o site, escolhe seu estágio (<span class="badge badge-blue">Treinamento</span>, <span class="badge badge-gold">Estagiário</span> ou <span class="badge badge-green">CRECI</span>), seleciona o Gerente e anexa obrigatoriamente os documentos.
+          </p>
+        </div>
+
+        <div class="sub-card">
+          <div class="sub-card-title"><span class="badge badge-purple">Passo 2</span> E-mail & Triagem RH</div>
+          <p class="sub-card-text">
+            O RH recebe um e-mail oficial com todos os anexos organizados e o cadastro entra na fila de <strong>"Triagem de Novos Cadastros"</strong> no painel.
+          </p>
+        </div>
+
+        <div class="sub-card">
+          <div class="sub-card-title"><span class="badge badge-green">Passo 3</span> Liberação p/ Gerente</div>
+          <p class="sub-card-text">
+            O RH confere os comprovantes e clica em <strong>"Aprovar Documentação"</strong>. O corretor é encaminhado para o Gerente responsável dar as boas-vindas e ativar a conta.
+          </p>
+        </div>
+      </div>
+
+      <div style="margin-top: 18px;" class="sub-card">
+        <div class="sub-card-title">🛠️ Ferramentas Rápidas na Fila de Triagem:</div>
+        <div style="display: flex; flex-direction: column; gap: 8px; margin-top: 10px;">
+          <div style="font-size: 13px; color: var(--text-muted);">
+            <strong style="color: #4ade80;">✓ Aprovar Documentação:</strong> Libera o corretor imediatamente para a aprovação final da gerência.
+          </div>
+          <div style="font-size: 13px; color: var(--text-muted);">
+            <strong style="color: #60a5fa;">✏️ Ajustar Dados Pré-Aprovação:</strong> Permite corrigir o Nome de Guerra, número do CRECI, trocar o Gerente ou alterar o estágio antes de aprovar.
+          </div>
+          <div style="font-size: 13px; color: var(--text-muted);">
+            <strong style="color: #f87171;">✕ Excluir Cadastro (Anti-Fraude):</strong> Remove cadastros duplicados ou falsos, liberando o Nome de Guerra e o E-mail instantaneamente.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 4: GESTÃO DE CARREIRAS -->
+    <section id="carreiras" class="section-card">
+      <h2 class="section-title">🎓 4. Gestão de Carreiras, Upgrades e Prazos</h2>
+      <p class="section-desc">
+        Acompanhe e promova corretores à medida que evoluem na carreira imobiliária.
+      </p>
+
+      <div class="grid-2">
+        <div class="sub-card">
+          <div class="sub-card-title">🚀 Upgrades & Downgrades</div>
+          <p class="sub-card-text" style="margin-bottom: 10px;">
+            Ao clicar no corretor na árvore de equipes, você pode alterar seu estágio com 1 clique:
+          </p>
+          <div style="display: flex; flex-direction: column; gap: 6px; font-size: 13px;">
+            <div><span class="badge badge-blue">🔵 Treinamento</span> ➔ Para quem está iniciando os estudos.</div>
+            <div><span class="badge badge-gold">🟡 Estagiário</span> ➔ Possui CRECI de Estágio ativo.</div>
+            <div><span class="badge badge-green">🟢 Corretor CRECI</span> ➔ Corretor com CRECI definitivo.</div>
+          </div>
+        </div>
+
+        <div class="sub-card">
+          <div class="sub-card-title">⏱️ Prorrogação de Vigência</div>
+          <p class="sub-card-text">
+            Para corretores em Treinamento ou Estagiários com prazo de vigência, utilize os botões rápidos de prorrogação:
+          </p>
+          <div style="display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap;">
+            <span style="background: var(--bg-body); border: 1px solid var(--border-highlight); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; color: #facc15;">+30 Dias</span>
+            <span style="background: var(--bg-body); border: 1px solid var(--border-highlight); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; color: #facc15;">+60 Dias</span>
+            <span style="background: var(--bg-body); border: 1px solid var(--border-highlight); padding: 6px 12px; border-radius: 6px; font-size: 12px; font-weight: 700; color: #facc15;">+90 Dias</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SEÇÃO 5: LINKS E INFRAESTRUTURA -->
+    <section id="links" class="section-card">
+      <h2 class="section-title">🌐 5. Links Oficiais & Infraestrutura</h2>
+      <p class="section-desc">
+        Painéis de monitoramento, domínios e serviços conectados ao ecossistema ABIATAR.
+      </p>
+
+      <div class="grid-2">
+        <div class="sub-card">
+          <div class="sub-card-title">📱 Aplicação Web & PWA</div>
+          <p class="sub-card-text">
+            Frontend hospedado e distribuído globalmente:
+          </p>
+          <div class="code-box">
+            <code>https://abiatar.bitimob.com.br</code>
+          </div>
+        </div>
+
+        <div class="sub-card">
+          <div class="sub-card-title">⚙️ API Backend & Banco de Dados</div>
+          <p class="sub-card-text">
+            Servidor NestJS e PostgreSQL no Railway:
+          </p>
+          <div class="code-box">
+            <code>https://api.abiatar.bitimob.com.br</code>
+          </div>
+        </div>
+
+        <div class="sub-card">
+          <div class="sub-card-title">📧 Disparo Transacional de E-mails</div>
+          <p class="sub-card-text">
+            Resend com domínio 100% verificado:
+          </p>
+          <div class="code-box">
+            <code>onboarding@abiatar.bitimob.com.br</code>
+          </div>
+        </div>
+
+        <div class="sub-card">
+          <div class="sub-card-title">🔔 Notificações Push em Tempo Real</div>
+          <p class="sub-card-text">
+            Firebase Cloud Messaging (FCM) & Server-Sent Events.
+          </p>
+          <div class="code-box">
+            <code>FCM Ativo / Service Worker Conectado</code>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+      <p>ABIATAR Imobiliária · Sistema de Gestão de Plantões, Roletas e Pessoas</p>
+      <p style="margin-top: 4px; font-size: 11px;">Documento confidencial para uso exclusivo da Diretoria e Recursos Humanos.</p>
+    </footer>
+
+  </div>
+
+</body>
+</html>
