@@ -43,7 +43,7 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
   const [checkingIn, setCheckingIn] = useState<string | null>(null);
   const [error, setError] = useState('');
 
-  const primaryColor = tenant?.primary_color || '#1c1c1e';
+  const primaryColor = tenant?.primary_color || '#e53924';
   const showTestDiagnostics = process.env.EXPO_PUBLIC_TEST_MODE !== 'false';
 
   // 1. Efeito Inicial: Busca os plantões cadastrados na nuvem para esta construtora

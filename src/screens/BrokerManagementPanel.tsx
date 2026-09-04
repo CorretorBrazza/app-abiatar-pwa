@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 interface BrokerProfile {
   id: string;
@@ -36,6 +37,7 @@ interface Props {
 }
 
 export default function BrokerManagementPanel({ brokerId, isDirector, isRh, managers, onClose, onSaved, primaryColor = '#e53924' }: Props) {
+  const { tenant } = useAuth();
   const [profile, setProfile] = useState<BrokerProfile | null>(null);
   const [nomeGuerra, setNomeGuerra] = useState('');
   const [creci, setCreci] = useState('');
@@ -173,10 +175,11 @@ export default function BrokerManagementPanel({ brokerId, isDirector, isRh, mana
     <Modal visible={!!brokerId} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
         <View style={[styles.header, { backgroundColor: primaryColor }]}>
-          <TouchableOpacity onPress={onClose} style={styles.backButton}>
-            <Text style={styles.backText}>‹ Voltar ao Painel</Text>
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>{isRh ? 'Gestão de Estágio do Corretor' : 'Ficha do Corretor'}</Text>
+<TouchableOpacity onPress={onClose} style={styles.backButton}>
+          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
+        </TouchableOpacity>
+        <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
+        <Text style={styles.headerTitle}>{isRh ? 'Gestão de Estágio do Corretor' : 'Ficha do Corretor'}</Text>
           <Text style={styles.headerSubtitle}>{isRh ? 'Evolução de carreira, vigência de estágio e dados cadastrais' : 'Gestão individual, operação e vínculo hierárquico'}</Text>
         </View>
 

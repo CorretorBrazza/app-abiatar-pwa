@@ -175,6 +175,7 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
+        <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <Text style={styles.headerTitle}>Gestão de Usuários</Text>
         <Text style={styles.headerSubtitle}>Controle de acessos de Gerentes e Recepção</Text>
       </View>

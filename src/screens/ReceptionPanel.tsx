@@ -13,7 +13,7 @@ export default function ReceptionPanel() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [showInbox, setShowInbox] = useState(false);
   const [operationalTargets, setOperationalTargets] = useState<OperationalTarget[]>([]);
-  const primaryColor = tenant?.primary_color || '#1c1c1e';
+  const primaryColor = tenant?.primary_color || '#e53924';
 
   useEffect(() => {
     let mounted = true;

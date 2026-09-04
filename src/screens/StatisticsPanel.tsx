@@ -209,6 +209,7 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
+        <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
             <Text style={styles.title}>Torre de Controle & Relatórios</Text>

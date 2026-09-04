@@ -43,7 +43,7 @@ export default function Inbox({ onBack }: InboxProps) {
   const [selectedMessage, setSelectedMessage] = useState<MessageRecipient | null>(null);
   const [markingRead, setMarkingRead] = useState(false);
 
-  const primaryColor = tenant?.primary_color || '#1c1c1e';
+  const primaryColor = tenant?.primary_color || '#e53924';
 
   // 1. Efeito Inicial: Busca os comunicados da Caixa de Entrada na nuvem
   const loadMessages = async () => {
@@ -110,6 +110,7 @@ export default function Inbox({ onBack }: InboxProps) {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
+        <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <Text style={styles.headerTitle}>Minhas Mensagens</Text>
         <Text style={styles.headerSubtitle}>Acompanhe os comunicados e alertas oficiais</Text>
       </View>

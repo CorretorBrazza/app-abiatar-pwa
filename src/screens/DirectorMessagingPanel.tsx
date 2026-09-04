@@ -33,7 +33,7 @@ const roleLabel = (role: string) => ({
 }[role] || role);
 
 export default function DirectorMessagingPanel({ primaryColor, onBack, isManager = false }: Props) {
-  const { user } = useAuth();
+  const { user, tenant } = useAuth();
   const [recipients, setRecipients] = useState<Recipient[]>([]);
   const [scope, setScope] = useState<Scope>('all_users');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -110,6 +110,7 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
+        <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <Text style={styles.headerTitle}>{isManager ? 'Comunicação da Minha Equipe' : 'Comunicação Institucional'}</Text>
         <Text style={styles.headerSubtitle}>
           {isManager ? 'Envie comunicados persistentes para os corretores da sua equipe.' : 'Envie comunicados para toda a força de vendas ou equipes específicas.'}

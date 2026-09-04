@@ -103,7 +103,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const [editManagerId, setEditManagerId] = useState('');
   const [processingCandidateId, setProcessingCandidateId] = useState<string | null>(null);
 
-  const primaryColor = tenant?.primary_color || '#1c1c1e';
+  const primaryColor = tenant?.primary_color || '#e53924';
   const managerId = user?.id || '';
   const isDirector = user?.role === 'diretoria_level_1' || user?.role === 'platform_admin_level_0';
   const isRh = user?.role === 'rh_level_2' || user?.role === 'rh_level_1';
@@ -494,6 +494,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
+        <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <Text style={styles.headerTitle}>{isRh ? 'Gestão de Estágios e Carreiras (RH)' : isDirector ? 'Gestão Executiva de Corretores' : 'Gestão de Corretores'}</Text>
         <Text style={styles.headerSubtitle}>
           {isRh

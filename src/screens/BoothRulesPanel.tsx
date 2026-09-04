@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 type Booth = {
   id: string;
@@ -75,6 +76,7 @@ type SpecialSchedule = {
 };
 
 export default function BoothRulesPanel({ onBack, primaryColor = '#e53924' }: { onBack: () => void; primaryColor?: string }) {
+  const { tenant } = useAuth();
   // Aba Ativa: 'booths' (Regras e Plantões) ou 'holidays' (Feriados - Roleta Única)
   const [activeTab, setActiveTab] = useState<'booths' | 'holidays'>('booths');
 
@@ -502,6 +504,7 @@ export default function BoothRulesPanel({ onBack, primaryColor = '#e53924' }: { 
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
+        <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <Text style={styles.title}>Administrar Plantões & Roletas</Text>
         <Text style={styles.headerSubtitle}>Grade de horários, regras operacionais e feriados</Text>
       </View>

@@ -44,7 +44,7 @@ export default function Dashboard() {
   // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI)
   const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics' | 'booth_rules' | 'director_messaging' | 'user_management'>('main');
 
-  const primaryColor = tenant?.primary_color || '#1c1c1e';
+  const primaryColor = tenant?.primary_color || '#e53924';
   const isManager = user?.role === 'gerencia_level_2';
   const isDirector = user?.role === 'diretoria_level_1' || user?.role === 'platform_admin_level_0';
   const isRh = user?.role === 'rh_level_2' || user?.role === 'rh_level_1';
