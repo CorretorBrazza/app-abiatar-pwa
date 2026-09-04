@@ -21,7 +21,6 @@ import ReceptionPanel from './ReceptionPanel';
 import PushToast from '../components/PushToast';
 import PushSetupButton from '../components/PushSetupButton';
 import OperationalAlert from '../components/OperationalAlert';
-import ScreenCode from '../components/ScreenCode';
 import BrokerMaterials from '../components/BrokerMaterials';
 import DirectorMessagingPanel from './DirectorMessagingPanel';
 import UserManagementPanel from './UserManagementPanel';
@@ -249,7 +248,7 @@ export default function Dashboard() {
   };
 
   if (user?.role === 'corretor_level_3' && pendingSessionPingId) {
-    return <View style={styles.frozenContainer}><ScreenCode code="PR-02" /><Text style={styles.frozenTitle}>Você ainda está no plantão?</Text><Text style={styles.frozenText}>A confirmação é obrigatória para manter sua presença e continuar elegível aos leads.</Text><Text style={styles.frozenText}>Ao confirmar, sua localização será validada por GPS ou Wi-Fi, sem rastreamento contínuo.</Text><TouchableOpacity style={[styles.frozenButton, { backgroundColor: primaryColor }]} onPress={() => void handlePresenceConfirmation(true)} disabled={confirmingPresence}><Text style={styles.frozenButtonText}>{confirmingPresence ? 'Validando presença...' : 'Sim, ainda estou no plantão'}</Text></TouchableOpacity><TouchableOpacity style={styles.frozenNoButton} onPress={() => void handlePresenceConfirmation(false)} disabled={confirmingPresence}><Text style={styles.frozenNoText}>Não, fazer checkout</Text></TouchableOpacity></View>;
+    return <View style={styles.frozenContainer}><Text style={styles.frozenTitle}>Você ainda está no plantão?</Text><Text style={styles.frozenText}>A confirmação é obrigatória para manter sua presença e continuar elegível aos leads.</Text><Text style={styles.frozenText}>Ao confirmar, sua localização será validada por GPS ou Wi-Fi, sem rastreamento contínuo.</Text><TouchableOpacity style={[styles.frozenButton, { backgroundColor: primaryColor }]} onPress={() => void handlePresenceConfirmation(true)} disabled={confirmingPresence}><Text style={styles.frozenButtonText}>{confirmingPresence ? 'Validando presença...' : 'Sim, ainda estou no plantão'}</Text></TouchableOpacity><TouchableOpacity style={styles.frozenNoButton} onPress={() => void handlePresenceConfirmation(false)} disabled={confirmingPresence}><Text style={styles.frozenNoText}>Não, fazer checkout</Text></TouchableOpacity></View>;
   }
 
   if (loadingSession) {
@@ -273,7 +272,7 @@ export default function Dashboard() {
   }
 
   if (currentView === 'booth_rules') {
-    return <BoothRulesPanel onBack={() => setCurrentView('main')} />;
+    return <BoothRulesPanel onBack={() => setCurrentView('main')} primaryColor={primaryColor} />;
   }
 
   // ==========================================
@@ -307,7 +306,6 @@ export default function Dashboard() {
         <View style={styles.container}>
           {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
           {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
-          <ScreenCode code="CR-01" />
           <View style={[styles.header, { backgroundColor: primaryColor }]}>
             <View style={styles.headerRow}>
               <Text style={styles.tenantName}>{tenant?.name || 'ABIATAR'}</Text>
@@ -336,7 +334,7 @@ export default function Dashboard() {
 
             <View style={styles.brokerPeriodsCard}>
               <Text style={styles.brokerPeriodsTitle}>Minhas Roletas da Semana e Elegibilidade</Text>
-              <Text style={[styles.infoText, { color: '#6b7280', fontSize: 12, marginBottom: 8 }]}>
+              <Text style={[styles.infoText, { color: '#c13a28', fontSize: 12, marginBottom: 8 }]}>
                 Contagem semanal (Segunda a Domingo) · Elegibilidade calculada por plantão
               </Text>
               
@@ -347,9 +345,9 @@ export default function Dashboard() {
                 <View style={{ marginTop: 10, gap: 8 }}>
                   <Text style={[styles.infoText, { fontWeight: '700', color: '#1c1c1e', marginBottom: 2 }]}>Status por Plantão de Vendas:</Text>
                   {brokerSummary.boothsEligibility.map((booth: any) => (
-                    <View key={booth.boothId} style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                    <View key={booth.boothId} style={{ backgroundColor: '#fdecea', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#f0b5ab' }}>
                       <Text style={{ fontWeight: '700', color: '#111827', fontSize: 14 }}>{booth.boothName}</Text>
-                      <Text style={{ fontSize: 13, color: '#374151', marginTop: 2 }}>
+                      <Text style={{ fontSize: 13, color: '#c13a28', marginTop: 2 }}>
                         Roletas cumpridas no plantão: <Text style={{ fontWeight: '700' }}>{booth.validRoletasThisWeek}</Text>
                       </Text>
                       <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
@@ -399,7 +397,6 @@ export default function Dashboard() {
       <View style={styles.container}>
         {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
       {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
-        <ScreenCode code="CR-02" />
         <View style={[styles.header, { backgroundColor: primaryColor }]}>
           <View style={styles.headerRow}>
             <Text style={styles.tenantName}>{tenant?.name || 'ABIATAR'}</Text>
@@ -435,17 +432,17 @@ export default function Dashboard() {
                   🎰 {brokerSummary.activeShift.roletaPosition}º Lugar na Fila
                 </Text>
                 <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 10, marginVertical: 8, gap: 4 }}>
-                  <Text style={{ color: '#d1d5db', fontSize: 12 }}>
+                  <Text style={{ color: '#f0b5ab', fontSize: 12 }}>
                     🕒 <Text style={{ fontWeight: '700', color: '#fff' }}>Check-in realizado às:</Text> {brokerSummary.activeShift.checkInAtFormatted || '—'}
                   </Text>
-                  <Text style={{ color: '#d1d5db', fontSize: 12 }}>
+                  <Text style={{ color: '#f0b5ab', fontSize: 12 }}>
                     🎯 <Text style={{ fontWeight: '700', color: '#fff' }}>Horário do sorteio:</Text> {brokerSummary.activeShift.drawTimeFormatted || '09:01'}
                   </Text>
-                  <Text style={{ color: '#d1d5db', fontSize: 12 }}>
+                  <Text style={{ color: '#f0b5ab', fontSize: 12 }}>
                     📌 <Text style={{ fontWeight: '700', color: '#fff' }}>Status:</Text> {brokerSummary.activeShift.roletaEntryType === 'pos_barra' ? 'Atendimento extra / Final da fila' : 'Aguarde ser anunciado na recepção'}
                   </Text>
                 </View>
-                <Text style={{ color: '#9ca3af', fontSize: 12, lineHeight: 17 }}>
+                <Text style={{ color: '#c13a28', fontSize: 12, lineHeight: 17 }}>
                   {brokerSummary.activeShift.roletaEntryType === 'pos_barra'
                     ? 'Você entrou na tolerância Pós-Barra e foi alocado ao final da fila de atendimento e leads.'
                     : 'Ordem oficial sorteada para atendimento presencial na recepção e distribuição de novos leads.'}
@@ -462,24 +459,24 @@ export default function Dashboard() {
                   Check-in Pontual Confirmado!
                 </Text>
                 <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 10, marginVertical: 8, gap: 4 }}>
-                  <Text style={{ color: '#d1d5db', fontSize: 12 }}>
+                  <Text style={{ color: '#f0b5ab', fontSize: 12 }}>
                     🕒 <Text style={{ fontWeight: '700', color: '#fff' }}>Check-in registrado às:</Text> {brokerSummary.activeShift.checkInAtFormatted || '—'}
                   </Text>
                   <Text style={{ color: '#facc15', fontSize: 12, fontWeight: '700' }}>
                     🎰 Horário do Sorteio: Às {brokerSummary.activeShift.drawTimeFormatted || '09:01'}
                   </Text>
-                  <Text style={{ color: '#d1d5db', fontSize: 12 }}>
+                  <Text style={{ color: '#f0b5ab', fontSize: 12 }}>
                     👥 <Text style={{ fontWeight: '700', color: '#fff' }}>Aguardando no estande:</Text> {brokerSummary.activeShift.waitingBrokersCount || 1} corretor(es)
                   </Text>
                 </View>
-                <Text style={{ color: '#9ca3af', fontSize: 12, lineHeight: 18 }}>
+                <Text style={{ color: '#c13a28', fontSize: 12, lineHeight: 18 }}>
                   O sorteio automático das posições da roleta ocorrerá exatamente às <Text style={{ color: '#fff', fontWeight: '800' }}>{brokerSummary.activeShift.drawTimeFormatted || '09:01'}</Text>. Assim que a roleta girar, esta tela atualizará com sua posição!
                 </Text>
               </>
             ) : (
               <>
                 <Text style={{ color: '#fff', fontSize: 18, fontWeight: '800' }}>Turno Ativo no Plantão</Text>
-                <Text style={{ color: '#9ca3af', fontSize: 13 }}>Você está online e apto a receber clientes e leads.</Text>
+                <Text style={{ color: '#c13a28', fontSize: 13 }}>Você está online e apto a receber clientes e leads.</Text>
               </>
             )}
           </View>
@@ -488,7 +485,7 @@ export default function Dashboard() {
           {Array.isArray(brokerSummary?.activeShift?.boothQueue) && brokerSummary.activeShift.boothQueue.length > 0 && (
             <View style={styles.card}>
               <Text style={styles.infoTitle}>Fila da Roleta no Plantão ({brokerSummary.activeShift.boothQueue.length})</Text>
-              <Text style={[styles.infoText, { color: '#6b7280', fontSize: 12, marginBottom: 8 }]}>
+              <Text style={[styles.infoText, { color: '#c13a28', fontSize: 12, marginBottom: 8 }]}>
                 Ordem da roleta para recepção presencial e fila de leads CVCRM
               </Text>
               <View style={{ gap: 6, marginTop: 4 }}>
@@ -498,8 +495,8 @@ export default function Dashboard() {
                     style={[
                       { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 10, borderRadius: 8, borderWidth: 1 },
                       item.isCurrentBroker 
-                        ? { backgroundColor: '#eff6ff', borderColor: '#3b82f6' } 
-                        : { backgroundColor: '#f9fafb', borderColor: '#e5e7eb' }
+                        ? { backgroundColor: '#fdecea', borderColor: '#3b82f6' } 
+                        : { backgroundColor: '#fdecea', borderColor: '#f0b5ab' }
                     ]}
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
@@ -510,7 +507,7 @@ export default function Dashboard() {
                         <Text style={{ fontWeight: '700', color: '#111827', fontSize: 14 }}>
                           {item.nomeGuerra} {item.isCurrentBroker && <Text style={{ color: '#2563eb', fontWeight: '800' }}>(Você)</Text>}
                         </Text>
-                        <Text style={{ fontSize: 11, color: '#6b7280' }}>
+                        <Text style={{ fontSize: 11, color: '#c13a28' }}>
                           {item.roletaEntryType === 'pos_barra' ? 'Pós-Barra' : 'Sorteio Pontual'} · {item.minutesActive} min cumpridos
                         </Text>
                       </View>
@@ -542,7 +539,7 @@ export default function Dashboard() {
               <View style={{ marginTop: 10, gap: 8 }}>
                 <Text style={[styles.infoText, { fontWeight: '700', color: '#1c1c1e', marginBottom: 2 }]}>Elegibilidade Fim de Semana por Plantão:</Text>
                 {brokerSummary.boothsEligibility.map((booth: any) => (
-                  <View key={booth.boothId} style={{ backgroundColor: '#f9fafb', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                  <View key={booth.boothId} style={{ backgroundColor: '#fdecea', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#f0b5ab' }}>
                     <Text style={{ fontWeight: '700', color: '#111827', fontSize: 13 }}>{booth.boothName} ({booth.validRoletasThisWeek} roletas)</Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 }}>
                       <View style={{ backgroundColor: booth.saturdayEligible ? '#dcfce7' : '#fef3c7', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
@@ -611,7 +608,6 @@ export default function Dashboard() {
     <View style={styles.container}>
       {pushNotice && <PushToast title={pushNotice.title} body={pushNotice.body} onPress={() => { setPushNotice(null); setCurrentView('inbox'); }} />}
       {operationalNotice && <OperationalAlert title={operationalNotice.title} body={operationalNotice.body} onAcknowledge={() => setOperationalNotice(null)} />}
-      <ScreenCode code={isManager ? 'GE-01' : isDirector ? 'DR-01' : isRh ? 'RH-01' : 'AD-01'} />
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <View style={styles.headerRow}>
           <Text style={styles.tenantName}>{tenant?.name || 'ABIATAR'}</Text>
@@ -734,19 +730,19 @@ export default function Dashboard() {
 const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff7ed' }, frozenTitle: { fontSize: 26, fontWeight: '800', color: '#9a3412', textAlign: 'center', marginVertical: 14 }, frozenText: { maxWidth: 520, color: '#7c2d12', textAlign: 'center', lineHeight: 22, marginBottom: 10 }, frozenButton: { width: '100%', maxWidth: 520, minHeight: 52, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 18 }, frozenButtonText: { color: '#fff', fontWeight: '800', fontSize: 16 }, frozenNoButton: { width: '100%', maxWidth: 520, minHeight: 50, borderWidth: 1, borderColor: '#9a3412', borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 10 }, frozenNoText: { color: '#9a3412', fontWeight: '800' },
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f7',
+    backgroundColor: '#fdecea',
   },
   centerContainer: {
     flex: 1,
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f7',
+    backgroundColor: '#fdecea',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#8e8e93',
+    color: '#c13a28',
   },
   header: {
     paddingTop: 16,
@@ -815,7 +811,7 @@ const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, just
   },
   welcomeSubtitle: {
     fontSize: 16,
-    color: '#8e8e93',
+    color: '#c13a28',
     marginBottom: 32,
     textAlign: 'center',
   },
@@ -827,7 +823,7 @@ const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, just
     padding: 20,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#e5e5ea',
+    borderColor: '#f0b5ab',
   },
   infoTitle: {
     fontSize: 16,
@@ -838,7 +834,7 @@ const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, just
   invalidPeriodText: { color: '#b42318', fontSize: 14, marginBottom: 6, fontWeight: '700' },
   infoText: {
     fontSize: 14,
-    color: '#3a3a3c',
+    color: '#c13a28',
     marginBottom: 8,
   },
   logoutButton: {
@@ -851,7 +847,7 @@ const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, just
     alignItems: 'center',
     backgroundColor: '#FFF',
   },
-  brokerPeriodsCard: { width: '100%', maxWidth: 520, backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#e5e5ea' },
+  brokerPeriodsCard: { width: '100%', maxWidth: 520, backgroundColor: '#FFF', borderRadius: 12, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: '#f0b5ab' },
   brokerPeriodsTitle: { color: '#1c1c1e', fontSize: 16, fontWeight: '800', marginBottom: 8 },
   logoutText: {
     fontSize: 16,
@@ -892,12 +888,12 @@ const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, just
   },
   footerLogout: {
     width: '100%',
-    backgroundColor: '#f5f5f7',
+    backgroundColor: '#fdecea',
     paddingVertical: 20,
     paddingHorizontal: 24,
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#e5e5ea',
+    borderTopColor: '#f0b5ab',
   },
   msgButton: {
     width: '100%',

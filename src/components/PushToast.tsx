@@ -29,6 +29,6 @@ const styles = StyleSheet.create({
   iconText: { color: '#FFF', fontWeight: 'bold', fontSize: 18 },
   copy: { flex: 1 },
   title: { color: '#FFF', fontWeight: 'bold', fontSize: 14 },
-  body: { color: '#f2f2f7', fontSize: 13, marginTop: 2 },
+  body: { color: '#f0b5ab', fontSize: 13, marginTop: 2 },
   action: { color: '#64d2ff', fontSize: 12, fontWeight: 'bold', marginTop: 6 },
 });

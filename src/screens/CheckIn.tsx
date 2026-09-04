@@ -189,7 +189,7 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
               <TouchableOpacity
                 style={[
                   styles.checkInButton,
-                  { backgroundColor: isCheckInOpen ? primaryColor : '#9ca3af' },
+                  { backgroundColor: isCheckInOpen ? primaryColor : '#c13a28' },
                 ]}
                 onPress={() => handleCheckIn(item)}
                 disabled={checkingIn !== null || !isCheckInOpen}
@@ -225,7 +225,7 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 8,
     fontSize: 14,
-    color: '#8e8e93',
+    color: '#c13a28',
   },
   sectionHeading: {
     fontSize: 16,
@@ -239,7 +239,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#e5e5ea',
+    borderColor: '#f0b5ab',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
@@ -256,12 +256,12 @@ const styles = StyleSheet.create({
   },
   boothAddress: {
     fontSize: 13,
-    color: '#4b5563',
+    color: '#c13a28',
     marginBottom: 4,
   },
   boothRadius: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#c13a28',
     fontWeight: '600',
   },
   badgePontual: {
@@ -295,8 +295,8 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   badgeClosed: {
-    backgroundColor: '#f3f4f6',
-    borderColor: '#e5e7eb',
+    backgroundColor: '#f5d2cd',
+    borderColor: '#f0b5ab',
     borderWidth: 1,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   badgeClosedText: {
-    color: '#6b7280',
+    color: '#c13a28',
     fontSize: 11,
     fontWeight: '700',
   },
@@ -340,12 +340,12 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#e5e5ea',
+    borderColor: '#f0b5ab',
     alignItems: 'center',
     marginBottom: 12,
   },
   emptyText: {
-    color: '#6b7280',
+    color: '#c13a28',
     fontSize: 14,
     textAlign: 'center',
   },

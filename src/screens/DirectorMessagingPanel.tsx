@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import ScreenCode from '../components/ScreenCode';
 
 interface Recipient {
   id: string;
@@ -107,8 +106,7 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
 
   return (
     <View style={styles.container}>
-      <ScreenCode code="DR-03" />
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
@@ -132,11 +130,11 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
               ))}
               {scope === 'specific_team' && !isManager && <>
                 <Text style={styles.label}>Gerente da equipe</Text>
-                {recipients.filter((item) => item.role === 'gerencia_level_2').map((manager) => <TouchableOpacity key={manager.id} style={[styles.personButton, targetManagerId === manager.id && { borderColor: primaryColor, backgroundColor: '#eef5ff' }]} onPress={() => setTargetManagerId(manager.id)}><Text style={styles.personName}>{manager.nome_guerra || manager.name}</Text><Text style={styles.personMeta}>Gerente</Text></TouchableOpacity>)}
+                {recipients.filter((item) => item.role === 'gerencia_level_2').map((manager) => <TouchableOpacity key={manager.id} style={[styles.personButton, targetManagerId === manager.id && { borderColor: primaryColor, backgroundColor: '#fdecea' }]} onPress={() => setTargetManagerId(manager.id)}><Text style={styles.personName}>{manager.nome_guerra || manager.name}</Text><Text style={styles.personMeta}>Gerente</Text></TouchableOpacity>)}
               </>}
               {scope === 'individual' && <>
                 <Text style={styles.label}>Selecione uma ou mais pessoas</Text>
-                {filteredIndividualRecipients.map((person) => <TouchableOpacity key={person.id} style={[styles.personButton, selectedIds.includes(person.id) && { borderColor: primaryColor, backgroundColor: '#eef5ff' }]} onPress={() => toggleRecipient(person.id)}><Text style={styles.personName}>{person.nome_guerra || person.name}</Text><Text style={styles.personMeta}>{roleLabel(person.role)} · {person.email}</Text></TouchableOpacity>)}
+                {filteredIndividualRecipients.map((person) => <TouchableOpacity key={person.id} style={[styles.personButton, selectedIds.includes(person.id) && { borderColor: primaryColor, backgroundColor: '#fdecea' }]} onPress={() => toggleRecipient(person.id)}><Text style={styles.personName}>{person.nome_guerra || person.name}</Text><Text style={styles.personMeta}>{roleLabel(person.role)} · {person.email}</Text></TouchableOpacity>)}
               </>}
             </View>
             <View style={styles.card}>
@@ -156,12 +154,11 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f7f8' },
+  container: { flex: 1, backgroundColor: '#fdecea' },
   header: {
     paddingTop: 16,
     paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#1c1c1e',
   },
   backButton: {
     flexDirection: 'row',
@@ -171,7 +168,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   backText: {
-    color: '#60a5fa',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -181,27 +178,27 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   headerSubtitle: {
-    color: '#9ca3af',
+    color: 'rgba(255,255,255,0.75)',
     fontSize: 13,
     marginTop: 3,
   },
   content: { padding: 16, paddingBottom: 60, alignItems: 'center' },
-  card: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderRadius: 12, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#e5e7eb' },
+  card: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderRadius: 12, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#f0b5ab' },
   sectionTitle: { color: '#111827', fontSize: 18, fontWeight: '800', marginBottom: 12 },
   label: { color: '#1f2937', fontWeight: '700', marginTop: 12, marginBottom: 6 },
-  scopeButton: { minHeight: 44, borderWidth: 1, borderColor: '#cbd5e1', borderRadius: 8, justifyContent: 'center', paddingHorizontal: 12, marginBottom: 8 },
+  scopeButton: { minHeight: 44, borderWidth: 1, borderColor: '#f0b5ab', borderRadius: 8, justifyContent: 'center', paddingHorizontal: 12, marginBottom: 8 },
   scopeText: { color: '#1f2937', fontWeight: '700' },
   selectedText: { color: '#fff' },
-  personButton: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 11, marginBottom: 8 },
+  personButton: { borderWidth: 1, borderColor: '#f0b5ab', borderRadius: 8, padding: 11, marginBottom: 8 },
   personName: { color: '#111827', fontWeight: '800' },
-  personMeta: { color: '#6b7280', fontSize: 12, marginTop: 3 },
-  input: { minHeight: 46, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 8, paddingHorizontal: 12, color: '#111827', backgroundColor: '#fff', marginBottom: 12 },
+  personMeta: { color: '#c13a28', fontSize: 12, marginTop: 3 },
+  input: { minHeight: 46, borderWidth: 1, borderColor: '#c13a28', borderRadius: 8, paddingHorizontal: 12, color: '#111827', backgroundColor: '#fff', marginBottom: 12 },
   multiline: { minHeight: 120, paddingTop: 10, textAlignVertical: 'top' },
   urgentRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4, marginBottom: 16 },
-  checkbox: { width: 24, height: 24, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 5, marginRight: 10, justifyContent: 'center', alignItems: 'center' },
+  checkbox: { width: 24, height: 24, borderWidth: 1, borderColor: '#c13a28', borderRadius: 5, marginRight: 10, justifyContent: 'center', alignItems: 'center' },
   check: { color: '#fff', fontWeight: '800' },
   urgentTitle: { color: '#111827', fontWeight: '800' },
-  help: { color: '#6b7280', fontSize: 12, marginTop: 2 },
+  help: { color: '#c13a28', fontSize: 12, marginTop: 2 },
   sendButton: { minHeight: 48, borderRadius: 8, justifyContent: 'center', alignItems: 'center' },
   sendText: { color: '#fff', fontWeight: '800', fontSize: 15 },
   error: { width: '100%', maxWidth: 620, color: '#b91c1c', backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, marginBottom: 12, fontWeight: '700' },

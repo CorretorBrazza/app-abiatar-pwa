@@ -5,7 +5,6 @@ import Inbox from './Inbox';
 import api, { apiBaseUrl } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import OperationalPushComposer, { OperationalTarget } from '../components/OperationalPushComposer';
-import ScreenCode from '../components/ScreenCode';
 
 export default function ReceptionPanel() {
   const { user, tenant, logout } = useAuth();
@@ -112,7 +111,6 @@ export default function ReceptionPanel() {
 
   return (
     <View style={styles.container}>
-      <ScreenCode code="RX-01" />
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <View style={styles.headerRow}>
           <Text style={styles.tenant}>{tenant?.name || 'ABIATAR'}</Text>
@@ -167,8 +165,8 @@ export default function ReceptionPanel() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f5f5f7' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f5f5f7' },
+  container: { flex: 1, backgroundColor: '#fdecea' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#fdecea' },
   header: {
     paddingTop: 16,
     paddingBottom: 14,
@@ -211,13 +209,13 @@ const styles = StyleSheet.create({
   scroll: { flex: 1 },
   content: { padding: 24, alignItems: 'center', paddingBottom: 48 },
   title: { width: '100%', maxWidth: 520, fontSize: 24, fontWeight: 'bold', color: '#1c1c1e', marginTop: 20 },
-  subtitle: { width: '100%', maxWidth: 520, color: '#636366', marginTop: 8, marginBottom: 24 },
-  card: { width: '100%', maxWidth: 520, backgroundColor: '#FFF', borderRadius: 12, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#e5e5ea' },
+  subtitle: { width: '100%', maxWidth: 520, color: '#c13a28', marginTop: 8, marginBottom: 24 },
+  card: { width: '100%', maxWidth: 520, backgroundColor: '#FFF', borderRadius: 12, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#f0b5ab' },
   cardTitle: { fontSize: 17, fontWeight: 'bold', color: '#1c1c1e', marginBottom: 8 },
-  muted: { color: '#636366', lineHeight: 20 },
-  status: { color: '#8e8e93', marginTop: 12 },
+  muted: { color: '#c13a28', lineHeight: 20 },
+  status: { color: '#c13a28', marginTop: 12 },
   onlineStatus: { color: '#248a3d', fontWeight: '800', marginTop: 12 },
-  refreshText: { color: '#8e8e93', fontSize: 11, marginTop: 8 },
+  refreshText: { color: '#c13a28', fontSize: 11, marginTop: 8 },
   inboxButton: { width: '100%', maxWidth: 520, minHeight: 50, borderWidth: 2, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginBottom: 20, flexDirection: 'row', gap: 8, backgroundColor: '#FFF' },
   inboxText: { fontWeight: 'bold', fontSize: 16 },
   badge: { minWidth: 20, height: 20, borderRadius: 10, paddingHorizontal: 6, backgroundColor: '#ff3b30', alignItems: 'center', justifyContent: 'center' },

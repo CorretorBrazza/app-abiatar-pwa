@@ -9,7 +9,6 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import ScreenCode from '../components/ScreenCode';
 import api from '../services/api';
 
 type Booth = {
@@ -75,7 +74,7 @@ type SpecialSchedule = {
   created_at: string;
 };
 
-export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
+export default function BoothRulesPanel({ onBack, primaryColor = '#e53924' }: { onBack: () => void; primaryColor?: string }) {
   // Aba Ativa: 'booths' (Regras e Plantões) ou 'holidays' (Feriados - Roleta Única)
   const [activeTab, setActiveTab] = useState<'booths' | 'holidays'>('booths');
 
@@ -499,8 +498,7 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
 
   return (
     <View style={styles.container}>
-      <ScreenCode code="DR-02" />
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
@@ -617,12 +615,12 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
                             style={{
                               flexDirection: 'row',
                               alignItems: 'center',
-                              backgroundColor: roleta3Enabled ? '#dcfce7' : '#f3f4f6',
+                              backgroundColor: roleta3Enabled ? '#dcfce7' : '#f5d2cd',
                               paddingHorizontal: 8,
                               paddingVertical: 3,
                               borderRadius: 6,
                               borderWidth: 1,
-                              borderColor: roleta3Enabled ? '#86efac' : '#d1d5db',
+                              borderColor: roleta3Enabled ? '#86efac' : '#f0b5ab',
                             }}
                             onPress={() => {
                               const next = !roleta3Enabled;
@@ -634,7 +632,7 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
                               }
                             }}
                           >
-                            <Text style={{ fontSize: 11, fontWeight: '700', color: roleta3Enabled ? '#15803d' : '#6b7280' }}>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: roleta3Enabled ? '#15803d' : '#c13a28' }}>
                               {roleta3Enabled ? '🟢 HABILITADO' : '⚪ DESABILITADO'}
                             </Text>
                           </TouchableOpacity>
@@ -645,7 +643,7 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
                           editable={roleta3Enabled}
                           style={[
                             styles.input,
-                            !roleta3Enabled && { backgroundColor: '#f3f4f6', color: '#9ca3af', borderColor: '#e5e7eb' },
+                            !roleta3Enabled && { backgroundColor: '#f5d2cd', color: '#c13a28', borderColor: '#f0b5ab' },
                           ]}
                           placeholder={roleta3Enabled ? 'Ex: 18:00 ou 19:00' : 'Desabilitado (Sem 3ª roleta)'}
                         />
@@ -832,8 +830,8 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
                       {loadingSpecialSchedules ? (
                         <ActivityIndicator size="small" color="#1c1c1e" style={{ marginVertical: 10 }} />
                       ) : specialSchedules.length === 0 ? (
-                        <View style={{ backgroundColor: '#f9fafb', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb' }}>
-                          <Text style={{ fontSize: 13, color: '#6b7280', textAlign: 'center' }}>
+                        <View style={{ backgroundColor: '#fdecea', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#f0b5ab' }}>
+                          <Text style={{ fontSize: 13, color: '#c13a28', textAlign: 'center' }}>
                             Nenhum horário especial configurado para este estande. O plantão seguirá a grade regular padrão.
                           </Text>
                         </View>
@@ -846,11 +844,11 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
                                 flexDirection: 'row',
                                 alignItems: 'center',
                                 justifyContent: 'space-between',
-                                backgroundColor: '#f9fafb',
+                                backgroundColor: '#fdecea',
                                 padding: 12,
                                 borderRadius: 8,
                                 borderWidth: 1,
-                                borderColor: '#e5e7eb',
+                                borderColor: '#f0b5ab',
                               }}
                             >
                               <View style={{ flex: 1 }}>
@@ -862,10 +860,10 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
                                     🎰 Roleta às {schedule.roleta_time}
                                   </Text>
                                 </View>
-                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#374151' }}>
+                                <Text style={{ fontSize: 12, fontWeight: '600', color: '#c13a28' }}>
                                   {schedule.description}
                                 </Text>
-                                <Text style={{ fontSize: 11, color: '#6b7280', marginTop: 2 }}>
+                                <Text style={{ fontSize: 11, color: '#c13a28', marginTop: 2 }}>
                                   {schedule.scope === 'one_off'
                                     ? `📅 Pontual: ${schedule.specific_date ? formatDateDisplay(schedule.specific_date) : 'Próxima data'} (${schedule.day_of_week !== null ? DAY_NAMES[schedule.day_of_week] : ''})`
                                     : `🔄 Recorrente: Todos os ${schedule.day_of_week !== null ? DAY_NAMES[schedule.day_of_week] : ''}s`}
@@ -1053,13 +1051,12 @@ export default function BoothRulesPanel({ onBack }: { onBack: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f7f8' },
+  container: { flex: 1, backgroundColor: '#fdecea' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   header: {
     paddingTop: 16,
     paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#1c1c1e',
   },
   backButton: {
     flexDirection: 'row',
@@ -1069,7 +1066,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   backText: {
-    color: '#60a5fa',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -1079,7 +1076,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   headerSubtitle: {
-    color: '#9ca3af',
+    color: 'rgba(255,255,255,0.75)',
     fontSize: 13,
     marginTop: 3,
   },
@@ -1087,7 +1084,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#f0b5ab',
     paddingHorizontal: 16,
     paddingTop: 8,
     gap: 8,
@@ -1103,7 +1100,7 @@ const styles = StyleSheet.create({
   },
   tabButtonText: {
     fontSize: 14,
-    color: '#8e8e93',
+    color: '#c13a28',
     fontWeight: '600',
   },
   tabButtonTextActive: {
@@ -1112,19 +1109,19 @@ const styles = StyleSheet.create({
   },
   content: { padding: 20, paddingBottom: 48, maxWidth: 760, width: '100%', alignSelf: 'center' },
   subtitle: { fontSize: 18, fontWeight: '700', color: '#1c1c1e', marginBottom: 6 },
-  description: { color: '#666', lineHeight: 20, marginBottom: 18 },
+  description: { color: '#c13a28', lineHeight: 20, marginBottom: 18 },
   label: { color: '#333', fontSize: 13, fontWeight: '600', marginBottom: 6 },
   boothToolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   newBoothButton: { backgroundColor: '#1c1c1e', borderRadius: 8, paddingVertical: 9, paddingHorizontal: 12 },
   newBoothText: { color: '#fff', fontWeight: '800' },
   boothRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 15 },
-  boothButton: { borderWidth: 1, borderColor: '#bbb', borderRadius: 8, padding: 12, backgroundColor: '#fff' },
+  boothButton: { borderWidth: 1, borderColor: '#f0b5ab', borderRadius: 8, padding: 12, backgroundColor: '#fff' },
   boothButtonActive: { backgroundColor: '#1c1c1e', borderColor: '#1c1c1e' },
   boothText: { color: '#333' },
   boothTextActive: { color: '#fff', fontWeight: '700' },
   sectionTitle: { color: '#1c1c1e', fontSize: 17, fontWeight: '800', marginTop: 4, marginBottom: 8 },
   lifecycle: { color: '#0f766e', fontWeight: '800', marginBottom: 12, textTransform: 'uppercase' },
-  version: { color: '#666', marginBottom: 12 },
+  version: { color: '#c13a28', marginBottom: 12 },
   field: { marginBottom: 14 },
   card: {
     backgroundColor: '#fff',
@@ -1132,20 +1129,20 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
   },
-  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#ddd', borderRadius: 8, padding: 12, fontSize: 15 },
+  input: { backgroundColor: '#fff', borderWidth: 1, borderColor: '#f0b5ab', borderRadius: 8, padding: 12, fontSize: 15 },
   reason: { minHeight: 80, textAlignVertical: 'top' },
-  toggle: { padding: 14, borderRadius: 8, backgroundColor: '#ececef', marginBottom: 16 },
+  toggle: { padding: 14, borderRadius: 8, backgroundColor: '#f5d2cd', marginBottom: 16 },
   toggleText: { color: '#1c1c1e', fontWeight: '700' },
-  saveSecondary: { backgroundColor: '#e5e7eb', borderRadius: 8, padding: 15, alignItems: 'center', marginTop: 8 },
+  saveSecondary: { backgroundColor: '#f0b5ab', borderRadius: 8, padding: 15, alignItems: 'center', marginTop: 8 },
   saveSecondaryText: { color: '#1c1c1e', fontWeight: '800', fontSize: 15 },
   lifecycleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginVertical: 14 },
   lifecycleButton: { backgroundColor: '#dbeafe', borderRadius: 8, paddingVertical: 10, paddingHorizontal: 14 },
   lifecycleButtonText: { color: '#1e3a8a', fontWeight: '800' },
   save: { backgroundColor: '#1c1c1e', borderRadius: 8, padding: 15, alignItems: 'center', marginTop: 12 },
   saveText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  empty: { color: '#8e8e93', paddingVertical: 14, textAlign: 'center' },
+  empty: { color: '#c13a28', paddingVertical: 14, textAlign: 'center' },
   dayBadge: {
     marginTop: 6,
     paddingVertical: 6,
@@ -1177,9 +1174,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f5d2cd',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
   },
   dayChipActive: {
     backgroundColor: '#1c1c1e',
@@ -1188,7 +1185,7 @@ const styles = StyleSheet.create({
   dayChipText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#4b5563',
+    color: '#c13a28',
   },
   dayChipTextActive: {
     color: '#ffffff',
@@ -1202,25 +1199,25 @@ const styles = StyleSheet.create({
     padding: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
-    backgroundColor: '#fafafc',
+    borderColor: '#f0b5ab',
+    backgroundColor: '#fdecea',
   },
   scopeOptionActive: {
     borderColor: '#1c1c1e',
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f5d2cd',
   },
   scopeText: {
     fontSize: 14,
-    color: '#4b5563',
+    color: '#c13a28',
   },
   scopeTextActive: {
     fontWeight: '700',
     color: '#1c1c1e',
   },
   specificBoothsBox: {
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fdecea',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
     borderRadius: 8,
     padding: 12,
     marginBottom: 14,
@@ -1229,7 +1226,7 @@ const styles = StyleSheet.create({
   specificBoothsTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#374151',
+    color: '#c13a28',
     marginBottom: 4,
   },
   boothCheckboxItem: {
@@ -1240,7 +1237,7 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   boothCheckboxItemChecked: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#f0b5ab',
   },
   checkboxIcon: {
     fontSize: 16,
@@ -1248,14 +1245,14 @@ const styles = StyleSheet.create({
   },
   checkboxLabel: {
     fontSize: 14,
-    color: '#4b5563',
+    color: '#c13a28',
   },
   holidayCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fafafc',
+    backgroundColor: '#fdecea',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
     borderRadius: 10,
     padding: 14,
   },
@@ -1278,12 +1275,12 @@ const styles = StyleSheet.create({
   holidayName: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#374151',
+    color: '#c13a28',
     marginBottom: 4,
   },
   holidayDetails: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#c13a28',
   },
   deleteHolidayButton: {
     padding: 8,

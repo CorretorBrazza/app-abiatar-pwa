@@ -12,7 +12,6 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
-import ScreenCode from '../components/ScreenCode';
 
 interface MessageRecipient {
   id: string;
@@ -107,8 +106,7 @@ export default function Inbox({ onBack }: InboxProps) {
 
   return (
     <View style={styles.container}>
-      <ScreenCode code="IN-01" />
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
@@ -213,14 +211,12 @@ export default function Inbox({ onBack }: InboxProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f7f8',
+    backgroundColor: '#fdecea',
   },
   header: {
     paddingTop: 16,
     paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#1c1c1e',
-    marginBottom: 12,
   },
   backButton: {
     flexDirection: 'row',
@@ -230,7 +226,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   backText: {
-    color: '#60a5fa',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -240,7 +236,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   headerSubtitle: {
-    color: '#9ca3af',
+    color: '#c13a28',
     fontSize: 13,
     marginTop: 3,
   },
@@ -249,12 +245,12 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f7',
+    backgroundColor: '#fdecea',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#8e8e93',
+    color: '#c13a28',
   },
   list: {
     width: '100%',
@@ -268,7 +264,7 @@ const styles = StyleSheet.create({
     padding: 18,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e5e5ea',
+    borderColor: '#f0b5ab',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -304,7 +300,7 @@ const styles = StyleSheet.create({
   senderText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8e8e93',
+    color: '#c13a28',
   },
   urgentBadge: {
     backgroundColor: '#ff3b30',
@@ -323,7 +319,7 @@ const styles = StyleSheet.create({
   },
   messageSnippet: {
     fontSize: 14,
-    color: '#3a3a3c',
+    color: '#c13a28',
     lineHeight: 20,
     marginBottom: 12,
   },
@@ -332,12 +328,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: '#f2f2f7',
+    borderTopColor: '#f0b5ab',
     paddingTop: 12,
   },
   dateText: {
     fontSize: 12,
-    color: '#8e8e93',
+    color: '#c13a28',
   },
   deleteText: {
     color: '#ff3b30',
@@ -346,7 +342,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 16,
-    color: '#8e8e93',
+    color: '#c13a28',
     textAlign: 'center',
     marginTop: 40,
   },
@@ -379,7 +375,7 @@ const styles = StyleSheet.create({
   modalSender: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#8e8e93',
+    color: '#c13a28',
     marginBottom: 12,
   },
   modalTitle: {
@@ -390,7 +386,7 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     fontSize: 15,
-    color: '#3a3a3c',
+    color: '#c13a28',
     lineHeight: 22,
     marginBottom: 24,
   },

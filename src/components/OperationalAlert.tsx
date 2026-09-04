@@ -31,8 +31,8 @@ const styles = StyleSheet.create({
   badge: { alignSelf: 'flex-start', backgroundColor: '#ff3b30', borderRadius: 6, paddingHorizontal: 10, paddingVertical: 5, marginBottom: 14 },
   badgeText: { color: '#FFF', fontSize: 12, fontWeight: '900', letterSpacing: 0.5 },
   title: { color: '#1c1c1e', fontSize: 22, fontWeight: '800', marginBottom: 10 },
-  body: { color: '#3a3a3c', fontSize: 17, lineHeight: 25 },
-  helper: { color: '#8e8e93', fontSize: 13, marginTop: 16 },
+  body: { color: '#c13a28', fontSize: 17, lineHeight: 25 },
+  helper: { color: '#c13a28', fontSize: 13, marginTop: 16 },
   button: { backgroundColor: '#ff3b30', borderRadius: 10, paddingVertical: 14, alignItems: 'center', marginTop: 22 },
   buttonText: { color: '#FFF', fontSize: 16, fontWeight: '800' },
 });

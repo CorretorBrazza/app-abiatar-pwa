@@ -30,8 +30,8 @@ const styles = StyleSheet.create({
   section: { width: '100%', maxWidth: 520, marginBottom: 16 },
   title: { color: '#1c1c1e', fontSize: 16, fontWeight: '800', marginBottom: 8 },
   button: { minHeight: 58, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10, justifyContent: 'center', marginBottom: 10 },
-  disabled: { backgroundColor: '#e5e5ea' },
+  disabled: { backgroundColor: '#f0b5ab' },
   buttonText: { color: '#FFF', fontSize: 15, fontWeight: '800' },
-  hint: { color: '#636366', fontSize: 11, marginTop: 3 },
+  hint: { color: '#c13a28', fontSize: 11, marginTop: 3 },
   hintLight: { color: 'rgba(255,255,255,0.82)', fontSize: 11, marginTop: 3 },
 });

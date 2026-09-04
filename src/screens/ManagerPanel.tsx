@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
-import ScreenCode from '../components/ScreenCode';
 import BrokerManagementPanel from './BrokerManagementPanel';
 
 interface BrokerItem {
@@ -378,7 +377,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
               <Text style={{ fontSize: 18, fontWeight: '800', color: '#0f172a', marginBottom: 4 }}>
                 ✏️ Ajustar Cadastro na Triagem
               </Text>
-              <Text style={{ fontSize: 13, color: '#64748b', marginBottom: 16 }}>
+              <Text style={{ fontSize: 13, color: '#c13a28', marginBottom: 16 }}>
                 Faça as correções cadastrais necessárias antes de encaminhar para a Gerência.
               </Text>
 
@@ -439,10 +438,10 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                     width: '100%',
                     padding: '10px 12px',
                     borderRadius: '8px',
-                    border: '1px solid #cbd5e1',
+                    border: '1px solid #f0b5ab',
                     fontSize: '14px',
                     marginBottom: '10px',
-                    backgroundColor: '#f8fafc',
+                    backgroundColor: '#fdecea',
                   }}
                   value={editManagerId}
                   onChange={(e) => setEditManagerId(e.target.value)}
@@ -457,11 +456,11 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
 
               <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
                 <TouchableOpacity
-                  style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6, backgroundColor: '#f1f5f9' }}
+                  style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6, backgroundColor: '#f5d2cd' }}
                   onPress={() => setEditingCandidate(null)}
                   disabled={!!processingCandidateId}
                 >
-                  <Text style={{ color: '#475569', fontWeight: '700', fontSize: 13 }}>Cancelar</Text>
+                  <Text style={{ color: '#c13a28', fontWeight: '700', fontSize: 13 }}>Cancelar</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -488,10 +487,10 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
         managers={managers}
         onClose={() => setSelectedBrokerId(null)}
         onSaved={() => { void loadData(); }}
+        primaryColor={primaryColor}
       />
     <View style={styles.container}>
-      <ScreenCode code={isRh ? 'RH-02' : isDirector ? 'DR-01' : 'GE-02'} />
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
@@ -553,21 +552,21 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
             ) : (
               <View style={{ gap: 10, marginTop: 10 }}>
                 {pendingHrReview.map((candidate) => (
-                  <View key={candidate.id} style={{ backgroundColor: '#f8fafc', borderRadius: 8, padding: 14, borderWidth: 1, borderColor: '#cbd5e1' }}>
+                  <View key={candidate.id} style={{ backgroundColor: '#fdecea', borderRadius: 8, padding: 14, borderWidth: 1, borderColor: '#f0b5ab' }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 8 }}>
                       <View style={{ flex: 1, minWidth: 220 }}>
                         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
                           <Text style={{ fontSize: 16, fontWeight: '800', color: '#0f172a' }}>{candidate.nome_guerra}</Text>
-                          <Text style={{ fontSize: 13, color: '#64748b' }}>({candidate.name})</Text>
+                          <Text style={{ fontSize: 13, color: '#c13a28' }}>({candidate.name})</Text>
                           {renderStageBadge(candidate)}
                         </View>
                         <Text style={{ fontSize: 12, color: '#334155', marginTop: 4 }}>
                           📧 {candidate.email} · CRECI: <Text style={{ fontWeight: '600' }}>{candidate.creci || '—'}</Text>
                         </Text>
-                        <Text style={{ fontSize: 12, color: '#475569', marginTop: 2 }}>
+                        <Text style={{ fontSize: 12, color: '#c13a28', marginTop: 2 }}>
                           👤 Gerente Indicado: <Text style={{ fontWeight: '700' }}>Gerente {candidate.manager_nome_guerra || 'Sem gerente'}</Text>
                         </Text>
-                        <Text style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>
+                        <Text style={{ fontSize: 11, color: '#c13a28', marginTop: 2 }}>
                           🕒 Enviado em: {new Date(candidate.created_at).toLocaleString('pt-BR')}
                         </Text>
                       </View>
@@ -900,7 +899,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                       <Text style={styles.queueSub}>Presença: {item.statusPresenca}</Text>
                       <Text style={styles.queueSub}>Carência: {item.statusCarencia}</Text>
                       {item.minutesActive !== undefined && (
-                        <Text style={[styles.queueSub, { color: item.minutesActive >= (item.minimumRequiredMinutes ?? 120) ? '#15803d' : '#4b5563', fontWeight: '600', marginTop: 2 }]}>
+                        <Text style={[styles.queueSub, { color: item.minutesActive >= (item.minimumRequiredMinutes ?? 120) ? '#15803d' : '#c13a28', fontWeight: '600', marginTop: 2 }]}>
                           ⏱️ Validação Roleta: {item.minutesActive} / {item.minimumRequiredMinutes ?? 120} min
                         </Text>
                       )}
@@ -947,20 +946,20 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                   Detalhes por Corretor:
                 </Text>
                 {(teamEligibility?.brokers || []).map((bInfo: any) => (
-                  <View key={bInfo.brokerId} style={{ backgroundColor: '#fff', borderRadius: 8, padding: 10, marginBottom: 6, borderWidth: 1, borderColor: '#e5e7eb' }}>
+                  <View key={bInfo.brokerId} style={{ backgroundColor: '#fff', borderRadius: 8, padding: 10, marginBottom: 6, borderWidth: 1, borderColor: '#f0b5ab' }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
                       <Text style={{ fontWeight: '700', color: '#111827' }}>{bInfo.brokerNomeGuerra}</Text>
                       <Text style={{ fontSize: 12, fontWeight: '700', color: bInfo.saturdayEligible && bInfo.sundayEligible ? '#15803d' : '#b45309' }}>
                         {bInfo.saturdayEligible && bInfo.sundayEligible ? '🟢 Totalmente Elegível' : bInfo.saturdayEligible ? '🟡 Elegível Sábado' : '⚪ Não Elegível'}
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 12, color: '#6b7280', marginTop: 2 }}>
+                    <Text style={{ fontSize: 12, color: '#c13a28', marginTop: 2 }}>
                       Roletas válidas na semana: <Text style={{ fontWeight: '700', color: '#111827' }}>{bInfo.accumulatedWeekPeriods}</Text> (Sáb: {bInfo.saturdayRequired} / Dom: {bInfo.sundayRequired})
                     </Text>
                     {bInfo.boothBreakdown && bInfo.boothBreakdown.length > 0 && (
-                      <View style={{ marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#f3f4f6' }}>
+                      <View style={{ marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#f5d2cd' }}>
                         {bInfo.boothBreakdown.map((b: any) => (
-                          <Text key={b.boothId} style={{ fontSize: 12, color: '#4b5563' }}>
+                          <Text key={b.boothId} style={{ fontSize: 12, color: '#c13a28' }}>
                             • {b.boothName}: <Text style={{ fontWeight: '700' }}>{b.validRoletasThisWeek}</Text> roletas {b.saturdayEligible ? '🟢 Elegível' : `(faltam ${b.missingSaturday} p/ Sáb)`}
                           </Text>
                         ))}
@@ -1009,13 +1008,12 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f7f7f8',
+    backgroundColor: '#fdecea',
   },
   header: {
     paddingTop: 16,
     paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#1c1c1e',
   },
   backButton: {
     flexDirection: 'row',
@@ -1025,7 +1023,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   backText: {
-    color: '#60a5fa',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -1035,7 +1033,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   headerSubtitle: {
-    color: '#9ca3af',
+    color: 'rgba(255,255,255,0.75)',
     fontSize: 13,
     marginTop: 3,
   },
@@ -1054,12 +1052,12 @@ const styles = StyleSheet.create({
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#f5f5f7',
+    backgroundColor: '#fdecea',
   },
   loadingText: {
     marginTop: 12,
     fontSize: 16,
-    color: '#8e8e93',
+    color: '#c13a28',
   },
   kpiContainer: {
     flexDirection: 'row',
@@ -1075,7 +1073,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
     alignItems: 'center',
     shadowColor: '#000',
     shadowOpacity: 0.04,
@@ -1090,12 +1088,12 @@ const styles = StyleSheet.create({
   kpiLabel: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#4b5563',
+    color: '#c13a28',
     marginTop: 2,
   },
   kpiSub: {
     fontSize: 10,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
     textAlign: 'center',
   },
@@ -1106,7 +1104,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     padding: 18,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
     alignSelf: 'center',
     marginBottom: 16,
   },
@@ -1118,17 +1116,17 @@ const styles = StyleSheet.create({
   },
   sectionDesc: {
     fontSize: 13,
-    color: '#4b5563',
+    color: '#c13a28',
     marginBottom: 12,
   },
   sectionDescHeader: {
     fontSize: 13,
-    color: '#6b7280',
+    color: '#c13a28',
     marginBottom: 12,
   },
   actionLabel: {
     fontSize: 13,
-    color: '#374151',
+    color: '#c13a28',
     fontWeight: '700',
     marginBottom: 6,
     marginTop: 8,
@@ -1139,7 +1137,7 @@ const styles = StyleSheet.create({
   },
   roleButton: { 
     borderWidth: 1, 
-    borderColor: '#d1d5db', 
+    borderColor: '#f0b5ab', 
     borderRadius: 8, 
     paddingVertical: 8, 
     paddingHorizontal: 16, 
@@ -1161,9 +1159,9 @@ const styles = StyleSheet.create({
     marginBottom: 12 
   },
   managerButton: { 
-    backgroundColor: '#eef2ff', 
+    backgroundColor: '#f5d2cd', 
     borderWidth: 1, 
-    borderColor: '#c7d2fe', 
+    borderColor: '#f0b5ab', 
     borderRadius: 8, 
     padding: 8, 
     paddingHorizontal: 12,
@@ -1198,9 +1196,9 @@ const styles = StyleSheet.create({
   linkContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fafafc',
+    backgroundColor: '#fdecea',
     borderWidth: 1,
-    borderColor: '#d1d1d6',
+    borderColor: '#f0b5ab',
     borderRadius: 8,
     paddingLeft: 12,
     height: 46,
@@ -1209,7 +1207,7 @@ const styles = StyleSheet.create({
   linkLabel: {
     flex: 1,
     fontSize: 13,
-    color: '#3a3a3c',
+    color: '#c13a28',
     paddingRight: 8,
   },
   copyButton: {
@@ -1234,7 +1232,7 @@ const styles = StyleSheet.create({
     height: 46,
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#f0b5ab',
     borderRadius: 10,
     paddingHorizontal: 14,
     fontSize: 15,
@@ -1245,13 +1243,13 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
     marginBottom: 16,
   },
   searchResultsCount: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#374151',
+    color: '#c13a28',
     marginBottom: 10,
   },
   searchResultCard: {
@@ -1260,7 +1258,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: '#f5d2cd',
   },
   brokerMainInfo: {
     flex: 1,
@@ -1272,11 +1270,11 @@ const styles = StyleSheet.create({
   },
   brokerRealName: {
     fontWeight: '400',
-    color: '#4b5563',
+    color: '#c13a28',
   },
   brokerMeta: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
   },
   boldText: {
@@ -1316,7 +1314,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
     marginBottom: 12,
     overflow: 'hidden',
   },
@@ -1337,7 +1335,7 @@ const styles = StyleSheet.create({
   },
   managerEmail: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
   },
   managerHeaderStats: {
@@ -1346,7 +1344,7 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   teamCountBadge: {
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f5d2cd',
     paddingVertical: 4,
     paddingHorizontal: 10,
     borderRadius: 8,
@@ -1354,17 +1352,17 @@ const styles = StyleSheet.create({
   teamCountText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#374151',
+    color: '#c13a28',
   },
   accordionToggleIcon: {
     fontSize: 12,
-    color: '#9ca3af',
+    color: '#c13a28',
     fontWeight: '800',
   },
   teamDrawer: {
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
-    backgroundColor: '#fafafc',
+    borderTopColor: '#f5d2cd',
+    backgroundColor: '#fdecea',
     padding: 12,
   },
   teamDrawerSummary: {
@@ -1374,18 +1372,18 @@ const styles = StyleSheet.create({
   teamDrawerSummaryText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#6b7280',
+    color: '#c13a28',
   },
   emptyDrawerText: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: '#c13a28',
     padding: 12,
     textAlign: 'center',
   },
   brokerDrawerItem: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -1403,11 +1401,11 @@ const styles = StyleSheet.create({
   },
   brokerDrawerSubName: {
     fontWeight: '400',
-    color: '#6b7280',
+    color: '#c13a28',
   },
   brokerDrawerCreci: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
   },
   brokerDrawerAction: {
@@ -1441,7 +1439,7 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 10,
     borderWidth: 1,
-    borderColor: '#e5e5ea',
+    borderColor: '#f0b5ab',
   },
   brokerInfo: {
     marginBottom: 12,
@@ -1454,12 +1452,12 @@ const styles = StyleSheet.create({
   },
   brokerSub: {
     fontSize: 13,
-    color: '#3a3a3c',
+    color: '#c13a28',
     marginBottom: 2,
   },
   actionContainer: {
     borderTopWidth: 1,
-    borderTopColor: '#f2f2f7',
+    borderTopColor: '#f0b5ab',
     paddingTop: 10,
   },
   approveBtn: {
@@ -1482,7 +1480,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#e5e5ea',
+    borderColor: '#f0b5ab',
   },
   teamName: {
     fontSize: 14,
@@ -1506,7 +1504,7 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#e5e5ea',
+    borderColor: '#f0b5ab',
   },
   queueInfo: {
     marginBottom: 8,
@@ -1519,7 +1517,7 @@ const styles = StyleSheet.create({
   },
   queueSub: {
     fontSize: 12,
-    color: '#3a3a3c',
+    color: '#c13a28',
     marginBottom: 2,
   },
   queueAction: {
@@ -1546,7 +1544,7 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 13,
-    color: '#8e8e93',
+    color: '#c13a28',
     textAlign: 'center',
     marginVertical: 12,
   },
@@ -1558,8 +1556,8 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   badgeTreinamento: {
-    backgroundColor: '#eff6ff',
-    borderColor: '#93c5fd',
+    backgroundColor: '#fdecea',
+    borderColor: '#f0b5ab',
     borderWidth: 1,
     borderRadius: 6,
     paddingHorizontal: 8,
@@ -1584,7 +1582,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   badgeCreci: {
-    backgroundColor: '#f0fdf4',
+    backgroundColor: '#fdecea',
     borderColor: '#86efac',
     borderWidth: 1,
     borderRadius: 6,
@@ -1599,28 +1597,28 @@ const styles = StyleSheet.create({
   input: {
     height: 42,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
+    borderColor: '#f0b5ab',
     borderRadius: 8,
     paddingHorizontal: 12,
     fontSize: 14,
     marginBottom: 10,
-    backgroundColor: '#f8fafc',
+    backgroundColor: '#fdecea',
   },
   stageSelectBtn: {
     paddingHorizontal: 10,
     paddingVertical: 8,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#f1f5f9',
+    borderColor: '#f0b5ab',
+    backgroundColor: '#f5d2cd',
   },
   stageSelectBtnActive: {
     borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#fdecea',
   },
   stageSelectText: {
     fontSize: 12,
-    color: '#475569',
+    color: '#c13a28',
     fontWeight: '600',
   },
   stageSelectTextActive: {

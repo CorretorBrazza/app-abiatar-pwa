@@ -12,7 +12,6 @@ import {
   Platform,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import ScreenCode from '../components/ScreenCode';
 
 interface LoginProps {
   onGoToRegister: () => void; // <-- ADICIONADO ESTE PARÂMETRO
@@ -44,10 +43,9 @@ export default function Login({ onGoToRegister }: LoginProps) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-      <ScreenCode code="LG-01" />
       <View style={styles.card}>
         <Image
-          source={require('../../assets/abiatar-logo.jpg')}
+          source={require('../../assets/abiatar-logo.png')}
           style={styles.logo}
           resizeMode="contain"
           accessibilityLabel="Logo Abiatar"
@@ -101,7 +99,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     height: (Platform.OS === 'web' ? '100vh' : '100%') as any,
-    backgroundColor: '#f5f5f7',
+    backgroundColor: '#fdecea',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -132,19 +130,19 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#8e8e93',
+    color: '#c13a28',
     textAlign: 'center',
     marginBottom: 24,
   },
   input: {
     height: 50,
     borderWidth: 1,
-    borderColor: '#d1d1d6',
+    borderColor: '#f0b5ab',
     borderRadius: 8,
     paddingHorizontal: 16,
     fontSize: 16,
     marginBottom: 16,
-    backgroundColor: '#fafafc',
+    backgroundColor: '#fdecea',
   },
   button: {
     height: 50,
@@ -164,7 +162,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   registerButtonText: {
-    color: '#8e8e93',
+    color: '#c13a28',
     fontSize: 14,
     fontWeight: '600',
   },

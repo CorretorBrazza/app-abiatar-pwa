@@ -10,7 +10,6 @@ import {
   Alert,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
-import ScreenCode from '../components/ScreenCode';
 import api from '../services/api';
 
 type TabType = 'realtime' | 'brokers' | 'managers' | 'booths';
@@ -18,6 +17,7 @@ type PeriodPreset = 'today' | 'week' | 'month' | 'custom';
 
 export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
   const { tenant } = useAuth();
+  const primaryColor = tenant?.primary_color || '#e53924';
   const [activeTab, setActiveTab] = useState<TabType>('realtime');
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('month');
 
@@ -149,7 +149,7 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
     if (stage === 'corretor_creci') return { label: 'CRECI', bg: '#dcfce7', text: '#15803d' };
     if (stage === 'estagiario') return { label: 'Estagiário', bg: '#fef3c7', text: '#b45309' };
     if (stage === 'treinamento') return { label: 'Treinamento', bg: '#e0e7ff', text: '#4338ca' };
-    return { label: 'Corretor', bg: '#f3f4f6', text: '#374151' };
+    return { label: 'Corretor', bg: '#f5d2cd', text: '#c13a28' };
   }
 
   function handleCopyExecutiveSummary() {
@@ -203,10 +203,9 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
 
   return (
     <View style={styles.container}>
-      <ScreenCode code="DR-03" />
 
       {/* HEADER DA DIRETORIA */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
@@ -664,13 +663,12 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f7f8' },
+  container: { flex: 1, backgroundColor: '#fdecea' },
   center: { padding: 40, alignItems: 'center', justifyContent: 'center' },
   header: {
     paddingTop: 16,
     paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#1c1c1e',
   },
   backButton: {
     flexDirection: 'row',
@@ -680,26 +678,26 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   backText: {
-    color: '#60a5fa',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 15,
     fontWeight: '700',
   },
   title: { color: '#fff', fontSize: 20, fontWeight: '800' },
-  headerSubtitle: { color: '#9ca3af', fontSize: 13, marginTop: 2 },
+  headerSubtitle: { color: 'rgba(255,255,255,0.75)', fontSize: 13, marginTop: 2 },
   shareSummaryButton: {
-    backgroundColor: '#374151',
+    backgroundColor: '#c13a28',
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#4b5563',
+    borderColor: '#c13a28',
   },
   shareSummaryText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#e5e7eb',
+    borderBottomColor: '#f0b5ab',
     paddingHorizontal: 12,
     paddingTop: 6,
   },
@@ -716,7 +714,7 @@ const styles = StyleSheet.create({
   tabText: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#9ca3af',
+    color: '#c13a28',
   },
   tabTextActive: {
     color: '#1c1c1e',
@@ -729,12 +727,12 @@ const styles = StyleSheet.create({
     padding: 14,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
   },
   filterLabel: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#374151',
+    color: '#c13a28',
     marginBottom: 8,
   },
   presetRow: {
@@ -746,9 +744,9 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     paddingHorizontal: 12,
     borderRadius: 6,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f5d2cd',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
   },
   presetButtonActive: {
     backgroundColor: '#1c1c1e',
@@ -757,7 +755,7 @@ const styles = StyleSheet.create({
   presetText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#4b5563',
+    color: '#c13a28',
   },
   presetTextActive: {
     color: '#fff',
@@ -769,17 +767,17 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: '#f5d2cd',
   },
   dateInputLabel: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#c13a28',
     marginBottom: 4,
   },
   dateInput: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#f0b5ab',
     borderRadius: 6,
     padding: 8,
     fontSize: 13,
@@ -808,7 +806,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
     borderLeftWidth: 5,
   },
   heroNumber: {
@@ -820,17 +818,17 @@ const styles = StyleSheet.create({
   heroTitle: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#374151',
+    color: '#c13a28',
     marginBottom: 2,
   },
   heroSubtitle: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#c13a28',
   },
   refreshButton: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#f0b5ab',
     borderRadius: 8,
     paddingVertical: 10,
     alignItems: 'center',
@@ -849,14 +847,14 @@ const styles = StyleSheet.create({
   },
   sectionDesc: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#c13a28',
     marginBottom: 14,
   },
   boothLiveCard: {
     backgroundColor: '#fff',
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
     overflow: 'hidden',
   },
   boothLiveHeader: {
@@ -864,9 +862,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 14,
-    backgroundColor: '#fafafa',
+    backgroundColor: '#fdecea',
     borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
+    borderBottomColor: '#f5d2cd',
   },
   boothLiveName: {
     fontSize: 16,
@@ -875,7 +873,7 @@ const styles = StyleSheet.create({
   },
   boothLiveAddress: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
   },
   statusBadge: {
@@ -905,7 +903,7 @@ const styles = StyleSheet.create({
   },
   emptyBoothText: {
     fontSize: 13,
-    color: '#9ca3af',
+    color: '#c13a28',
     fontStyle: 'italic',
   },
   brokerListInBooth: {
@@ -915,7 +913,7 @@ const styles = StyleSheet.create({
   brokerLiveItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fdecea',
     borderRadius: 8,
     padding: 10,
     gap: 10,
@@ -940,7 +938,7 @@ const styles = StyleSheet.create({
   },
   brokerLiveDetails: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
   },
   stageBadge: {
@@ -953,7 +951,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   timeActiveBox: {
-    backgroundColor: '#e5e7eb',
+    backgroundColor: '#f0b5ab',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 6,
@@ -961,7 +959,7 @@ const styles = StyleSheet.create({
   timeActiveText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#374151',
+    color: '#c13a28',
   },
   searchBarRow: {
     marginBottom: 12,
@@ -970,7 +968,7 @@ const styles = StyleSheet.create({
   searchInput: {
     backgroundColor: '#fff',
     borderWidth: 1,
-    borderColor: '#d1d5db',
+    borderColor: '#f0b5ab',
     borderRadius: 8,
     padding: 10,
     fontSize: 14,
@@ -984,9 +982,9 @@ const styles = StyleSheet.create({
     paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: 14,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f5d2cd',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
   },
   boothFilterPillActive: {
     backgroundColor: '#1c1c1e',
@@ -995,7 +993,7 @@ const styles = StyleSheet.create({
   boothFilterText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#4b5563',
+    color: '#c13a28',
   },
   boothFilterTextActive: {
     color: '#fff',
@@ -1005,14 +1003,14 @@ const styles = StyleSheet.create({
   },
   summaryText: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#c13a28',
   },
   brokerCard: {
     backgroundColor: '#fff',
     borderRadius: 10,
     padding: 14,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
   },
   brokerCardHeader: {
     flexDirection: 'row',
@@ -1024,14 +1022,14 @@ const styles = StyleSheet.create({
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f5d2cd',
     alignItems: 'center',
     justifyContent: 'center',
   },
   rankNumber: {
     fontSize: 12,
     fontWeight: '800',
-    color: '#374151',
+    color: '#c13a28',
   },
   brokerCardName: {
     fontSize: 15,
@@ -1040,7 +1038,7 @@ const styles = StyleSheet.create({
   },
   brokerCardManager: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
   },
   weekendBadge: {
@@ -1066,17 +1064,17 @@ const styles = StyleSheet.create({
   },
   metricGrid: {
     flexDirection: 'row',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fdecea',
     borderRadius: 8,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
+    borderColor: '#f5d2cd',
   },
   metricItem: {
     flex: 1,
     alignItems: 'center',
     borderRightWidth: 1,
-    borderRightColor: '#e5e7eb',
+    borderRightColor: '#f0b5ab',
   },
   metricVal: {
     fontSize: 15,
@@ -1085,7 +1083,7 @@ const styles = StyleSheet.create({
   },
   metricLbl: {
     fontSize: 10,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
   },
   managerCard: {
@@ -1093,7 +1091,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
   },
   managerCardHeader: {
     flexDirection: 'row',
@@ -1105,16 +1103,16 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: 16,
-    backgroundColor: '#f3f4f6',
+    backgroundColor: '#f5d2cd',
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
     alignItems: 'center',
     justifyContent: 'center',
   },
   managerRankText: {
     fontSize: 14,
     fontWeight: '800',
-    color: '#374151',
+    color: '#c13a28',
   },
   managerName: {
     fontSize: 16,
@@ -1123,7 +1121,7 @@ const styles = StyleSheet.create({
   },
   managerTeamSize: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
   },
   managerTotalRoletasBox: {
@@ -1136,22 +1134,22 @@ const styles = StyleSheet.create({
   },
   managerTotalRoletasLabel: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#c13a28',
   },
   managerKpiRow: {
     flexDirection: 'row',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fdecea',
     borderRadius: 8,
     paddingVertical: 10,
     marginBottom: 12,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
+    borderColor: '#f5d2cd',
   },
   managerKpiItem: {
     flex: 1,
     alignItems: 'center',
     borderRightWidth: 1,
-    borderRightColor: '#e5e7eb',
+    borderRightColor: '#f0b5ab',
   },
   managerKpiVal: {
     fontSize: 15,
@@ -1160,22 +1158,22 @@ const styles = StyleSheet.create({
   },
   managerKpiLbl: {
     fontSize: 10,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
   },
   topBrokersBox: {
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: '#f3f4f6',
+    borderTopColor: '#f5d2cd',
   },
   topBrokersTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#374151',
+    color: '#c13a28',
     marginBottom: 6,
   },
   topBrokerPill: {
-    backgroundColor: '#eef2ff',
+    backgroundColor: '#f5d2cd',
     paddingVertical: 4,
     paddingHorizontal: 8,
     borderRadius: 6,
@@ -1190,7 +1188,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     padding: 16,
     borderWidth: 1,
-    borderColor: '#e5e7eb',
+    borderColor: '#f0b5ab',
   },
   boothReportHeader: {
     flexDirection: 'row',
@@ -1205,7 +1203,7 @@ const styles = StyleSheet.create({
   },
   boothReportAddress: {
     fontSize: 12,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
   },
   boothTotalBox: {
@@ -1218,21 +1216,21 @@ const styles = StyleSheet.create({
   },
   boothTotalLbl: {
     fontSize: 11,
-    color: '#6b7280',
+    color: '#c13a28',
   },
   boothKpiGrid: {
     flexDirection: 'row',
-    backgroundColor: '#f9fafb',
+    backgroundColor: '#fdecea',
     borderRadius: 8,
     paddingVertical: 10,
     borderWidth: 1,
-    borderColor: '#f3f4f6',
+    borderColor: '#f5d2cd',
   },
   boothKpiItem: {
     flex: 1,
     alignItems: 'center',
     borderRightWidth: 1,
-    borderRightColor: '#e5e7eb',
+    borderRightColor: '#f0b5ab',
   },
   boothKpiVal: {
     fontSize: 14,
@@ -1241,7 +1239,7 @@ const styles = StyleSheet.create({
   },
   boothKpiLbl: {
     fontSize: 10,
-    color: '#6b7280',
+    color: '#c13a28',
     marginTop: 2,
   },
 });

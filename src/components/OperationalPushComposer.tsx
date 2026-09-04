@@ -56,7 +56,7 @@ export default function OperationalPushComposer({ targets, primaryColor, onSent 
             {targets.map((target) => (
               <TouchableOpacity
                 key={target.presenceId}
-                style={[styles.target, selected?.presenceId === target.presenceId && { borderColor: primaryColor, backgroundColor: '#f0f7ff' }]}
+                style={[styles.target, selected?.presenceId === target.presenceId && { borderColor: primaryColor, backgroundColor: '#fdecea' }]}
                 onPress={() => setSelected(target)}
               >
                 <Text style={styles.targetName}>{target.nomeGuerra}</Text>
@@ -84,15 +84,15 @@ export default function OperationalPushComposer({ targets, primaryColor, onSent 
 const styles = StyleSheet.create({
   card: { width: '100%', maxWidth: 520, backgroundColor: '#FFF', borderRadius: 12, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: '#ff9500' },
   heading: { fontSize: 19, fontWeight: '800', color: '#1c1c1e', marginBottom: 6 },
-  description: { color: '#636366', lineHeight: 20, marginBottom: 16 },
-  label: { color: '#3a3a3c', fontSize: 13, fontWeight: '700', marginTop: 12, marginBottom: 6 },
+  description: { color: '#c13a28', lineHeight: 20, marginBottom: 16 },
+  label: { color: '#c13a28', fontSize: 13, fontWeight: '700', marginTop: 12, marginBottom: 6 },
   targets: { gap: 8 },
-  target: { borderWidth: 1, borderColor: '#d1d1d6', borderRadius: 9, padding: 11 },
+  target: { borderWidth: 1, borderColor: '#f0b5ab', borderRadius: 9, padding: 11 },
   targetName: { color: '#1c1c1e', fontSize: 15, fontWeight: '700' },
-  targetBooth: { color: '#636366', fontSize: 12, marginTop: 3 },
-  input: { borderWidth: 1, borderColor: '#d1d1d6', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, color: '#1c1c1e', backgroundColor: '#FFF' },
+  targetBooth: { color: '#c13a28', fontSize: 12, marginTop: 3 },
+  input: { borderWidth: 1, borderColor: '#f0b5ab', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 10, color: '#1c1c1e', backgroundColor: '#FFF' },
   multiline: { minHeight: 80, textAlignVertical: 'top' },
   sendButton: { borderRadius: 9, paddingVertical: 13, alignItems: 'center', marginTop: 16 },
   sendText: { color: '#FFF', fontWeight: '800' },
-  empty: { color: '#8e8e93', lineHeight: 20 },
+  empty: { color: '#c13a28', lineHeight: 20 },
 });

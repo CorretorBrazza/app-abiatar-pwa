@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import api from '../services/api';
-import ScreenCode from '../components/ScreenCode';
 
 interface BrokerProfile {
   id: string;
@@ -33,9 +32,10 @@ interface Props {
   managers: Array<{ id: string; nome_guerra: string; name: string }>;
   onClose: () => void;
   onSaved: () => void;
+  primaryColor?: string;
 }
 
-export default function BrokerManagementPanel({ brokerId, isDirector, isRh, managers, onClose, onSaved }: Props) {
+export default function BrokerManagementPanel({ brokerId, isDirector, isRh, managers, onClose, onSaved, primaryColor = '#e53924' }: Props) {
   const [profile, setProfile] = useState<BrokerProfile | null>(null);
   const [nomeGuerra, setNomeGuerra] = useState('');
   const [creci, setCreci] = useState('');
@@ -172,10 +172,9 @@ export default function BrokerManagementPanel({ brokerId, isDirector, isRh, mana
   return (
     <Modal visible={!!brokerId} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
-        <ScreenCode code={isRh ? 'RH-03' : isDirector ? 'DR-04' : 'GE-03'} />
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: primaryColor }]}>
           <TouchableOpacity onPress={onClose} style={styles.backButton}>
-            <Text style={styles.backText}>‹ Voltar à Lista</Text>
+            <Text style={styles.backText}>‹ Voltar ao Painel</Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle}>{isRh ? 'Gestão de Estágio do Corretor' : 'Ficha do Corretor'}</Text>
           <Text style={styles.headerSubtitle}>{isRh ? 'Evolução de carreira, vigência de estágio e dados cadastrais' : 'Gestão individual, operação e vínculo hierárquico'}</Text>
@@ -266,7 +265,7 @@ export default function BrokerManagementPanel({ brokerId, isDirector, isRh, mana
                   )}
                 </>
               ) : (
-                <View style={{ backgroundColor: '#eff6ff', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#bfdbfe' }}>
+                <View style={{ backgroundColor: '#fdecea', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#f0b5ab' }}>
                   <Text style={{ color: '#1e40af', fontSize: 13, fontWeight: '700', marginBottom: 4 }}>
                     🔒 Controle da Diretoria e RH
                   </Text>
@@ -334,12 +333,11 @@ export default function BrokerManagementPanel({ brokerId, isDirector, isRh, mana
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f7f8' },
+  container: { flex: 1, backgroundColor: '#fdecea' },
   header: {
     paddingTop: 16,
     paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#1c1c1e',
   },
   backButton: {
     flexDirection: 'row',
@@ -349,7 +347,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   backText: {
-    color: '#60a5fa',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -359,36 +357,36 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   headerSubtitle: {
-    color: '#9ca3af',
+    color: 'rgba(255,255,255,0.75)',
     fontSize: 13,
     marginTop: 3,
   },
   scrollContainer: { flex: 1 },
   content: { padding: 16, paddingBottom: 60 },
   error: { color: '#b91c1c', backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, marginBottom: 12, fontWeight: '700' },
-  card: { backgroundColor: '#fff', borderRadius: 12, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#e5e7eb' },
+  card: { backgroundColor: '#fff', borderRadius: 12, padding: 18, marginBottom: 16, borderWidth: 1, borderColor: '#f0b5ab' },
   name: { color: '#111827', fontSize: 20, fontWeight: '800', marginBottom: 8 },
-  line: { color: '#374151', fontSize: 15, marginBottom: 5 },
+  line: { color: '#c13a28', fontSize: 15, marginBottom: 5 },
   state: { fontWeight: '800', marginTop: 10 },
   success: { color: '#166534' },
   danger: { color: '#b91c1c' },
   sectionTitle: { color: '#111827', fontSize: 18, fontWeight: '800', marginBottom: 12 },
   label: { color: '#1f2937', fontWeight: '700', marginBottom: 4 },
-  help: { color: '#4b5563', fontSize: 12, marginBottom: 8 },
-  input: { minHeight: 46, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 8, paddingHorizontal: 12, color: '#111827', backgroundColor: '#fff', marginBottom: 12 },
+  help: { color: '#c13a28', fontSize: 12, marginBottom: 8 },
+  input: { minHeight: 46, borderWidth: 1, borderColor: '#c13a28', borderRadius: 8, paddingHorizontal: 12, color: '#111827', backgroundColor: '#fff', marginBottom: 12 },
   multiline: { minHeight: 76, paddingTop: 10, textAlignVertical: 'top' },
   primaryButton: { minHeight: 46, backgroundColor: '#1d4ed8', borderRadius: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 14, marginTop: 8 },
   warningButton: { minHeight: 46, backgroundColor: '#b45309', borderRadius: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 14, marginTop: 8 },
   successButton: { minHeight: 46, backgroundColor: '#15803d', borderRadius: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 14, marginTop: 8 },
   dangerButton: { minHeight: 46, backgroundColor: '#b91c1c', borderRadius: 8, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 14, marginTop: 12 },
   buttonText: { color: '#fff', fontWeight: '800', fontSize: 14 },
-  managerButton: { borderWidth: 1, borderColor: '#93c5fd', backgroundColor: '#eff6ff', borderRadius: 8, padding: 12, marginRight: 8, marginBottom: 8 },
+  managerButton: { borderWidth: 1, borderColor: '#f0b5ab', backgroundColor: '#fdecea', borderRadius: 8, padding: 12, marginRight: 8, marginBottom: 8 },
   managerSelected: { backgroundColor: '#1e3a8a', borderColor: '#1e3a8a' },
   managerText: { color: '#1e3a8a', fontWeight: '700' },
   selectedText: { color: '#fff', fontWeight: '800' },
-  stageSelectBtn: { flex: 1, borderWidth: 1.5, borderColor: '#d1d5db', backgroundColor: '#f9fafb', borderRadius: 8, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
-  stageSelectBtnActive: { borderColor: '#1d4ed8', backgroundColor: '#eff6ff' },
-  stageSelectText: { color: '#4b5563', fontSize: 12, fontWeight: '700' },
+  stageSelectBtn: { flex: 1, borderWidth: 1.5, borderColor: '#f0b5ab', backgroundColor: '#fdecea', borderRadius: 8, paddingVertical: 10, alignItems: 'center', justifyContent: 'center' },
+  stageSelectBtnActive: { borderColor: '#1d4ed8', backgroundColor: '#fdecea' },
+  stageSelectText: { color: '#c13a28', fontSize: 12, fontWeight: '700' },
   stageSelectTextActive: { color: '#1d4ed8', fontSize: 12, fontWeight: '800' },
   renewBtn: { backgroundColor: '#1c1c1e', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 },
   renewBtnText: { color: '#fff', fontSize: 12, fontWeight: '700' },

@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
-import ScreenCode from '../components/ScreenCode';
 
 interface ManagedUser { id: string; name: string; nome_guerra: string; email: string; role: string; status: string; }
 interface Booth { id: string; name: string; }
@@ -172,8 +171,7 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
 
   return (
     <View style={styles.container}>
-      <ScreenCode code="DR-04" />
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: primaryColor }]}>
         <TouchableOpacity onPress={onBack} style={styles.backButton}>
           <Text style={styles.backText}>‹ Voltar ao Painel</Text>
         </TouchableOpacity>
@@ -207,7 +205,7 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
           </TouchableOpacity>
         </View>
         {managerInviteLink ? (
-          <View style={{ backgroundColor: '#eff6ff', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#93c5fd' }}>
+          <View style={{ backgroundColor: '#fdecea', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#f0b5ab' }}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: '#1e40af', marginBottom: 4 }}>Link de convite de Gerente gerado:</Text>
             <Text style={{ fontSize: 13, color: '#1e3a8a', marginBottom: 8 }} numberOfLines={2}>{managerInviteLink}</Text>
             <TouchableOpacity style={{ backgroundColor: '#2563eb', paddingVertical: 8, borderRadius: 6, alignItems: 'center' }} onPress={() => { if (Platform.OS === 'web') { navigator.clipboard.writeText(managerInviteLink); alert('Link copiado!'); } }}>
@@ -308,7 +306,7 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
             isSelected && {
               borderColor: primaryColor,
               borderWidth: 2,
-              backgroundColor: '#f8fafc',
+              backgroundColor: '#fdecea',
             },
           ]}
           onPress={() => void open(person)}
@@ -375,12 +373,11 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f7f7f8' },
+  container: { flex: 1, backgroundColor: '#fdecea' },
   header: {
     paddingTop: 16,
     paddingBottom: 16,
     paddingHorizontal: 20,
-    backgroundColor: '#1c1c1e',
   },
   backButton: {
     flexDirection: 'row',
@@ -390,7 +387,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   backText: {
-    color: '#60a5fa',
+    color: 'rgba(255,255,255,0.9)',
     fontSize: 15,
     fontWeight: '700',
   },
@@ -400,38 +397,38 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
   headerSubtitle: {
-    color: '#9ca3af',
+    color: 'rgba(255,255,255,0.75)',
     fontSize: 13,
     marginTop: 3,
   },
   content: { padding: 16, paddingBottom: 60, alignItems: 'center' },
   tabs: { width: '100%', maxWidth: 620, flexDirection: 'row', gap: 8, marginBottom: 16 },
-  tab: { flex: 1, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 8, padding: 12, alignItems: 'center' },
+  tab: { flex: 1, borderWidth: 1, borderColor: '#c13a28', borderRadius: 8, padding: 12, alignItems: 'center' },
   tabText: { color: '#111827', fontWeight: '800' },
   white: { color: '#fff', fontWeight: '800' },
-  card: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, padding: 16, marginBottom: 10 },
+  card: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderWidth: 1, borderColor: '#f0b5ab', borderRadius: 10, padding: 16, marginBottom: 10 },
   name: { fontSize: 18, fontWeight: '800', color: '#111827' },
-  line: { color: '#374151', marginTop: 4 },
+  line: { color: '#c13a28', marginTop: 4 },
   badge: { marginTop: 8, color: '#1d4ed8', fontWeight: '700' },
-  empty: { color: '#6b7280', margin: 24 },
+  empty: { color: '#c13a28', margin: 24 },
   editor: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderRadius: 10, padding: 18, marginTop: 8 },
   section: { fontSize: 18, fontWeight: '800', color: '#111827', marginTop: 8, marginBottom: 12 },
   label: { fontWeight: '700', color: '#111827', marginTop: 8, marginBottom: 5 },
-  help: { color: '#6b7280', fontSize: 12, marginBottom: 6 },
-  input: { height: 46, borderWidth: 1, borderColor: '#9ca3af', borderRadius: 8, paddingHorizontal: 12, marginBottom: 8 },
+  help: { color: '#c13a28', fontSize: 12, marginBottom: 6 },
+  input: { height: 46, borderWidth: 1, borderColor: '#c13a28', borderRadius: 8, paddingHorizontal: 12, marginBottom: 8 },
   primary: { minHeight: 46, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
   secondary: { minHeight: 46, borderWidth: 1, borderColor: '#1d4ed8', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
   secondaryText: { color: '#1d4ed8', fontWeight: '800' },
   danger: { minHeight: 46, borderWidth: 1, borderColor: '#b91c1c', borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginTop: 10 },
   dangerText: { color: '#b91c1c', fontWeight: '800' },
-  booth: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, padding: 12, marginBottom: 8 },
+  booth: { borderWidth: 1, borderColor: '#f0b5ab', borderRadius: 8, padding: 12, marginBottom: 8 },
   error: { width: '100%', maxWidth: 620, color: '#b91c1c', backgroundColor: '#fee2e2', padding: 12, borderRadius: 8, marginBottom: 12, fontWeight: '700' },
   scalableControls: { width: '100%', maxWidth: 620, backgroundColor: '#fff', borderRadius: 10, padding: 12, marginBottom: 12 },
   filterRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  filterButton: { borderWidth: 1, borderColor: '#d1d5db', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
+  filterButton: { borderWidth: 1, borderColor: '#f0b5ab', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
   filterText: { color: '#111827', fontWeight: '700' },
   pagination: { width: '100%', maxWidth: 620, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 12 },
   pageButton: { color: '#1d4ed8', fontWeight: '800' },
-  pageDisabled: { color: '#9ca3af' },
-  pageLabel: { color: '#374151', fontWeight: '700' },
+  pageDisabled: { color: '#c13a28' },
+  pageLabel: { color: '#c13a28', fontWeight: '700' },
 });

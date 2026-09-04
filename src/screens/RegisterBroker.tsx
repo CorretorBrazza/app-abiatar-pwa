@@ -175,7 +175,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
     return (
       <View style={{ marginBottom: 12 }}>
         <Text style={{ fontSize: 13, fontWeight: '700', color: '#1e293b', marginBottom: 2 }}>{title}</Text>
-        {hint ? <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 6 }}>{hint}</Text> : null}
+        {hint ? <Text style={{ fontSize: 11, color: '#c13a28', marginBottom: 6 }}>{hint}</Text> : null}
 
         {doc ? (
           <View
@@ -183,7 +183,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
               flexDirection: 'row',
               alignItems: 'center',
               justifyContent: 'space-between',
-              backgroundColor: '#f0fdf4',
+              backgroundColor: '#fdecea',
               padding: 12,
               borderRadius: 8,
               borderWidth: 1,
@@ -210,8 +210,8 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
               alignItems: 'center',
               justifyContent: 'center',
               padding: '12px 14px',
-              backgroundColor: '#f8fafc',
-              border: '1.5px dashed #cbd5e1',
+              backgroundColor: '#fdecea',
+              border: '1.5px dashed #f0b5ab',
               borderRadius: '8px',
               cursor: 'pointer',
               fontWeight: '600',
@@ -657,7 +657,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
                     padding: '14px 16px',
                     borderRadius: '8px',
                     border: selectedManagerId ? '2px solid #18181b' : '1px solid #d4d4d8',
-                    backgroundColor: selectedManagerId ? '#f8fafc' : '#ffffff',
+                    backgroundColor: selectedManagerId ? '#fdecea' : '#ffffff',
                     fontSize: '15px',
                     fontWeight: selectedManagerId ? '600' : '400',
                     color: selectedManagerId ? '#0f172a' : '#71717a',
@@ -791,7 +791,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
               <Text style={{ fontSize: 14, fontWeight: '800', color: '#0f172a', marginBottom: 4 }}>
                 🪪 Documento de Identificação (RG ou CNH) *
               </Text>
-              <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+              <Text style={{ fontSize: 11, color: '#c13a28', marginBottom: 8 }}>
                 Escolha se prefere enviar um arquivo único (PDF/CNH) ou tirar fotos separadas da frente e do verso:
               </Text>
 
@@ -850,7 +850,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
                 <Text style={{ fontSize: 14, fontWeight: '800', color: '#0f172a', marginBottom: 4 }}>
                   {brokerStage === 'estagiario' ? '📑 Carteira de Estágio CRECI *' : '📑 Carteira CRECI Definitiva *'}
                 </Text>
-                <Text style={{ fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+                <Text style={{ fontSize: 11, color: '#c13a28', marginBottom: 8 }}>
                   Envie o documento em PDF/Digital ou as fotos da frente e verso da sua carteira profissional:
                 </Text>
 
@@ -947,7 +947,7 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     height: '100%',
-    backgroundColor: '#f5f5f7',
+    backgroundColor: '#fdecea',
     padding: 16,
   },
   scrollContent: {
@@ -977,7 +977,7 @@ const styles = StyleSheet.create({
   },
   subtitle: {
     fontSize: 14,
-    color: '#8e8e93',
+    color: '#c13a28',
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -988,7 +988,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     marginBottom: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#f2f2f7',
+    borderBottomColor: '#f0b5ab',
     paddingBottom: 4,
   },
   stageContainer: {
@@ -999,16 +999,16 @@ const styles = StyleSheet.create({
   },
   stageCard: {
     flex: 1,
-    backgroundColor: '#fafafc',
+    backgroundColor: '#fdecea',
     borderWidth: 1.5,
-    borderColor: '#e5e5ea',
+    borderColor: '#f0b5ab',
     borderRadius: 8,
     padding: 10,
     alignItems: 'center',
   },
   stageCardSelected: {
     borderColor: '#007aff',
-    backgroundColor: '#f0f7ff',
+    backgroundColor: '#fdecea',
   },
   stageTitle: {
     fontSize: 12,
@@ -1019,22 +1019,22 @@ const styles = StyleSheet.create({
   },
   stageSubtitle: {
     fontSize: 10,
-    color: '#8e8e93',
+    color: '#c13a28',
     textAlign: 'center',
   },
   managersGrid: {
     gap: 8,
   },
   managerCard: {
-    backgroundColor: '#fafafc',
+    backgroundColor: '#fdecea',
     borderWidth: 1.5,
-    borderColor: '#e5e5ea',
+    borderColor: '#f0b5ab',
     borderRadius: 8,
     padding: 12,
   },
   managerCardSelected: {
     borderColor: '#34c759',
-    backgroundColor: '#f0fdf4',
+    backgroundColor: '#fdecea',
   },
   managerIcon: {
     fontSize: 18,
@@ -1048,7 +1048,7 @@ const styles = StyleSheet.create({
   },
   managerFullName: {
     fontSize: 12,
-    color: '#8e8e93',
+    color: '#c13a28',
   },
   label: {
     color: '#1c1c1e',
@@ -1057,19 +1057,19 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   helpText: {
-    color: '#8e8e93',
+    color: '#c13a28',
     fontSize: 11,
     marginBottom: 6,
   },
   input: {
     height: 46,
     borderWidth: 1,
-    borderColor: '#d1d1d6',
+    borderColor: '#f0b5ab',
     borderRadius: 8,
     paddingHorizontal: 14,
     fontSize: 15,
     marginBottom: 12,
-    backgroundColor: '#fafafc',
+    backgroundColor: '#fdecea',
   },
   tokenRow: {
     position: 'relative',
@@ -1085,7 +1085,7 @@ const styles = StyleSheet.create({
   },
   inputSuccess: {
     borderColor: '#34c759',
-    backgroundColor: '#f0fdf4',
+    backgroundColor: '#fdecea',
   },
   badgeContainer: {
     backgroundColor: '#dcfce7',
@@ -1131,7 +1131,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButtonText: {
-    color: '#8e8e93',
+    color: '#c13a28',
     fontSize: 13,
     fontWeight: '600',
   },
@@ -1155,7 +1155,7 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   successSummaryCard: {
-    backgroundColor: '#f5f5f7',
+    backgroundColor: '#fdecea',
     borderRadius: 8,
     padding: 14,
     marginBottom: 16,
@@ -1164,7 +1164,7 @@ const styles = StyleSheet.create({
   },
   summaryLabel: {
     fontSize: 11,
-    color: '#8e8e93',
+    color: '#c13a28',
     fontWeight: '700',
     textTransform: 'uppercase',
   },
@@ -1176,15 +1176,15 @@ const styles = StyleSheet.create({
   },
   approvalNote: {
     fontSize: 12,
-    color: '#8e8e93',
+    color: '#c13a28',
     textAlign: 'center',
     lineHeight: 18,
     marginBottom: 16,
   },
   docNoticeBox: {
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#fdecea',
     borderWidth: 1,
-    borderColor: '#bfdbfe',
+    borderColor: '#f0b5ab',
     borderRadius: 8,
     padding: 12,
     marginBottom: 14,
@@ -1203,7 +1203,7 @@ const styles = StyleSheet.create({
   uploadCategoryBox: {
     backgroundColor: '#ffffff',
     borderWidth: 1,
-    borderColor: '#e2e8f0',
+    borderColor: '#f0b5ab',
     borderRadius: 10,
     padding: 14,
     marginBottom: 14,
@@ -1219,18 +1219,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     borderRadius: 6,
     borderWidth: 1,
-    borderColor: '#cbd5e1',
-    backgroundColor: '#f8fafc',
+    borderColor: '#f0b5ab',
+    backgroundColor: '#fdecea',
     alignItems: 'center',
     justifyContent: 'center',
   },
   uploadModeBtnActive: {
     borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
+    backgroundColor: '#fdecea',
   },
   uploadModeText: {
     fontSize: 11,
-    color: '#64748b',
+    color: '#c13a28',
     fontWeight: '600',
     textAlign: 'center',
   },
