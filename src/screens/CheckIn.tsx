@@ -10,6 +10,7 @@ import {
 import * as Location from 'expo-location'; // Captura GPS nativo
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import IconButton, { APP_ICONS } from '../components/IconButton';
 
 interface BoothRoletaStatus {
   isOpen: boolean;
@@ -186,22 +187,15 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
                 {showTestDiagnostics && <Text style={styles.boothRadius}>[Raio permitido: {item.gps_radius}m]</Text>}
               </View>
 
-              <TouchableOpacity
-                style={[
-                  styles.checkInButton,
-                  { backgroundColor: isCheckInOpen ? primaryColor : '#c13a28' },
-                ]}
+              <IconButton
+                imageSource={APP_ICONS.checkIn}
+                label={isPontual ? 'Fazer Check-in' : isPosBarra ? 'Entrar Pós-Barra' : 'Check-in Fechado'}
+                size="medium"
+                borderColor={primaryColor}
                 onPress={() => handleCheckIn(item)}
+                loading={checkingIn === item.id}
                 disabled={checkingIn !== null || !isCheckInOpen}
-              >
-                {checkingIn === item.id ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
-                  <Text style={styles.buttonText}>
-                    {isPontual ? 'Fazer Check-in' : isPosBarra ? 'Entrar Pós-Barra' : '🔒 Fechado'}
-                  </Text>
-                )}
-              </TouchableOpacity>
+              />
             </View>
           );
         })

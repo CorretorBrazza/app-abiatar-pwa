@@ -12,6 +12,7 @@ import {
   Platform,
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import IconButton from '../components/IconButton';
 
 interface LoginProps {
   onGoToRegister: () => void; // <-- ADICIONADO ESTE PARÂMETRO
@@ -73,22 +74,28 @@ export default function Login({ onGoToRegister }: LoginProps) {
           autoCapitalize="none"
         />
 
-        <TouchableOpacity
-          style={styles.button}
-          onPress={handleLogin}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.buttonText}>Entrar no Sistema</Text>
-          )}
-        </TouchableOpacity>
+        <View style={{ alignItems: 'center', marginTop: 14 }}>
+          <IconButton
+            name="log-in"
+            label="Entrar no Sistema"
+            size="large"
+            borderColor="#e53924"
+            onPress={handleLogin}
+            disabled={loading}
+            loading={loading}
+          />
+        </View>
 
         {/* LINK PARA IR PARA A TELA DE CADASTRO */}
-        <TouchableOpacity style={styles.registerButton} onPress={onGoToRegister}>
-          <Text style={styles.registerButtonText}>Não tem conta? Cadastre-se aqui</Text>
-        </TouchableOpacity>
+        <View style={{ alignItems: 'center', marginTop: 16 }}>
+          <IconButton
+            name="user-plus"
+            label="Cadastre-se aqui"
+            size="medium"
+            borderColor="#e53924"
+            onPress={onGoToRegister}
+          />
+        </View>
       </View>
     </ScrollView>
   );

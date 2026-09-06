@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import IconButton from '../components/IconButton';
 
 interface MessageRecipient {
   id: string;
@@ -107,9 +108,16 @@ export default function Inbox({ onBack }: InboxProps) {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
-        </TouchableOpacity>
+        <IconButton
+          name="arrow-left"
+          label="Voltar ao Painel"
+          size="small"
+          borderColor="#ffffff"
+          color="#ffffff"
+          textColor="#ffffff"
+          backgroundColor="transparent"
+          onPress={onBack}
+        />
         <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <Text style={styles.headerTitle}>Minhas Mensagens</Text>
         <Text style={styles.headerSubtitle}>Acompanhe os comunicados e alertas oficiais</Text>
@@ -153,9 +161,13 @@ export default function Inbox({ onBack }: InboxProps) {
                 <Text style={styles.dateText}>
                   {item.message?.created_at ? new Date(item.message.created_at).toLocaleDateString('pt-BR') : ''}
                 </Text>
-                <TouchableOpacity onPress={() => handleDeleteMessage(item.message?.id || item.message_id)}>
-                  <Text style={styles.deleteText}>Excluir</Text>
-                </TouchableOpacity>
+                <IconButton
+                  name="trash-2"
+                  label="Excluir"
+                  size="small"
+                  borderColor={primaryColor}
+                  onPress={() => handleDeleteMessage(item.message?.id || item.message_id)}
+                />
               </View>
             </TouchableOpacity>
           );
@@ -177,30 +189,33 @@ export default function Inbox({ onBack }: InboxProps) {
 
             {selectedMessage?.message?.is_urgent && !selectedMessage.read_at ? (
               // Se for urgente e não lida, exige o clique no botão de leitura
-              <TouchableOpacity 
-                style={[styles.readButton, { backgroundColor: primaryColor }]}
-                onPress={() => handleMarkAsRead(selectedMessage)}
-                disabled={markingRead}
-              >
-                {markingRead ? (
-                  <ActivityIndicator color="#FFF" />
-                ) : (
-                  <Text style={styles.readButtonText}>Confirmar Leitura Obrigatória</Text>
-                )}
-              </TouchableOpacity>
+              <View style={{ alignItems: 'center', marginTop: 14 }}>
+                <IconButton
+                  name="check-circle"
+                  label="Confirmar Leitura Obrigatória"
+                  size="large"
+                  borderColor={primaryColor}
+                  onPress={() => handleMarkAsRead(selectedMessage)}
+                  disabled={markingRead}
+                  loading={markingRead}
+                />
+              </View>
             ) : (
               // Mensagens normais ou já lidas fecham com botão simples
-              <TouchableOpacity 
-                style={[styles.closeButton, { borderColor: primaryColor }]}
-                onPress={() => {
-                  if (selectedMessage) {
-                    handleMarkAsRead(selectedMessage); // Marca como lido silenciosamente ao fechar
-                  }
-                  setSelectedMessage(null);
-                }}
-              >
-                <Text style={[styles.closeButtonText, { color: primaryColor }]}>Fechar Mensagem</Text>
-              </TouchableOpacity>
+              <View style={{ alignItems: 'center', marginTop: 14 }}>
+                <IconButton
+                  name="x"
+                  label="Fechar Mensagem"
+                  size="medium"
+                  borderColor={primaryColor}
+                  onPress={() => {
+                    if (selectedMessage) {
+                      handleMarkAsRead(selectedMessage); // Marca como lido silenciosamente ao fechar
+                    }
+                    setSelectedMessage(null);
+                  }}
+                />
+              </View>
             )}
           </View>
         </View>

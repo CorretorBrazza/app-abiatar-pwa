@@ -24,6 +24,7 @@ import OperationalAlert from '../components/OperationalAlert';
 import BrokerMaterials from '../components/BrokerMaterials';
 import DirectorMessagingPanel from './DirectorMessagingPanel';
 import UserManagementPanel from './UserManagementPanel';
+import IconButton, { APP_ICONS } from '../components/IconButton';
 import api, { apiBaseUrl } from '../services/api';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -42,7 +43,7 @@ export default function Dashboard() {
   const [confirmingPresence, setConfirmingPresence] = useState(false);
 
   // CONTROLE DE NAVEGAÇÃO INTERNA DINÂMICA (MAIN, INBOX, GESTÃO E BI)
-  const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics' | 'booth_rules' | 'director_messaging' | 'user_management'>('main');
+  const [currentView, setCurrentView] = useState<'main' | 'inbox' | 'manager_panel' | 'statistics' | 'booth_rules' | 'director_messaging' | 'user_management' | 'check_in' | 'meus_plantoes'>('main');
 
   const primaryColor = tenant?.primary_color || '#e53924';
   const isManager = user?.role === 'gerencia_level_2';
@@ -248,7 +249,32 @@ export default function Dashboard() {
   };
 
   if (user?.role === 'corretor_level_3' && pendingSessionPingId) {
-    return <View style={styles.frozenContainer}><Text style={styles.frozenTitle}>Você ainda está no plantão?</Text><Text style={styles.frozenText}>A confirmação é obrigatória para manter sua presença e continuar elegível aos leads.</Text><Text style={styles.frozenText}>Ao confirmar, sua localização será validada por GPS ou Wi-Fi, sem rastreamento contínuo.</Text><TouchableOpacity style={[styles.frozenButton, { backgroundColor: primaryColor }]} onPress={() => void handlePresenceConfirmation(true)} disabled={confirmingPresence}><Text style={styles.frozenButtonText}>{confirmingPresence ? 'Validando presença...' : 'Sim, ainda estou no plantão'}</Text></TouchableOpacity><TouchableOpacity style={styles.frozenNoButton} onPress={() => void handlePresenceConfirmation(false)} disabled={confirmingPresence}><Text style={styles.frozenNoText}>Não, fazer checkout</Text></TouchableOpacity></View>;
+    return (
+      <View style={styles.frozenContainer}>
+        <Text style={styles.frozenTitle}>Você ainda está no plantão?</Text>
+        <Text style={styles.frozenText}>A confirmação é obrigatória para manter sua presença e continuar elegível aos leads.</Text>
+        <Text style={styles.frozenText}>Ao confirmar, sua localização será validada por GPS ou Wi-Fi, sem rastreamento contínuo.</Text>
+        <View style={{ flexDirection: 'row', gap: 20, marginTop: 18, justifyContent: 'center' }}>
+          <IconButton
+            name="check-circle"
+            label={confirmingPresence ? 'Validando...' : 'Sim, no plantão'}
+            size="large"
+            borderColor={primaryColor}
+            loading={confirmingPresence}
+            disabled={confirmingPresence}
+            onPress={() => void handlePresenceConfirmation(true)}
+          />
+          <IconButton
+            name="log-out"
+            label="Fazer checkout"
+            size="large"
+            borderColor={primaryColor}
+            disabled={confirmingPresence}
+            onPress={() => void handlePresenceConfirmation(false)}
+          />
+        </View>
+      </View>
+    );
   }
 
   if (loadingSession) {
@@ -298,6 +324,112 @@ export default function Dashboard() {
   }
 
   // ==========================================
+  // ROTA DO CHECK-IN (CORRETOR SELECIONA O PLANTÃO PARA INICIAR O TURNO)
+  // ==========================================
+  if (currentView === 'check_in') {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { backgroundColor: primaryColor }]}>
+          <IconButton
+            name="arrow-left"
+            label="Voltar"
+            size="small"
+            borderColor="#ffffff"
+            color="#ffffff"
+            textColor="#ffffff"
+            backgroundColor="transparent"
+            onPress={() => setCurrentView('main')}
+          />
+          <Text style={styles.tenantName}>{tenant?.name || 'ABIATAR'}</Text>
+          <Text style={styles.headerTitle}>Check-in no Plantão</Text>
+          <Text style={styles.headerSubtitle}>Selecione o plantão ativo para iniciar o turno</Text>
+        </View>
+        <ScrollView
+          style={styles.dashboardScroll}
+          contentContainerStyle={styles.brokerScrollContent}
+          showsVerticalScrollIndicator
+        >
+          <CheckIn
+            onCheckInSuccess={(data) => {
+              setActiveSession({
+                boothName: data?.booth?.name || 'Plantão Ativo',
+                checkInAt: new Date(),
+              });
+              setCurrentView('main');
+            }}
+          />
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ==========================================
+  // ROTA DOS MEUS PLANTÕES (ROLETAS DA SEMANA E ELEGIBILIDADE)
+  // ==========================================
+  if (currentView === 'meus_plantoes') {
+    return (
+      <View style={styles.container}>
+        <View style={[styles.header, { backgroundColor: primaryColor }]}>
+          <IconButton
+            name="arrow-left"
+            label="Voltar"
+            size="small"
+            borderColor="#ffffff"
+            color="#ffffff"
+            textColor="#ffffff"
+            backgroundColor="transparent"
+            onPress={() => setCurrentView('main')}
+          />
+          <Text style={styles.tenantName}>{tenant?.name || 'ABIATAR'}</Text>
+          <Text style={styles.headerTitle}>Meus Plantões</Text>
+          <Text style={styles.headerSubtitle}>Roletas da semana e elegibilidade por plantão</Text>
+        </View>
+        <ScrollView
+          style={styles.dashboardScroll}
+          contentContainerStyle={styles.brokerScrollContent}
+          showsVerticalScrollIndicator
+        >
+          <View style={styles.brokerPeriodsCard}>
+            <Text style={styles.brokerPeriodsTitle}>Minhas Roletas da Semana e Elegibilidade</Text>
+            <Text style={[styles.infoText, { color: '#c13a28', fontSize: 12, marginBottom: 8 }]}>
+              Contagem semanal (Segunda a Domingo) · Elegibilidade calculada por plantão
+            </Text>
+
+            <Text style={styles.infoText}>Total de Roletas cumpridas na semana: <Text style={{ fontWeight: '800' }}>{brokerSummary?.validPeriods ?? 0}</Text></Text>
+            {brokerSummary?.invalidatedPeriods > 0 && <Text style={styles.invalidPeriodText}>Roletas incompletas/invalidadas: {brokerSummary.invalidatedPeriods}</Text>}
+
+            {Array.isArray(brokerSummary?.boothsEligibility) && brokerSummary.boothsEligibility.length > 0 && (
+              <View style={{ marginTop: 10, gap: 8 }}>
+                <Text style={[styles.infoText, { fontWeight: '700', color: '#1c1c1e', marginBottom: 2 }]}>Status por Plantão de Vendas:</Text>
+                {brokerSummary.boothsEligibility.map((booth: any) => (
+                  <View key={booth.boothId} style={{ backgroundColor: '#fdecea', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#f0b5ab' }}>
+                    <Text style={{ fontWeight: '700', color: '#111827', fontSize: 14 }}>{booth.boothName}</Text>
+                    <Text style={{ fontSize: 13, color: '#c13a28', marginTop: 2 }}>
+                      Roletas cumpridas no plantão: <Text style={{ fontWeight: '700' }}>{booth.validRoletasThisWeek}</Text>
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+                      <View style={{ backgroundColor: booth.saturdayEligible ? '#dcfce7' : '#fef3c7', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ color: booth.saturdayEligible ? '#15803d' : '#b45309', fontSize: 11, fontWeight: '700' }}>
+                          {booth.saturdayEligible ? '🟢 Sábado: Elegível' : `🟡 Sábado: Faltam ${booth.missingSaturday} (${booth.validRoletasThisWeek}/${booth.saturdayRequired})`}
+                        </Text>
+                      </View>
+                      <View style={{ backgroundColor: booth.sundayEligible ? '#dcfce7' : '#fef3c7', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ color: booth.sundayEligible ? '#15803d' : '#b45309', fontSize: 11, fontWeight: '700' }}>
+                          {booth.sundayEligible ? '🟢 Domingo: Elegível' : `🟡 Domingo: Faltam ${booth.missingSunday} (${booth.validRoletasThisWeek}/${booth.sundayRequired})`}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ==========================================
   // FLUXO DO CORRETOR (NÍVEL 3)
   // ==========================================
   if (user?.role === 'corretor_level_3') {
@@ -321,73 +453,42 @@ export default function Dashboard() {
             showsVerticalScrollIndicator
           >
             <Text style={styles.welcomeTitle}>Olá, {user?.nome_guerra}!</Text>
-            <Text style={styles.welcomeSubtitle}>Selecione o seu plantão de vendas atual para iniciar o turno.</Text>
+            <Text style={styles.welcomeSubtitle}>Toque em Check-in para escolher o plantão e iniciar o turno.</Text>
 
-            <CheckIn 
-              onCheckInSuccess={(data) => {
-                setActiveSession({
-                  boothName: data?.booth?.name || 'Plantão Ativo',
-                  checkInAt: new Date(),
-                });
-              }} 
-            />
-
-            <View style={styles.brokerPeriodsCard}>
-              <Text style={styles.brokerPeriodsTitle}>Minhas Roletas da Semana e Elegibilidade</Text>
-              <Text style={[styles.infoText, { color: '#c13a28', fontSize: 12, marginBottom: 8 }]}>
-                Contagem semanal (Segunda a Domingo) · Elegibilidade calculada por plantão
-              </Text>
-              
-              <Text style={styles.infoText}>Total de Roletas cumpridas na semana: <Text style={{ fontWeight: '800' }}>{brokerSummary?.validPeriods ?? 0}</Text></Text>
-              {brokerSummary?.invalidatedPeriods > 0 && <Text style={styles.invalidPeriodText}>Roletas incompletas/invalidadas: {brokerSummary.invalidatedPeriods}</Text>}
-
-              {Array.isArray(brokerSummary?.boothsEligibility) && brokerSummary.boothsEligibility.length > 0 && (
-                <View style={{ marginTop: 10, gap: 8 }}>
-                  <Text style={[styles.infoText, { fontWeight: '700', color: '#1c1c1e', marginBottom: 2 }]}>Status por Plantão de Vendas:</Text>
-                  {brokerSummary.boothsEligibility.map((booth: any) => (
-                    <View key={booth.boothId} style={{ backgroundColor: '#fdecea', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#f0b5ab' }}>
-                      <Text style={{ fontWeight: '700', color: '#111827', fontSize: 14 }}>{booth.boothName}</Text>
-                      <Text style={{ fontSize: 13, color: '#c13a28', marginTop: 2 }}>
-                        Roletas cumpridas no plantão: <Text style={{ fontWeight: '700' }}>{booth.validRoletasThisWeek}</Text>
-                      </Text>
-                      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
-                        <View style={{ backgroundColor: booth.saturdayEligible ? '#dcfce7' : '#fef3c7', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ color: booth.saturdayEligible ? '#15803d' : '#b45309', fontSize: 11, fontWeight: '700' }}>
-                            {booth.saturdayEligible ? '🟢 Sábado: Elegível' : `🟡 Sábado: Faltam ${booth.missingSaturday} (${booth.validRoletasThisWeek}/${booth.saturdayRequired})`}
-                          </Text>
-                        </View>
-                        <View style={{ backgroundColor: booth.sundayEligible ? '#dcfce7' : '#fef3c7', borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ color: booth.sundayEligible ? '#15803d' : '#b45309', fontSize: 11, fontWeight: '700' }}>
-                            {booth.sundayEligible ? '🟢 Domingo: Elegível' : `🟡 Domingo: Faltam ${booth.missingSunday} (${booth.validRoletasThisWeek}/${booth.sundayRequired})`}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-                </View>
-              )}
+            <View style={styles.iconGrid}>
+              <IconButton
+                imageSource={APP_ICONS.checkIn}
+                label="Check-in e Plantões"
+                size="large"
+                borderColor={primaryColor}
+                onPress={() => setCurrentView('check_in')}
+              />
+              <IconButton
+                imageSource={APP_ICONS.meusPlantoes}
+                label="Meus Plantões"
+                size="large"
+                borderColor={primaryColor}
+                onPress={() => setCurrentView('meus_plantoes')}
+              />
+              <IconButton
+                imageSource={APP_ICONS.mensagens}
+                label="Mensagens / Inbox"
+                badge={unreadCount > 0 ? (unreadCount > 9 ? '9+' : unreadCount) : null}
+                size="large"
+                borderColor={primaryColor}
+                onPress={() => setCurrentView('inbox')}
+              />
+              <PushSetupButton primaryColor={primaryColor} size="large" />
+              <IconButton
+                imageSource={APP_ICONS.sair}
+                label="Encerrar Sessão"
+                size="large"
+                borderColor={primaryColor}
+                onPress={logout}
+              />
             </View>
 
-            <TouchableOpacity 
-              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]} 
-              onPress={() => setCurrentView('inbox')}
-            >
-              <View style={styles.buttonRow}>
-                <Text style={[styles.msgText, { color: primaryColor }]}>Ver Mensagens / Inbox</Text>
-                {unreadCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>}
-              </View>
-            </TouchableOpacity>
-
             <BrokerMaterials primaryColor={primaryColor} onOpenMaterials={handleOpenMaterials} />
-
-            <PushSetupButton />
-
-            <TouchableOpacity 
-              style={[styles.logoutButton, { borderColor: primaryColor, width: '100%', maxWidth: 520 }]} 
-              onPress={logout}
-            >
-              <Text style={[styles.logoutText, { color: primaryColor }]}>Encerrar Sessão (Sair)</Text>
-            </TouchableOpacity>
           </ScrollView>
         </View>
       );
@@ -413,6 +514,23 @@ export default function Dashboard() {
         >
           <Text style={styles.welcomeTitle}>Olá, {user?.nome_guerra}!</Text>
           <Text style={styles.welcomeSubtitle}>Você está ativo e em plantão de vendas.</Text>
+
+          {/* PRESENÇA SUSPENSA: corretor não confirmou o ping e aguarda revalidação da recepção */}
+          {activeSession?.status === 'absent' && (
+            <View style={[styles.card, { backgroundColor: '#7c2d12', borderColor: '#b45309', borderWidth: 1 }]}>
+              <Text style={{ color: '#fef3c7', fontSize: 15, fontWeight: '800' }}>⚠️ Presença suspensa por ausência</Text>
+              <Text style={{ color: '#fed7aa', fontSize: 13, lineHeight: 19, marginTop: 6 }}>
+                Você não respondeu à confirmação de permanência e seu turno está em pausa. Se estiver no plantão, solicite a
+                validação na recepção. Sua posição na fila da roleta será mantida após a revalidação.
+              </Text>
+              <TouchableOpacity
+                style={{ alignSelf: 'flex-start', backgroundColor: '#b45309', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, marginTop: 12 }}
+                onPress={() => void handleCheckOut()}
+              >
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>Encerrar turno</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* DESTAQUE DA POSIÇÃO NA ROLETA / PÓS-BARRA */}
           <View style={[styles.card, { backgroundColor: '#1c1c1e', borderColor: '#333', borderWidth: 1 }]}>
@@ -565,37 +683,35 @@ export default function Dashboard() {
             ) : null}
           </View>
 
-          <TouchableOpacity 
-            style={[styles.checkoutButton, { backgroundColor: primaryColor, marginBottom: 16 }]} 
-            onPress={handleCheckOut}
-            disabled={endingShift}
-          >
-            {endingShift ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <Text style={styles.buttonText}>Finalizar Turno (Check-out)</Text>
-            )}
-          </TouchableOpacity>
-
-          <TouchableOpacity 
-            style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16 }]} 
-            onPress={() => setCurrentView('inbox')}
-          >
-            <View style={styles.buttonRow}>
-              <Text style={[styles.msgText, { color: primaryColor }]}>Ver Mensagens / Alertas</Text>
-              {unreadCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>}
-            </View>
-          </TouchableOpacity>
+          <View style={styles.iconGrid}>
+            <IconButton
+              name="log-out"
+              label="Finalizar Turno"
+              size="large"
+              borderColor={primaryColor}
+              loading={endingShift}
+              disabled={endingShift}
+              onPress={handleCheckOut}
+            />
+            <IconButton
+              imageSource={APP_ICONS.mensagens}
+              label="Mensagens / Alertas"
+              badge={unreadCount > 0 ? (unreadCount > 9 ? '9+' : unreadCount) : null}
+              size="large"
+              borderColor={primaryColor}
+              onPress={() => setCurrentView('inbox')}
+            />
+            <PushSetupButton primaryColor={primaryColor} size="large" />
+            <IconButton
+              imageSource={APP_ICONS.sair}
+              label="Encerrar Sessão"
+              size="large"
+              borderColor={primaryColor}
+              onPress={logout}
+            />
+          </View>
 
           <BrokerMaterials primaryColor={primaryColor} onOpenMaterials={handleOpenMaterials} />
-
-          <PushSetupButton />
-          <TouchableOpacity 
-            style={[styles.logoutButton, { borderColor: primaryColor }]}
-            onPress={logout}
-          >
-            <Text style={[styles.logoutText, { color: primaryColor }]}>Encerrar Sessão (Sair)</Text>
-          </TouchableOpacity>
         </ScrollView>
       </View>
     );
@@ -638,19 +754,38 @@ export default function Dashboard() {
               <Text style={styles.infoText}>Acompanhe a assiduidade da sua equipe, envie convites, aprove novos corretores e gerencie a distribuição da fila de leads.</Text>
             </View>
 
-            <TouchableOpacity
-              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
-              onPress={() => setCurrentView('manager_panel')}
-            >
-              <Text style={[styles.msgText, { color: primaryColor }]}>Abrir Gestão da Minha Equipe</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
-              onPress={() => setCurrentView('director_messaging')}
-            >
-              <Text style={[styles.msgText, { color: primaryColor }]}>Enviar Mensagem à Minha Equipe</Text>
-            </TouchableOpacity>
+            <View style={styles.iconGrid}>
+              <IconButton
+                imageSource={APP_ICONS.gerenciarEquipes}
+                label="Gestão da Minha Equipe"
+                size="large"
+                borderColor={primaryColor}
+                onPress={() => setCurrentView('manager_panel')}
+              />
+              <IconButton
+                imageSource={APP_ICONS.comunicacaoInstitucional}
+                label="Mensagem à Equipe"
+                size="large"
+                borderColor={primaryColor}
+                onPress={() => setCurrentView('director_messaging')}
+              />
+              <IconButton
+                imageSource={APP_ICONS.mensagens}
+                label="Mensagens da Equipe"
+                badge={unreadCount > 0 ? (unreadCount > 9 ? '9+' : unreadCount) : null}
+                size="large"
+                borderColor={primaryColor}
+                onPress={() => setCurrentView('inbox')}
+              />
+              <PushSetupButton primaryColor={primaryColor} size="large" />
+              <IconButton
+                imageSource={APP_ICONS.sair}
+                label="Encerrar Sessão"
+                size="large"
+                borderColor={primaryColor}
+                onPress={logout}
+              />
+            </View>
           </>
         ) : isRh ? (
           <>
@@ -659,75 +794,106 @@ export default function Dashboard() {
               <Text style={styles.infoText}>Acompanhe a evolução de corretores em treinamento, estagiários e CRECI de todas as equipes. Realize upgrades, downgrades e renove prazos de vigência.</Text>
             </View>
 
-            <TouchableOpacity
-              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
-              onPress={() => setCurrentView('manager_panel')}
-            >
-              <Text style={[styles.msgText, { color: primaryColor }]}>Gerenciar Carreiras e Estágios (RH)</Text>
-            </TouchableOpacity>
+            <View style={styles.iconGrid}>
+              <IconButton
+                imageSource={APP_ICONS.gerenciarEquipes}
+                label="Carreiras e Estágios (RH)"
+                size="large"
+                borderColor={primaryColor}
+                onPress={() => setCurrentView('manager_panel')}
+              />
+              <IconButton
+                imageSource={APP_ICONS.mensagens}
+                label="Mensagens / Alertas"
+                badge={unreadCount > 0 ? (unreadCount > 9 ? '9+' : unreadCount) : null}
+                size="large"
+                borderColor={primaryColor}
+                onPress={() => setCurrentView('inbox')}
+              />
+              <PushSetupButton primaryColor={primaryColor} size="large" />
+              <IconButton
+                imageSource={APP_ICONS.sair}
+                label="Encerrar Sessão"
+                size="large"
+                borderColor={primaryColor}
+                onPress={logout}
+              />
+            </View>
           </>
         ) : (
-          <>
-            <TouchableOpacity
-              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+          <View style={styles.iconGrid}>
+            <IconButton
+              imageSource={APP_ICONS.administrarPlantoes}
+              label="Administrar Plantões e Regras"
+              size="large"
+              borderColor={primaryColor}
               onPress={() => setCurrentView('booth_rules')}
-            >
-              <Text style={[styles.msgText, { color: primaryColor }]}>Administrar Plantões e Regras</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+            />
+            <IconButton
+              imageSource={APP_ICONS.inteligenciaBi}
+              label="Inteligência de Plantão (BI)"
+              size="large"
+              borderColor={primaryColor}
               onPress={() => setCurrentView('statistics')}
-            >
-              <Text style={[styles.msgText, { color: primaryColor }]}>Ver Inteligência de Plantão (BI)</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+            />
+            <IconButton
+              imageSource={APP_ICONS.gerenciarEquipes}
+              label="Gerenciar Corretores / Equipe"
+              size="large"
+              borderColor={primaryColor}
               onPress={() => setCurrentView('manager_panel')}
-            >
-              <Text style={[styles.msgText, { color: primaryColor }]}>Gerenciar Corretores / Equipe</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
+            />
+            <IconButton
+              imageSource={APP_ICONS.comunicacaoInstitucional}
+              label="Comunicação Institucional"
+              size="large"
+              borderColor={primaryColor}
               onPress={() => setCurrentView('director_messaging')}
-            >
-              <Text style={[styles.msgText, { color: primaryColor }]}>Enviar Comunicação Institucional</Text>
-            </TouchableOpacity>
-
-            {canManageUsers && <TouchableOpacity
-              style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
-              onPress={() => setCurrentView('user_management')}
-            >
-              <Text style={[styles.msgText, { color: primaryColor }]}>Gerenciar Gerentes e Recepção</Text>
-            </TouchableOpacity>}
-          </>
-        )}
-
-        <TouchableOpacity
-          style={[styles.msgButton, { borderColor: primaryColor, marginBottom: 16, width: '100%', maxWidth: 520 }]}
-          onPress={() => setCurrentView('inbox')}
-        >
-          <View style={styles.buttonRow}>
-            <Text style={[styles.msgText, { color: primaryColor }]}>{isManager ? 'Ver Mensagens da Equipe' : 'Ver Mensagens / Alertas Recebidos'}</Text>
-            {unreadCount > 0 && <View style={styles.badge}><Text style={styles.badgeText}>{unreadCount > 9 ? '9+' : unreadCount}</Text></View>}
+            />
+            {canManageUsers && (
+              <IconButton
+                imageSource={APP_ICONS.gerenciarGerentesRecepcao}
+                label="Gerenciar Gerentes e Recepção"
+                size="large"
+                borderColor={primaryColor}
+                onPress={() => setCurrentView('user_management')}
+              />
+            )}
+            <IconButton
+              imageSource={APP_ICONS.mensagens}
+              label="Mensagens / Alertas"
+              badge={unreadCount > 0 ? (unreadCount > 9 ? '9+' : unreadCount) : null}
+              size="large"
+              borderColor={primaryColor}
+              onPress={() => setCurrentView('inbox')}
+            />
+            <PushSetupButton primaryColor={primaryColor} size="large" />
+            <IconButton
+              imageSource={APP_ICONS.sair}
+              label="Encerrar Sessão"
+              size="large"
+              borderColor={primaryColor}
+              onPress={logout}
+            />
           </View>
-        </TouchableOpacity>
-
-        <PushSetupButton />
-        <TouchableOpacity
-          style={[styles.logoutButton, { borderColor: primaryColor, width: '100%', maxWidth: 520 }]}
-          onPress={logout}
-        >
-          <Text style={[styles.logoutText, { color: primaryColor }]}>Encerrar Sessão</Text>
-        </TouchableOpacity>
+        )}
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff7ed' }, frozenTitle: { fontSize: 26, fontWeight: '800', color: '#9a3412', textAlign: 'center', marginVertical: 14 }, frozenText: { maxWidth: 520, color: '#7c2d12', textAlign: 'center', lineHeight: 22, marginBottom: 10 }, frozenButton: { width: '100%', maxWidth: 520, minHeight: 52, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 18 }, frozenButtonText: { color: '#fff', fontWeight: '800', fontSize: 16 }, frozenNoButton: { width: '100%', maxWidth: 520, minHeight: 50, borderWidth: 1, borderColor: '#9a3412', borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginTop: 10 }, frozenNoText: { color: '#9a3412', fontWeight: '800' },
+  iconGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    alignItems: 'flex-start',
+    gap: 16,
+    width: '100%',
+    maxWidth: 520,
+    marginVertical: 14,
+    alignSelf: 'center',
+  },
   container: {
     flex: 1,
     backgroundColor: '#fdecea',
@@ -755,6 +921,16 @@ const styles = StyleSheet.create({ frozenContainer: { flex: 1, padding: 24, just
     shadowOpacity: 0.12,
     shadowRadius: 6,
     elevation: 3,
+  },
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: '800',
+  },
+  headerSubtitle: {
+    color: '#c13a28',
+    fontSize: 13,
+    marginTop: 3,
   },
   headerRow: {
     flexDirection: 'row',

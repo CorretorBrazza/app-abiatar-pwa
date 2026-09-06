@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View, Platform } from 'react-native';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import IconButton from '../components/IconButton';
 
 interface ManagedUser { id: string; name: string; nome_guerra: string; email: string; role: string; status: string; }
 interface Booth { id: string; name: string; }
@@ -172,9 +173,16 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
   return (
     <View style={styles.container}>
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
-        </TouchableOpacity>
+        <IconButton
+          name="arrow-left"
+          label="Voltar ao Painel"
+          size="small"
+          borderColor="#ffffff"
+          color="#ffffff"
+          textColor="#ffffff"
+          backgroundColor="transparent"
+          onPress={onBack}
+        />
         <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <Text style={styles.headerTitle}>Gestão de Usuários</Text>
         <Text style={styles.headerSubtitle}>Controle de acessos de Gerentes e Recepção</Text>
@@ -197,32 +205,60 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
 
     {tab === 'gerencia_level_2' ? (
       <View style={{ width: '100%', maxWidth: 620, marginBottom: 14, gap: 8 }}>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity style={[styles.primary, { backgroundColor: primaryColor, flex: 1, marginTop: 0 }]} onPress={() => setShowCreate((value) => !value)}>
-            <Text style={styles.white}>{showCreate ? 'Fechar formulário' : 'Novo Gerente (Direto)'}</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.secondary, { flex: 1, marginTop: 0 }]} onPress={generateManagerInvite} disabled={generatingInvite}>
-            {generatingInvite ? <ActivityIndicator color="#1d4ed8" /> : <Text style={styles.secondaryText}>Gerar Link de Convite</Text>}
-          </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 12, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <IconButton
+            name={showCreate ? "x" : "user-plus"}
+            label={showCreate ? 'Fechar formulário' : 'Novo Gerente (Direto)'}
+            size="small"
+            borderColor={primaryColor}
+            onPress={() => setShowCreate((value) => !value)}
+          />
+          <IconButton
+            name="link"
+            label="Gerar Link de Convite"
+            size="small"
+            borderColor={primaryColor}
+            onPress={generateManagerInvite}
+            disabled={generatingInvite}
+            loading={generatingInvite}
+          />
         </View>
         {managerInviteLink ? (
-          <View style={{ backgroundColor: '#fdecea', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#f0b5ab' }}>
+          <View style={{ backgroundColor: '#fdecea', padding: 12, borderRadius: 8, borderWidth: 1, borderColor: '#f0b5ab', alignItems: 'center' }}>
             <Text style={{ fontSize: 12, fontWeight: '700', color: '#1e40af', marginBottom: 4 }}>Link de convite de Gerente gerado:</Text>
             <Text style={{ fontSize: 13, color: '#1e3a8a', marginBottom: 8 }} numberOfLines={2}>{managerInviteLink}</Text>
-            <TouchableOpacity style={{ backgroundColor: '#2563eb', paddingVertical: 8, borderRadius: 6, alignItems: 'center' }} onPress={() => { if (Platform.OS === 'web') { navigator.clipboard.writeText(managerInviteLink); alert('Link copiado!'); } }}>
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Copiar Link</Text>
-            </TouchableOpacity>
+            <IconButton
+              name="copy"
+              label="Copiar Link"
+              size="small"
+              borderColor="#2563eb"
+              color="#2563eb"
+              textColor="#2563eb"
+              onPress={() => { if (Platform.OS === 'web') { navigator.clipboard.writeText(managerInviteLink); alert('Link copiado!'); } }}
+            />
           </View>
         ) : null}
       </View>
     ) : tab === 'recepcao_level_3' ? (
-      <TouchableOpacity style={[styles.primary, { backgroundColor: primaryColor, width: '100%', maxWidth: 620, marginBottom: 14 }]} onPress={() => setShowCreate((value) => !value)}>
-        <Text style={styles.white}>{showCreate ? 'Fechar cadastro' : 'Cadastrar Recepção'}</Text>
-      </TouchableOpacity>
+      <View style={{ alignItems: 'center', marginBottom: 14 }}>
+        <IconButton
+          name={showCreate ? "x" : "user-plus"}
+          label={showCreate ? 'Fechar cadastro' : 'Cadastrar Recepção'}
+          size="small"
+          borderColor={primaryColor}
+          onPress={() => setShowCreate((value) => !value)}
+        />
+      </View>
     ) : (
-      <TouchableOpacity style={[styles.primary, { backgroundColor: primaryColor, width: '100%', maxWidth: 620, marginBottom: 14 }]} onPress={() => setShowCreate((value) => !value)}>
-        <Text style={styles.white}>{showCreate ? 'Fechar cadastro' : 'Cadastrar Usuário de RH'}</Text>
-      </TouchableOpacity>
+      <View style={{ alignItems: 'center', marginBottom: 14 }}>
+        <IconButton
+          name={showCreate ? "x" : "user-plus"}
+          label={showCreate ? 'Fechar cadastro' : 'Cadastrar Usuário de RH'}
+          size="small"
+          borderColor={primaryColor}
+          onPress={() => setShowCreate((value) => !value)}
+        />
+      </View>
     )}
 
     {showCreate && tab === 'gerencia_level_2' ? (
@@ -237,9 +273,17 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
         <Text style={styles.label}>Senha temporária</Text>
         <Text style={styles.help}>Mínimo de 8 caracteres. A troca será obrigatória no primeiro acesso.</Text>
         <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} secureTextEntry autoCapitalize="none" />
-        <TouchableOpacity style={[styles.primary, { backgroundColor: primaryColor }]} onPress={() => void createManager()} disabled={saving}>
-          <Text style={styles.white}>Criar Gerente</Text>
-        </TouchableOpacity>
+        <View style={{ alignItems: 'center', marginTop: 12 }}>
+          <IconButton
+            name="check-circle"
+            label="Criar Gerente"
+            size="large"
+            borderColor={primaryColor}
+            onPress={() => void createManager()}
+            disabled={saving}
+            loading={saving}
+          />
+        </View>
       </View>
     ) : null}
 
@@ -262,9 +306,17 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
             <Text style={styles.line}>{newAssigned.includes(booth.id) ? '✓ ' : ''}{booth.name}</Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity style={[styles.primary, { backgroundColor: primaryColor }]} onPress={() => void createReceptionist()} disabled={saving}>
-          <Text style={styles.white}>Criar Recepção</Text>
-        </TouchableOpacity>
+        <View style={{ alignItems: 'center', marginTop: 12 }}>
+          <IconButton
+            name="check-circle"
+            label="Criar Recepção"
+            size="large"
+            borderColor={primaryColor}
+            onPress={() => void createReceptionist()}
+            disabled={saving}
+            loading={saving}
+          />
+        </View>
       </View>
     ) : null}
 
@@ -280,9 +332,17 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
         <Text style={styles.label}>Senha temporária</Text>
         <Text style={styles.help}>Mínimo de 8 caracteres. A troca será obrigatória no primeiro acesso.</Text>
         <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} secureTextEntry autoCapitalize="none" />
-        <TouchableOpacity style={[styles.primary, { backgroundColor: primaryColor }]} onPress={() => void createRhUser()} disabled={saving}>
-          <Text style={styles.white}>Criar Usuário de RH</Text>
-        </TouchableOpacity>
+        <View style={{ alignItems: 'center', marginTop: 12 }}>
+          <IconButton
+            name="check-circle"
+            label="Criar Usuário de RH"
+            size="large"
+            borderColor={primaryColor}
+            onPress={() => void createRhUser()}
+            disabled={saving}
+            loading={saving}
+          />
+        </View>
       </View>
     ) : null}
 
@@ -347,15 +407,32 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
         <TextInput style={styles.input} value={name} onChangeText={setName} />
         <Text style={styles.label}>Nome de Guerra</Text>
         <TextInput style={styles.input} value={nomeGuerra} onChangeText={(value) => setNomeGuerra(value.toLocaleUpperCase('pt-BR'))} />
-        <TouchableOpacity style={[styles.primary, { backgroundColor: primaryColor }]} onPress={() => void save()} disabled={saving}>
-          <Text style={styles.white}>Salvar alterações</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.secondary} onPress={() => void reset()} disabled={saving}>
-          <Text style={styles.secondaryText}>Resetar senha</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.danger} onPress={() => void remove()} disabled={saving}>
-          <Text style={styles.dangerText}>Excluir da operação</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 14, justifyContent: 'center', marginVertical: 12, flexWrap: 'wrap' }}>
+          <IconButton
+            name="save"
+            label="Salvar alterações"
+            size="small"
+            borderColor={primaryColor}
+            onPress={() => void save()}
+            disabled={saving}
+          />
+          <IconButton
+            name="key"
+            label="Resetar senha"
+            size="small"
+            borderColor={primaryColor}
+            onPress={() => void reset()}
+            disabled={saving}
+          />
+          <IconButton
+            name="trash-2"
+            label="Excluir"
+            size="small"
+            borderColor={primaryColor}
+            onPress={() => void remove()}
+            disabled={saving}
+          />
+        </View>
         {selected.role === 'recepcao_level_3' ? (
           <>
             <Text style={styles.section}>Plantões autorizados</Text>

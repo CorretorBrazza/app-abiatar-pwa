@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import IconButton from '../components/IconButton';
 
 interface Recipient {
   id: string;
@@ -107,9 +108,16 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
   return (
     <View style={styles.container}>
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
-        </TouchableOpacity>
+        <IconButton
+          name="arrow-left"
+          label="Voltar ao Painel"
+          size="small"
+          borderColor="#ffffff"
+          color="#ffffff"
+          textColor="#ffffff"
+          backgroundColor="transparent"
+          onPress={onBack}
+        />
         <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <Text style={styles.headerTitle}>{isManager ? 'Comunicação da Minha Equipe' : 'Comunicação Institucional'}</Text>
         <Text style={styles.headerSubtitle}>
@@ -145,7 +153,17 @@ export default function DirectorMessagingPanel({ primaryColor, onBack, isManager
               <Text style={styles.label}>Conteúdo</Text>
               <TextInput style={[styles.input, styles.multiline]} value={content} onChangeText={setContent} placeholder="Escreva o comunicado" multiline maxLength={10000} />
               <TouchableOpacity style={styles.urgentRow} onPress={() => setUrgent(!urgent)}><View style={[styles.checkbox, urgent && { backgroundColor: primaryColor, borderColor: primaryColor }]}>{urgent && <Text style={styles.check}>✓</Text>}</View><View><Text style={styles.urgentTitle}>Exigir leitura</Text><Text style={styles.help}>O destinatário deverá abrir e confirmar a leitura.</Text></View></TouchableOpacity>
-              <TouchableOpacity style={[styles.sendButton, { backgroundColor: primaryColor }]} onPress={send} disabled={sending}>{sending ? <ActivityIndicator color="#FFF" /> : <Text style={styles.sendText}>Enviar comunicado</Text>}</TouchableOpacity>
+              <View style={{ alignItems: 'center', marginTop: 14 }}>
+                <IconButton
+                  name="send"
+                  label="Enviar comunicado"
+                  size="large"
+                  borderColor={primaryColor}
+                  onPress={send}
+                  disabled={sending}
+                  loading={sending}
+                />
+              </View>
             </View>
           </>
         )}

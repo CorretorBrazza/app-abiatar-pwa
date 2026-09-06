@@ -5,6 +5,14 @@ importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-com
 firebase.initializeApp({"apiKey":"AIzaSyDSqzU4jOQZ-7zLrjyc-r8JIlQqq7MGmPw","authDomain":"abiatar-app.firebaseapp.com","projectId":"abiatar-app","storageBucket":"abiatar-app.firebasestorage.app","messagingSenderId":"391082150090","appId":"1:391082150090:web:2cf0048e0b0c23f6680c33"});
 const messaging = firebase.messaging();
 
+// Handler de fetch presenteço (pass-through) para satisfazer o critério de
+// instalabilidade dos navegadores (a página precisa ser controlada pelo SW).
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    fetch(event.request).catch(() => new Response(null, { status: 408, statusText: 'Offline' })),
+  );
+});
+
 messaging.onBackgroundMessage((payload) => {
   const brandName = payload.data?.brandName || 'ABIATAR';
   const originalTitle = payload.notification?.title;

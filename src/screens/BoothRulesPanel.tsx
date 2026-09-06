@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import IconButton from '../components/IconButton';
 
 type Booth = {
   id: string;
@@ -501,9 +502,16 @@ export default function BoothRulesPanel({ onBack, primaryColor = '#e53924' }: { 
   return (
     <View style={styles.container}>
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
-        </TouchableOpacity>
+        <IconButton
+          name="arrow-left"
+          label="Voltar ao Painel"
+          size="small"
+          borderColor="#ffffff"
+          color="#ffffff"
+          textColor="#ffffff"
+          backgroundColor="transparent"
+          onPress={onBack}
+        />
         <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <Text style={styles.title}>Administrar Plantões & Roletas</Text>
         <Text style={styles.headerSubtitle}>Grade de horários, regras operacionais e feriados</Text>
@@ -539,9 +547,15 @@ export default function BoothRulesPanel({ onBack, primaryColor = '#e53924' }: { 
             <Text style={styles.subtitle}>Configuração Operacional dos Plantões</Text>
             <Text style={styles.description}>Configure os horários de roleta, antecedência de check-in, janelas de pós-barra e metas de fim de semana por estande.</Text>
             
-            <View style={styles.boothToolbar}>
+            <View style={[styles.boothToolbar, { alignItems: 'center' }]}>
               <Text style={styles.label}>Selecionar plantão de vendas:</Text>
-              <TouchableOpacity style={styles.newBoothButton} onPress={startNewBooth}><Text style={styles.newBoothText}>+ Novo plantão</Text></TouchableOpacity>
+              <IconButton
+                name="plus"
+                label="Novo plantão"
+                size="small"
+                borderColor={primaryColor}
+                onPress={startNewBooth}
+              />
             </View>
 
             <View style={styles.boothRow}>
@@ -582,14 +596,46 @@ export default function BoothRulesPanel({ onBack, primaryColor = '#e53924' }: { 
                   <Text style={styles.label}>Redes Wi-Fi Autorizadas (uma por linha)</Text>
                   <TextInput value={(selectedBooth.wifis || []).map((wifi) => wifi.ssid).join('\n')} onChangeText={(value) => setSelectedBooth({ ...selectedBooth, wifis: value.split('\n').map((ssid) => ({ ssid: ssid.trim() })).filter((wifi) => wifi.ssid) })} style={[styles.input, styles.reason]} multiline placeholder="Ex: Wi-Fi_Plantao_01" />
 
-                  <TouchableOpacity style={styles.saveSecondary} onPress={saveBooth} disabled={savingBooth}>
-                    {savingBooth ? <ActivityIndicator color="#1c1c1e" /> : <Text style={styles.saveSecondaryText}>{selectedBoothId ? 'Salvar Dados do Plantão' : 'Criar Plantão como Rascunho'}</Text>}
-                  </TouchableOpacity>
+                  <View style={{ alignItems: 'center', marginTop: 12 }}>
+                    <IconButton
+                      name="save"
+                      label={selectedBoothId ? 'Salvar Dados do Plantão' : 'Criar Plantão como Rascunho'}
+                      size="large"
+                      borderColor={primaryColor}
+                      onPress={saveBooth}
+                      disabled={savingBooth}
+                      loading={savingBooth}
+                    />
+                  </View>
 
-                  <View style={styles.lifecycleRow}>
-                    <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#dcfce7' }]} onPress={() => changeLifecycle('publish')}><Text style={[styles.lifecycleButtonText, { color: '#15803d' }]}>Publicar Plantão</Text></TouchableOpacity>
-                    <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#fef9c3' }]} onPress={() => changeLifecycle('pause')}><Text style={[styles.lifecycleButtonText, { color: '#a16207' }]}>Pausar</Text></TouchableOpacity>
-                    <TouchableOpacity style={[styles.lifecycleButton, { backgroundColor: '#fee2e2' }]} onPress={() => changeLifecycle('archive')}><Text style={[styles.lifecycleButtonText, { color: '#b91c1c' }]}>Arquivar</Text></TouchableOpacity>
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 12, marginTop: 12, flexWrap: 'wrap' }}>
+                    <IconButton
+                      name="check-circle"
+                      label="Publicar Plantão"
+                      size="small"
+                      borderColor="#15803d"
+                      color="#15803d"
+                      textColor="#15803d"
+                      onPress={() => changeLifecycle('publish')}
+                    />
+                    <IconButton
+                      name="pause-circle"
+                      label="Pausar"
+                      size="small"
+                      borderColor="#a16207"
+                      color="#a16207"
+                      textColor="#a16207"
+                      onPress={() => changeLifecycle('pause')}
+                    />
+                    <IconButton
+                      name="archive"
+                      label="Arquivar"
+                      size="small"
+                      borderColor="#b91c1c"
+                      color="#b91c1c"
+                      textColor="#b91c1c"
+                      onPress={() => changeLifecycle('archive')}
+                    />
                   </View>
                 </View>
 
@@ -723,9 +769,17 @@ export default function BoothRulesPanel({ onBack, primaryColor = '#e53924' }: { 
                     <Text style={[styles.label, { marginTop: 16 }]}>Motivo da Alteração das Regras (Auditoria)</Text>
                     <TextInput value={reason} onChangeText={setReason} style={[styles.input, styles.reason]} multiline placeholder="Informe o motivo para a trilha de auditoria" />
 
-                    <TouchableOpacity style={styles.save} onPress={saveRules} disabled={saving}>
-                      {saving ? <ActivityIndicator color="#fff" /> : <Text style={styles.saveText}>Salvar Regras da Roleta (Nova Versão)</Text>}
-                    </TouchableOpacity>
+                    <View style={{ alignItems: 'center', marginTop: 14 }}>
+                      <IconButton
+                        name="save"
+                        label="Salvar Regras da Roleta"
+                        size="large"
+                        borderColor={primaryColor}
+                        onPress={saveRules}
+                        disabled={saving}
+                        loading={saving}
+                      />
+                    </View>
                   </View>
 
                   {/* ========================================================================= */}
@@ -812,17 +866,17 @@ export default function BoothRulesPanel({ onBack, primaryColor = '#e53924' }: { 
                     </View>
 
                     {/* BOTÃO ADICIONAR HORÁRIO ESPECIAL */}
-                    <TouchableOpacity
-                      style={[styles.save, { backgroundColor: '#1c1c1e', marginTop: 8 }]}
-                      onPress={handleCreateSpecialSchedule}
-                      disabled={creatingSpecial}
-                    >
-                      {creatingSpecial ? (
-                        <ActivityIndicator color="#fff" />
-                      ) : (
-                        <Text style={styles.saveText}>+ Adicionar Horário Especial Soberano</Text>
-                      )}
-                    </TouchableOpacity>
+                    <View style={{ alignItems: 'center', marginTop: 12 }}>
+                      <IconButton
+                        name="plus-circle"
+                        label="Adicionar Horário Especial Soberano"
+                        size="large"
+                        borderColor={primaryColor}
+                        onPress={handleCreateSpecialSchedule}
+                        disabled={creatingSpecial}
+                        loading={creatingSpecial}
+                      />
+                    </View>
 
                     {/* LISTA DE HORÁRIOS ESPECIAIS ATIVOS */}
                     <View style={{ marginTop: 16 }}>
@@ -872,12 +926,13 @@ export default function BoothRulesPanel({ onBack, primaryColor = '#e53924' }: { 
                                     : `🔄 Recorrente: Todos os ${schedule.day_of_week !== null ? DAY_NAMES[schedule.day_of_week] : ''}s`}
                                 </Text>
                               </View>
-                              <TouchableOpacity
-                                style={styles.deleteHolidayButton}
+                              <IconButton
+                                name="trash-2"
+                                label="Excluir"
+                                size="small"
+                                borderColor={primaryColor}
                                 onPress={() => handleDeleteSpecialSchedule(schedule)}
-                              >
-                                <Text style={styles.deleteHolidayButtonText}>🗑️</Text>
-                              </TouchableOpacity>
+                              />
                             </View>
                           ))}
                         </View>
@@ -998,17 +1053,17 @@ export default function BoothRulesPanel({ onBack, primaryColor = '#e53924' }: { 
               )}
 
               {/* BOTÃO DE CADASTRAR FERIADO */}
-              <TouchableOpacity
-                style={[styles.save, (creatingHoliday || dateInfo.isPast) && { opacity: 0.6 }]}
-                onPress={handleCreateHoliday}
-                disabled={creatingHoliday || dateInfo.isPast}
-              >
-                {creatingHoliday ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.saveText}>➕ Cadastrar Feriado com Roleta Única</Text>
-                )}
-              </TouchableOpacity>
+              <View style={{ alignItems: 'center', marginTop: 14 }}>
+                <IconButton
+                  name="plus-circle"
+                  label="Cadastrar Feriado"
+                  size="large"
+                  borderColor={primaryColor}
+                  onPress={handleCreateHoliday}
+                  disabled={creatingHoliday || dateInfo.isPast}
+                  loading={creatingHoliday}
+                />
+              </View>
             </View>
 
             {/* LISTAGEM DE FERIADOS CADASTRADOS */}
@@ -1035,12 +1090,13 @@ export default function BoothRulesPanel({ onBack, primaryColor = '#e53924' }: { 
                         </Text>
                       </View>
 
-                      <TouchableOpacity
-                        style={styles.deleteHolidayButton}
+                      <IconButton
+                        name="trash-2"
+                        label="Excluir"
+                        size="small"
+                        borderColor={primaryColor}
                         onPress={() => handleDeleteHoliday(h)}
-                      >
-                        <Text style={styles.deleteHolidayButtonText}>🗑️</Text>
-                      </TouchableOpacity>
+                      />
                     </View>
                   ))}
                 </View>

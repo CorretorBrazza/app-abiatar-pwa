@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import api from '../services/api';
+import IconButton from './IconButton';
 
 export interface OperationalTarget {
   recipientId: string;
@@ -70,9 +71,17 @@ export default function OperationalPushComposer({ targets, primaryColor, onSent 
               <TextInput value={title} onChangeText={setTitle} style={styles.input} maxLength={120} />
               <Text style={styles.label}>Aviso</Text>
               <TextInput value={body} onChangeText={setBody} style={[styles.input, styles.multiline]} multiline maxLength={1000} />
-              <TouchableOpacity style={[styles.sendButton, { backgroundColor: primaryColor }]} onPress={send} disabled={sending}>
-                {sending ? <ActivityIndicator color="#FFF" /> : <Text style={styles.sendText}>Enviar Push para {selected.nomeGuerra}</Text>}
-              </TouchableOpacity>
+              <View style={{ alignItems: 'center', marginTop: 16 }}>
+                <IconButton
+                  name="send"
+                  label={`Enviar Push para ${selected.nomeGuerra}`}
+                  size="large"
+                  borderColor={primaryColor}
+                  onPress={send}
+                  disabled={sending}
+                  loading={sending}
+                />
+              </View>
             </>
           )}
         </>

@@ -6,6 +6,7 @@ node_modules/
 # Expo
 .expo/
 dist/
+dist-preview/
 web-build/
 expo-env.d.ts
 
@@ -20,6 +21,9 @@ expo-env.d.ts
 
 # Metro
 .metro-health-check*
+
+# Logs
+*.log
 
 # debug
 npm-debug.*

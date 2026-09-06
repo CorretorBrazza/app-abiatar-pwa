@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import api from '../services/api';
+import IconButton from '../components/IconButton';
 
 interface ManagerOption {
   id: string;
@@ -63,7 +64,7 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [successInfo, setSuccessInfo] = useState<{ message: string; managerName: string; stage: string; totalDocs: number } | null>(null);
+  const [successInfo, setSuccessInfo] = useState<{ message: string; managerName: string; stage: string; totalDocs?: number } | null>(null);
 
   const loadManagers = async () => {
     try {
@@ -199,9 +200,15 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
                 <Text style={{ fontSize: 11, color: '#16a34a' }}>{doc.sizeFormatted} · Pronto para envio</Text>
               </View>
             </View>
-            <TouchableOpacity onPress={onRemove}>
-              <Text style={{ color: '#ef4444', fontWeight: '700', fontSize: 13 }}>✕ Remover</Text>
-            </TouchableOpacity>
+            <IconButton
+              name="trash-2"
+              label="Remover"
+              size="small"
+              borderColor="#ef4444"
+              color="#ef4444"
+              textColor="#ef4444"
+              onPress={onRemove}
+            />
           </View>
         ) : (
           <label
@@ -567,9 +574,15 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
             O RH fará a conferência dos seus documentos para liberar sua conta para aprovação do Gerente.
           </Text>
 
-          <TouchableOpacity style={styles.button} onPress={onBackToLogin}>
-            <Text style={styles.buttonText}>Voltar para o Login</Text>
-          </TouchableOpacity>
+          <View style={{ alignItems: 'center', marginTop: 16 }}>
+            <IconButton
+              name="arrow-left"
+              label="Voltar para o Login"
+              size="large"
+              borderColor="#e53924"
+              onPress={onBackToLogin}
+            />
+          </View>
         </View>
       </ScrollView>
     );
@@ -906,38 +919,41 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
         )}
 
         {/* BOTÃO DE SUBMIT */}
-        <TouchableOpacity
-          style={[styles.button, loading && styles.buttonDisabled]}
-          onPress={handleRegister}
-          disabled={loading}
-        >
-          {loading ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.buttonText}>
-              {isManagerInvite
-                ? 'Concluir Cadastro de Gerente'
-                : 'Enviar cadastro'}
-            </Text>
-          )}
-        </TouchableOpacity>
+        <View style={{ alignItems: 'center', marginTop: 14 }}>
+          <IconButton
+            name="send"
+            label={isManagerInvite ? 'Concluir Cadastro de Gerente' : 'Enviar cadastro'}
+            size="large"
+            borderColor="#e53924"
+            onPress={handleRegister}
+            disabled={loading}
+            loading={loading}
+          />
+        </View>
 
         {/* TOGGLE PARA QUEM TEM CONVITE / NÃO TEM CONVITE */}
-        <TouchableOpacity
-          style={styles.toggleInviteButton}
-          onPress={() => {
-            setHasInviteToken(!hasInviteToken);
-            setError('');
-          }}
-        >
-          <Text style={styles.toggleInviteText}>
-            {hasInviteToken ? '← Quero escolher o gerente manualmente' : 'Tenho um código de convite específico'}
-          </Text>
-        </TouchableOpacity>
+        <View style={{ alignItems: 'center', marginTop: 14 }}>
+          <IconButton
+            name={hasInviteToken ? "users" : "key"}
+            label={hasInviteToken ? 'Escolher gerente manualmente' : 'Tenho código de convite'}
+            size="small"
+            borderColor="#e53924"
+            onPress={() => {
+              setHasInviteToken(!hasInviteToken);
+              setError('');
+            }}
+          />
+        </View>
 
-        <TouchableOpacity style={styles.backButton} onPress={onBackToLogin}>
-          <Text style={styles.backButtonText}>Já possui uma conta? Voltar ao Login</Text>
-        </TouchableOpacity>
+        <View style={{ alignItems: 'center', marginTop: 16 }}>
+          <IconButton
+            name="arrow-left"
+            label="Já possui uma conta? Voltar ao Login"
+            size="medium"
+            borderColor="#e53924"
+            onPress={onBackToLogin}
+          />
+        </View>
       </View>
     </ScrollView>
   );

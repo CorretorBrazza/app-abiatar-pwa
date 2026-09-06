@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
+import IconButton from '../components/IconButton';
 
 export default function ChangePassword() {
   const { user, changePassword } = useAuth();
@@ -57,9 +58,17 @@ export default function ChangePassword() {
         <TextInput style={styles.input} value={newPassword} onChangeText={setNewPassword} secureTextEntry autoCapitalize="none" />
         <Text style={styles.label}>Confirmar nova senha</Text>
         <TextInput style={styles.input} value={confirmPassword} onChangeText={setConfirmPassword} secureTextEntry autoCapitalize="none" />
-        <TouchableOpacity style={styles.button} onPress={submit} disabled={saving}>
-          {saving ? <ActivityIndicator color="#FFF" /> : <Text style={styles.buttonText}>Salvar nova senha</Text>}
-        </TouchableOpacity>
+        <View style={{ alignItems: 'center', marginTop: 14 }}>
+          <IconButton
+            name="lock"
+            label="Salvar nova senha"
+            size="large"
+            borderColor="#e53924"
+            onPress={submit}
+            disabled={saving}
+            loading={saving}
+          />
+        </View>
       </View>
     </ScrollView>
   );

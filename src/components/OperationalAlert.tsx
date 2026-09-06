@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import IconButton from './IconButton';
 
 interface OperationalAlertProps {
   title: string;
@@ -16,9 +17,17 @@ export default function OperationalAlert({ title, body, onAcknowledge }: Operati
           <Text style={styles.title}>{title}</Text>
           <Text style={styles.body}>{body}</Text>
           <Text style={styles.helper}>Este é um alerta operacional do plantão.</Text>
-          <TouchableOpacity style={styles.button} onPress={onAcknowledge} accessibilityRole="button">
-            <Text style={styles.buttonText}>Entendido</Text>
-          </TouchableOpacity>
+          <View style={{ alignItems: 'center', marginTop: 22 }}>
+            <IconButton
+              name="check"
+              label="Entendido"
+              size="large"
+              borderColor="#ff3b30"
+              color="#ff3b30"
+              textColor="#ff3b30"
+              onPress={onAcknowledge}
+            />
+          </View>
         </View>
       </View>
     </Modal>

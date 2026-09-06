@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
+import IconButton from '../components/IconButton';
 
 interface BrokerProfile {
   id: string;
@@ -175,160 +176,226 @@ export default function BrokerManagementPanel({ brokerId, isDirector, isRh, mana
     <Modal visible={!!brokerId} animationType="slide" onRequestClose={onClose}>
       <View style={styles.container}>
         <View style={[styles.header, { backgroundColor: primaryColor }]}>
-<TouchableOpacity onPress={onClose} style={styles.backButton}>
-          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
-        </TouchableOpacity>
-        <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
-        <Text style={styles.headerTitle}>{isRh ? 'Gestão de Estágio do Corretor' : 'Ficha do Corretor'}</Text>
+          <IconButton
+            name="arrow-left"
+            label="Voltar ao Painel"
+            size="small"
+            borderColor="#ffffff"
+            color="#ffffff"
+            textColor="#ffffff"
+            backgroundColor="transparent"
+            onPress={onClose}
+          />
+          <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
+          <Text style={styles.headerTitle}>{isRh ? 'Gestão de Estágio do Corretor' : 'Ficha do Corretor'}</Text>
           <Text style={styles.headerSubtitle}>{isRh ? 'Evolução de carreira, vigência de estágio e dados cadastrais' : 'Gestão individual, operação e vínculo hierárquico'}</Text>
         </View>
 
         <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.content}>
           {error ? <Text style={styles.error}>{error}</Text> : null}
-        {loading || !profile ? <ActivityIndicator size="large" color="#1c1c1e" /> : (
-          <>
-            <View style={styles.card}>
-              <Text style={styles.name}>{profile.name}</Text>
-              <Text style={styles.line}>Nome de guerra: {profile.nome_guerra}</Text>
-              <Text style={styles.line}>E-mail: {profile.email}</Text>
-              <Text style={styles.line}>CRECI: {profile.creci || 'Não informado'}</Text>
-              <Text style={styles.line}>Estágio: <Text style={{ fontWeight: 'bold' }}>{getStageBadgeLabel(profile.broker_stage)}</Text></Text>
-              <Text style={styles.line}>Gerente: {profile.manager_nome_guerra || 'Sem gerente'}</Text>
-              
-              {profile.broker_stage !== 'corretor_creci' && profile.stage_expires_at ? (
-                <Text style={styles.line}>
-                  📅 Vigência do Estágio: <Text style={{ fontWeight: '700' }}>{new Date(profile.stage_expires_at).toLocaleDateString('pt-BR')}</Text> ({profile.days_until_stage_expiry !== null && profile.days_until_stage_expiry !== undefined ? (profile.days_until_stage_expiry > 0 ? `${profile.days_until_stage_expiry} dias restantes` : 'EXPIRADO') : '—'})
-                </Text>
-              ) : null}
+          {loading || !profile ? <ActivityIndicator size="large" color="#1c1c1e" /> : (
+            <>
+              <View style={styles.card}>
+                <Text style={styles.name}>{profile.name}</Text>
+                <Text style={styles.line}>Nome de guerra: {profile.nome_guerra}</Text>
+                <Text style={styles.line}>E-mail: {profile.email}</Text>
+                <Text style={styles.line}>CRECI: {profile.creci || 'Não informado'}</Text>
+                <Text style={styles.line}>Estágio: <Text style={{ fontWeight: 'bold' }}>{getStageBadgeLabel(profile.broker_stage)}</Text></Text>
+                <Text style={styles.line}>Gerente: {profile.manager_nome_guerra || 'Sem gerente'}</Text>
+                
+                {profile.broker_stage !== 'corretor_creci' && profile.stage_expires_at ? (
+                  <Text style={styles.line}>
+                    📅 Vigência do Estágio: <Text style={{ fontWeight: '700' }}>{new Date(profile.stage_expires_at).toLocaleDateString('pt-BR')}</Text> ({profile.days_until_stage_expiry !== null && profile.days_until_stage_expiry !== undefined ? (profile.days_until_stage_expiry > 0 ? `${profile.days_until_stage_expiry} dias restantes` : 'EXPIRADO') : '—'})
+                  </Text>
+                ) : null}
 
-              {profile.broker_stage === 'corretor_creci' ? (
-                <Text style={styles.line}>
-                  ⏱️ Último Check-in: <Text style={{ fontWeight: '700' }}>{profile.last_checkin_at ? `${profile.days_since_last_checkin ?? 0} dias atrás (${new Date(profile.last_checkin_at).toLocaleDateString('pt-BR')})` : 'Nenhum check-in registrado'}</Text>
-                </Text>
-              ) : null}
+                {profile.broker_stage === 'corretor_creci' ? (
+                  <Text style={styles.line}>
+                    ⏱️ Último Check-in: <Text style={{ fontWeight: '700' }}>{profile.last_checkin_at ? `${profile.days_since_last_checkin ?? 0} dias atrás (${new Date(profile.last_checkin_at).toLocaleDateString('pt-BR')})` : 'Nenhum check-in registrado'}</Text>
+                  </Text>
+                ) : null}
 
-              <Text style={styles.line}>Status: {profile.status}</Text>
+                <Text style={styles.line}>Status: {profile.status}</Text>
 
-              {profile.is_suspended || profile.is_stage_expired || profile.is_inactive_90d ? (
-                <View style={{ backgroundColor: '#fee2e2', borderRadius: 8, padding: 10, marginVertical: 8, borderWidth: 1, borderColor: '#f87171' }}>
-                  <Text style={{ color: '#b91c1c', fontWeight: '800', fontSize: 13 }}>⚠️ CORRETOR SUSPENSO / BLOQUEADO</Text>
-                  <Text style={{ color: '#7f1d1d', fontSize: 12, marginTop: 2 }}>{profile.suspension_reason || 'Vigência de estágio expirada ou inatividade superior a 90 dias.'}</Text>
+                {profile.is_suspended || profile.is_stage_expired || profile.is_inactive_90d ? (
+                  <View style={{ backgroundColor: '#fee2e2', borderRadius: 8, padding: 10, marginVertical: 8, borderWidth: 1, borderColor: '#f87171' }}>
+                    <Text style={{ color: '#b91c1c', fontWeight: '800', fontSize: 13 }}>⚠️ CORRETOR SUSPENSO / BLOQUEADO</Text>
+                    <Text style={{ color: '#7f1d1d', fontSize: 12, marginTop: 2 }}>{profile.suspension_reason || 'Vigência de estágio expirada ou inatividade superior a 90 dias.'}</Text>
+                  </View>
+                ) : null}
+
+                {!isRh && (
+                  <Text style={[styles.state, profile.leads_paused ? styles.danger : styles.success]}>
+                    {profile.leads_paused ? 'Leads pausados' : 'Elegível para leads, conforme presença'}
+                  </Text>
+                )}
+              </View>
+
+              {/* CARD: PROMOÇÃO / ALTERAÇÃO DE ESTÁGIO (HABILITADO PARA DIRETORIA E RH) */}
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Estágio Profissional & Vigência</Text>
+                {(isDirector || isRh) ? (
+                  <>
+                    <Text style={styles.help}>Promova o corretor ou altere seu estágio profissional (real-time):</Text>
+                    <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
+                      <TouchableOpacity
+                        style={[styles.stageSelectBtn, selectedStage === 'treinamento' && styles.stageSelectBtnActive]}
+                        onPress={() => updateStage('treinamento')}
+                        disabled={saving}
+                      >
+                        <Text style={selectedStage === 'treinamento' ? styles.stageSelectTextActive : styles.stageSelectText}>🔵 Treinamento (90d)</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.stageSelectBtn, selectedStage === 'estagiario' && styles.stageSelectBtnActive]}
+                        onPress={() => updateStage('estagiario')}
+                        disabled={saving}
+                      >
+                        <Text style={selectedStage === 'estagiario' ? styles.stageSelectTextActive : styles.stageSelectText}>🟡 Estagiário (6m)</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={[styles.stageSelectBtn, selectedStage === 'corretor_creci' && styles.stageSelectBtnActive]}
+                        onPress={() => updateStage('corretor_creci')}
+                        disabled={saving}
+                      >
+                        <Text style={selectedStage === 'corretor_creci' ? styles.stageSelectTextActive : styles.stageSelectText}>🟢 Corretor CRECI</Text>
+                      </TouchableOpacity>
+                    </View>
+
+                    {profile.broker_stage !== 'corretor_creci' && (
+                      <>
+                        <Text style={[styles.label, { marginTop: 4 }]}>Renovar Prazo de Vigência (+Dias):</Text>
+                        <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
+                          <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(30)} disabled={saving}><Text style={styles.renewBtnText}>+30 Dias</Text></TouchableOpacity>
+                          <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(60)} disabled={saving}><Text style={styles.renewBtnText}>+60 Dias</Text></TouchableOpacity>
+                          <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(90)} disabled={saving}><Text style={styles.renewBtnText}>+90 Dias</Text></TouchableOpacity>
+                          <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(180)} disabled={saving}><Text style={styles.renewBtnText}>+180 Dias</Text></TouchableOpacity>
+                        </View>
+                      </>
+                    )}
+                  </>
+                ) : (
+                  <View style={{ backgroundColor: '#fdecea', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#f0b5ab' }}>
+                    <Text style={{ color: '#1e40af', fontSize: 13, fontWeight: '700', marginBottom: 4 }}>
+                      🔒 Controle da Diretoria e RH
+                    </Text>
+                    <Text style={{ color: '#1e3a8a', fontSize: 12, lineHeight: 17 }}>
+                      O Gerente não tem permissão para renovar vigências de treinamento ou estágio. Caso o corretor precise de prorrogação de prazo ou promoção para CRECI, solicite a alteração à Diretoria ou ao RH.
+                    </Text>
+                  </View>
+                )}
+              </View>
+
+              <View style={styles.card}>
+                <Text style={styles.sectionTitle}>Dados cadastrais</Text>
+                <Text style={styles.label}>Nome de guerra</Text>
+                <Text style={styles.help}>Será convertido para MAIÚSCULAS e deve ser único no tenant.</Text>
+                <TextInput style={styles.input} value={nomeGuerra} onChangeText={(v) => setNomeGuerra(v.toLocaleUpperCase('pt-BR'))} />
+
+                <Text style={styles.label}>CRECI</Text>
+                <TextInput style={styles.input} value={creci} placeholder="Ex: 123456-F" onChangeText={(v) => setCreci(v.toUpperCase())} />
+                
+                <View style={{ alignItems: 'center', marginTop: 12 }}>
+                  <IconButton
+                    name="save"
+                    label="Salvar dados cadastrais"
+                    size="large"
+                    borderColor={primaryColor}
+                    onPress={updateProfile}
+                    disabled={saving}
+                    loading={saving}
+                  />
                 </View>
-              ) : null}
+              </View>
 
               {!isRh && (
-                <Text style={[styles.state, profile.leads_paused ? styles.danger : styles.success]}>
-                  {profile.leads_paused ? 'Leads pausados' : 'Elegível para leads, conforme presença'}
-                </Text>
-              )}
-            </View>
-
-            {/* CARD: PROMOÇÃO / ALTERAÇÃO DE ESTÁGIO (HABILITADO PARA DIRETORIA E RH) */}
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Estágio Profissional & Vigência</Text>
-              {(isDirector || isRh) ? (
-                <>
-                  <Text style={styles.help}>Promova o corretor ou altere seu estágio profissional (real-time):</Text>
-                  <View style={{ flexDirection: 'row', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
-                    <TouchableOpacity
-                      style={[styles.stageSelectBtn, selectedStage === 'treinamento' && styles.stageSelectBtnActive]}
-                      onPress={() => updateStage('treinamento')}
+                <View style={styles.card}>
+                  <Text style={styles.sectionTitle}>Operação de leads</Text>
+                  <Text style={styles.label}>Motivo da ação</Text>
+                  <TextInput style={[styles.input, styles.multiline]} value={reason} onChangeText={setReason} multiline placeholder="Informe o motivo" />
+                  <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 16, marginTop: 12, flexWrap: 'wrap' }}>
+                    {profile.leads_paused ? (
+                      <IconButton
+                        name="play-circle"
+                        label="Retomar recebimento de leads"
+                        size="large"
+                        borderColor="#15803d"
+                        color="#15803d"
+                        textColor="#15803d"
+                        onPress={() => setPause(false)}
+                        disabled={saving}
+                        loading={saving}
+                      />
+                    ) : (
+                      <IconButton
+                        name="pause-circle"
+                        label="Pausar recebimento de leads"
+                        size="large"
+                        borderColor="#b45309"
+                        color="#b45309"
+                        textColor="#b45309"
+                        onPress={() => setPause(true)}
+                        disabled={saving}
+                        loading={saving}
+                      />
+                    )}
+                    <IconButton
+                      name="trash-2"
+                      label="Excluir Corretor da operação"
+                      size="large"
+                      borderColor="#b91c1c"
+                      color="#b91c1c"
+                      textColor="#b91c1c"
+                      onPress={removeBroker}
                       disabled={saving}
-                    >
-                      <Text style={selectedStage === 'treinamento' ? styles.stageSelectTextActive : styles.stageSelectText}>🔵 Treinamento (90d)</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.stageSelectBtn, selectedStage === 'estagiario' && styles.stageSelectBtnActive]}
-                      onPress={() => updateStage('estagiario')}
-                      disabled={saving}
-                    >
-                      <Text style={selectedStage === 'estagiario' ? styles.stageSelectTextActive : styles.stageSelectText}>🟡 Estagiário (6m)</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.stageSelectBtn, selectedStage === 'corretor_creci' && styles.stageSelectBtnActive]}
-                      onPress={() => updateStage('corretor_creci')}
-                      disabled={saving}
-                    >
-                      <Text style={selectedStage === 'corretor_creci' ? styles.stageSelectTextActive : styles.stageSelectText}>🟢 Corretor CRECI</Text>
-                    </TouchableOpacity>
+                    />
                   </View>
-
-                  {profile.broker_stage !== 'corretor_creci' && (
-                    <>
-                      <Text style={[styles.label, { marginTop: 4 }]}>Renovar Prazo de Vigência (+Dias):</Text>
-                      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', marginBottom: 8 }}>
-                        <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(30)} disabled={saving}><Text style={styles.renewBtnText}>+30 Dias</Text></TouchableOpacity>
-                        <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(60)} disabled={saving}><Text style={styles.renewBtnText}>+60 Dias</Text></TouchableOpacity>
-                        <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(90)} disabled={saving}><Text style={styles.renewBtnText}>+90 Dias</Text></TouchableOpacity>
-                        <TouchableOpacity style={styles.renewBtn} onPress={() => extendStageDays(180)} disabled={saving}><Text style={styles.renewBtnText}>+180 Dias</Text></TouchableOpacity>
-                      </View>
-                    </>
-                  )}
-                </>
-              ) : (
-                <View style={{ backgroundColor: '#fdecea', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#f0b5ab' }}>
-                  <Text style={{ color: '#1e40af', fontSize: 13, fontWeight: '700', marginBottom: 4 }}>
-                    🔒 Controle da Diretoria e RH
-                  </Text>
-                  <Text style={{ color: '#1e3a8a', fontSize: 12, lineHeight: 17 }}>
-                    O Gerente não tem permissão para renovar vigências de treinamento ou estágio. Caso o corretor precise de prorrogação de prazo ou promoção para CRECI, solicite a alteração à Diretoria ou ao RH.
-                  </Text>
                 </View>
               )}
-            </View>
 
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Dados cadastrais</Text>
-              <Text style={styles.label}>Nome de guerra</Text>
-              <Text style={styles.help}>Será convertido para MAIÚSCULAS e deve ser único no tenant.</Text>
-              <TextInput style={styles.input} value={nomeGuerra} onChangeText={(v) => setNomeGuerra(v.toLocaleUpperCase('pt-BR'))} />
-
-              <Text style={styles.label}>CRECI</Text>
-              <TextInput style={styles.input} value={creci} placeholder="Ex: 123456-F" onChangeText={(v) => setCreci(v.toUpperCase())} />
-              
-              <TouchableOpacity style={styles.primaryButton} onPress={updateProfile} disabled={saving}><Text style={styles.buttonText}>Salvar dados cadastrais</Text></TouchableOpacity>
-            </View>
-
-            {!isRh && (
               <View style={styles.card}>
-                <Text style={styles.sectionTitle}>Operação de leads</Text>
-                <Text style={styles.label}>Motivo da ação</Text>
-                <TextInput style={[styles.input, styles.multiline]} value={reason} onChangeText={setReason} multiline placeholder="Informe o motivo" />
-                {profile.leads_paused ? (
-                  <TouchableOpacity style={styles.successButton} onPress={() => setPause(false)} disabled={saving}><Text style={styles.buttonText}>Retomar recebimento de leads</Text></TouchableOpacity>
-                ) : (
-                  <TouchableOpacity style={styles.warningButton} onPress={() => setPause(true)} disabled={saving}><Text style={styles.buttonText}>Pausar recebimento de leads</Text></TouchableOpacity>
-                )}
-                <TouchableOpacity style={styles.dangerButton} onPress={removeBroker} disabled={saving}><Text style={styles.buttonText}>Excluir Corretor da operação</Text></TouchableOpacity>
+                <Text style={styles.sectionTitle}>Segurança da conta</Text>
+                <Text style={styles.help}>Gera uma senha temporária de uso único. O Corretor será obrigado a criar uma nova senha no próximo acesso.</Text>
+                <View style={{ alignItems: 'center', marginTop: 12 }}>
+                  <IconButton
+                    name="key"
+                    label="Redefinir senha do Corretor"
+                    size="large"
+                    borderColor={primaryColor}
+                    onPress={resetPassword}
+                    disabled={saving}
+                    loading={saving}
+                  />
+                </View>
               </View>
-            )}
 
-            <View style={styles.card}>
-              <Text style={styles.sectionTitle}>Segurança da conta</Text>
-              <Text style={styles.help}>Gera uma senha temporária de uso único. O Corretor será obrigado a criar uma nova senha no próximo acesso.</Text>
-              <TouchableOpacity style={styles.primaryButton} onPress={resetPassword} disabled={saving}>
-                <Text style={styles.buttonText}>Redefinir senha do Corretor</Text>
-              </TouchableOpacity>
-            </View>
-
-            {isDirector && (
-              <View style={styles.card}>
-                <Text style={styles.sectionTitle}>Transferência hierárquica</Text>
-                <Text style={styles.help}>Somente Gerentes ativos do mesmo tenant podem receber o Corretor.</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  {managers.map((manager) => (
-                    <TouchableOpacity key={manager.id} style={[styles.managerButton, selectedManagerId === manager.id && styles.managerSelected]} onPress={() => setSelectedManagerId(manager.id)}>
-                      <Text style={selectedManagerId === manager.id ? styles.selectedText : styles.managerText}>{manager.nome_guerra || manager.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-                <TouchableOpacity style={styles.primaryButton} onPress={transferBroker} disabled={saving}><Text style={styles.buttonText}>Mover para Gerente selecionado</Text></TouchableOpacity>
-              </View>
-            )}
-          </>
-        )}
+              {isDirector && (
+                <View style={styles.card}>
+                  <Text style={styles.sectionTitle}>Transferência hierárquica</Text>
+                  <Text style={styles.help}>Somente Gerentes ativos do mesmo tenant podem receber o Corretor.</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    {managers.map((manager) => (
+                      <TouchableOpacity key={manager.id} style={[styles.managerButton, selectedManagerId === manager.id && styles.managerSelected]} onPress={() => setSelectedManagerId(manager.id)}>
+                        <Text style={selectedManagerId === manager.id ? styles.selectedText : styles.managerText}>{manager.nome_guerra || manager.name}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                  <View style={{ alignItems: 'center', marginTop: 12 }}>
+                    <IconButton
+                      name="arrow-right-circle"
+                      label="Mover para Gerente selecionado"
+                      size="large"
+                      borderColor={primaryColor}
+                      onPress={transferBroker}
+                      disabled={saving}
+                      loading={saving}
+                    />
+                  </View>
+                </View>
+              )}
+            </>
+          )}
         </ScrollView>
       </View>
     </Modal>

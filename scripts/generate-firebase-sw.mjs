@@ -18,6 +18,14 @@ importScripts('https://www.gstatic.com/firebasejs/10.13.2/firebase-messaging-com
 firebase.initializeApp(${JSON.stringify(config)});
 const messaging = firebase.messaging();
 
+// Handler de fetch presenteço (pass-through) para satisfazer o critério de
+// instalabilidade dos navegadores (a página precisa ser controlada pelo SW).
+self.addEventListener('fetch', (event) => {
+  event.respondWith(
+    fetch(event.request).catch(() => new Response(null, { status: 408, statusText: 'Offline' })),
+  );
+});
+
 messaging.onBackgroundMessage((payload) => {
   const brandName = payload.data?.brandName || 'ABIATAR';
   const originalTitle = payload.notification?.title;

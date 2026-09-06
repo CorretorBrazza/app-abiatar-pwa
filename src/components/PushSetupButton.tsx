@@ -1,8 +1,14 @@
 import React, { useState } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity } from 'react-native';
+import { Platform } from 'react-native';
 import { registerWebPushNotifications } from '../services/push';
+import IconButton, { APP_ICONS, ABIATAR_RED } from './IconButton';
 
-export default function PushSetupButton() {
+interface PushSetupButtonProps {
+  primaryColor?: string;
+  size?: 'small' | 'medium' | 'large' | number;
+}
+
+export default function PushSetupButton({ primaryColor = ABIATAR_RED, size = 'large' }: PushSetupButtonProps) {
   const [status, setStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
 
   if (Platform.OS !== 'web') return null;
@@ -13,16 +19,24 @@ export default function PushSetupButton() {
     setStatus(registered ? 'ok' : 'error');
   };
 
+  const label =
+    status === 'loading'
+      ? 'Ativando...'
+      : status === 'ok'
+      ? 'Push Ativado'
+      : status === 'error'
+      ? 'Reativar Push'
+      : 'Ativar Notificações Push';
+
   return (
-    <TouchableOpacity style={styles.button} onPress={enable} disabled={status === 'loading'}>
-      <Text style={styles.text}>
-        {status === 'loading' ? 'Ativando notificações...' : status === 'ok' ? 'Notificações ativadas' : status === 'error' ? 'Tentar ativar notificações novamente' : 'Ativar notificações push'}
-      </Text>
-    </TouchableOpacity>
+    <IconButton
+      imageSource={APP_ICONS.ativarPush}
+      label={label}
+      size={size}
+      borderColor={primaryColor}
+      onPress={enable}
+      disabled={status === 'loading' || status === 'ok'}
+      loading={status === 'loading'}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  button: { width: '100%', maxWidth: 520, paddingVertical: 13, paddingHorizontal: 16, borderRadius: 10, borderWidth: 1, borderColor: '#ff9500', backgroundColor: '#fff8ed', alignItems: 'center', marginBottom: 16 },
-  text: { color: '#9a5b00', fontSize: 14, fontWeight: 'bold', textAlign: 'center' },
-});

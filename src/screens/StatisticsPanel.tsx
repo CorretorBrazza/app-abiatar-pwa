@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import IconButton from '../components/IconButton';
 
 type TabType = 'realtime' | 'brokers' | 'managers' | 'booths';
 type PeriodPreset = 'today' | 'week' | 'month' | 'custom';
@@ -206,18 +207,32 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
 
       {/* HEADER DA DIRETORIA */}
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
-        </TouchableOpacity>
+        <IconButton
+          name="arrow-left"
+          label="Voltar ao Painel"
+          size="small"
+          borderColor="#ffffff"
+          color="#ffffff"
+          textColor="#ffffff"
+          backgroundColor="transparent"
+          onPress={onBack}
+        />
         <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
             <Text style={styles.title}>Torre de Controle & Relatórios</Text>
             <Text style={styles.headerSubtitle}>Inteligência Operacional da Força de Vendas</Text>
           </View>
-          <TouchableOpacity style={styles.shareSummaryButton} onPress={handleCopyExecutiveSummary}>
-            <Text style={styles.shareSummaryText}>📋 Copiar Resumo</Text>
-          </TouchableOpacity>
+          <IconButton
+            name="copy"
+            label="Copiar Resumo"
+            size="small"
+            borderColor="#ffffff"
+            color="#ffffff"
+            textColor="#ffffff"
+            backgroundColor="transparent"
+            onPress={handleCopyExecutiveSummary}
+          />
         </View>
       </View>
 
@@ -315,9 +330,15 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
                     placeholder="2026-08-31"
                   />
                 </View>
-                <TouchableOpacity style={styles.applyDateButton} onPress={handleDateFilterApply}>
-                  <Text style={styles.applyDateButtonText}>Filtrar</Text>
-                </TouchableOpacity>
+                <View style={{ alignSelf: 'flex-end', marginBottom: 2 }}>
+                  <IconButton
+                    name="filter"
+                    label="Filtrar"
+                    size="small"
+                    borderColor={primaryColor}
+                    onPress={handleDateFilterApply}
+                  />
+                </View>
               </View>
             )}
           </View>
@@ -364,15 +385,17 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
                 </View>
 
                 {/* BOTÃO ATUALIZAR TEMPO REAL */}
-                <TouchableOpacity
-                  style={[styles.refreshButton, refreshing && { opacity: 0.7 }]}
-                  onPress={handleRefresh}
-                  disabled={refreshing}
-                >
-                  <Text style={styles.refreshButtonText}>
-                    {refreshing ? 'Atualizando...' : '🔄 Atualizar Tempo Real'}
-                  </Text>
-                </TouchableOpacity>
+                <View style={{ alignItems: 'center', marginVertical: 12 }}>
+                  <IconButton
+                    name="refresh-cw"
+                    label="Atualizar Tempo Real"
+                    size="medium"
+                    borderColor={primaryColor}
+                    onPress={handleRefresh}
+                    disabled={refreshing}
+                    loading={refreshing}
+                  />
+                </View>
 
                 {/* LISTAGEM DE PLANTÕES EM TEMPO REAL */}
                 <Text style={styles.sectionHeader}>Plantões & Presenças Ativas</Text>

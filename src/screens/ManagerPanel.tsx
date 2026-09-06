@@ -15,6 +15,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import BrokerManagementPanel from './BrokerManagementPanel';
+import IconButton from '../components/IconButton';
 
 interface BrokerItem {
   id: string;
@@ -135,15 +136,14 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
           setSelectedManagerId(managersData[0].id);
         }
       } else {
-        // Modo Gerente: busca pendentes, time próprio, fila de leads e elegibilidade da equipe
-        const [pendingRes, teamRes, queueRes, eligibilityRes] = await Promise.all([
-          api.get(`/users/pending/${managerId}`),
+        // Modo Gerente: busca time próprio, fila de leads e elegibilidade da equipe
+        const [teamRes, queueRes, eligibilityRes] = await Promise.all([
           api.get(`/users/team/${managerId}`, { params: { pageSize: 200 } }),
           api.get('/users/leads-queue'),
           api.get('/presences/team-eligibility').catch(() => ({ data: null })),
         ]);
 
-        setPending(Array.isArray(pendingRes.data) ? pendingRes.data : (pendingRes.data?.data || []));
+        setPending([]);
         setTeam(Array.isArray(teamRes.data) ? teamRes.data : (teamRes.data?.data || []));
         setLeadsQueue(queueRes.data.queue || []);
         if (eligibilityRes?.data) setTeamEligibility(eligibilityRes.data);
@@ -155,15 +155,15 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
     }
   };
 
-  const handleApproveByHr = async (candidate: any) => {
+  const handleApproveByHr = async (candidate: any, carenciaDays: number = 0) => {
     try {
       setProcessingCandidateId(candidate.id);
       setError('');
-      const res = await api.patch(`/users/${candidate.id}/hr-approve`);
-      alert(res.data?.message || `Documentação de ${candidate.nome_guerra} aprovada! O corretor foi encaminhado para a Gerência.`);
+      const res = await api.patch(`/users/${candidate.id}/hr-approve`, { carenciaDays });
+      alert(res.data?.message || `Corretor ${candidate.nome_guerra} aprovado com sucesso pela Diretoria/RH e ativado para check-in!`);
       await loadData();
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Falha ao aprovar documentação.');
+      setError(err.response?.data?.message || 'Falha ao aprovar cadastro.');
     } finally {
       setProcessingCandidateId(null);
     }
@@ -454,26 +454,26 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                 </select>
               </ScrollView>
 
-              <View style={{ flexDirection: 'row', gap: 10, justifyContent: 'flex-end' }}>
-                <TouchableOpacity
-                  style={{ paddingHorizontal: 16, paddingVertical: 10, borderRadius: 6, backgroundColor: '#f5d2cd' }}
+              <View style={{ flexDirection: 'row', gap: 14, justifyContent: 'flex-end', alignItems: 'center' }}>
+                <IconButton
+                  name="x"
+                  label="Cancelar"
+                  size="small"
+                  borderColor="#c13a28"
+                  color="#c13a28"
+                  textColor="#c13a28"
                   onPress={() => setEditingCandidate(null)}
                   disabled={!!processingCandidateId}
-                >
-                  <Text style={{ color: '#c13a28', fontWeight: '700', fontSize: 13 }}>Cancelar</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={{ paddingHorizontal: 18, paddingVertical: 10, borderRadius: 6, backgroundColor: '#2563eb' }}
+                />
+                <IconButton
+                  name="save"
+                  label="Salvar Ajustes"
+                  size="small"
+                  borderColor={primaryColor}
                   onPress={handleSaveEditCandidate}
                   disabled={!!processingCandidateId}
-                >
-                  {processingCandidateId ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 13 }}>Salvar Ajustes</Text>
-                  )}
-                </TouchableOpacity>
+                  loading={!!processingCandidateId}
+                />
               </View>
             </View>
           </View>
@@ -491,9 +491,16 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
       />
     <View style={styles.container}>
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
-        <TouchableOpacity onPress={onBack} style={styles.backButton}>
-          <Text style={styles.backText}>‹ Voltar ao Painel</Text>
-        </TouchableOpacity>
+        <IconButton
+          name="arrow-left"
+          label="Voltar ao Painel"
+          size="small"
+          borderColor="#ffffff"
+          color="#ffffff"
+          textColor="#ffffff"
+          backgroundColor="transparent"
+          onPress={onBack}
+        />
         <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
         <Text style={styles.headerTitle}>{isRh ? 'Gestão de Estágios e Carreiras (RH)' : isDirector ? 'Gestão Executiva de Corretores' : 'Gestão de Corretores'}</Text>
         <Text style={styles.headerSubtitle}>
@@ -529,26 +536,26 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
           </View>
         )}
 
-        {/* MODO DIRETORIA / RH: FILA DE TRIAGEM DOCUMENTAL DE NOVOS CADASTROS */}
+        {/* MODO DIRETORIA / RH: FILA DE APROVAÇÃO EXCLUSIVA DE NOVOS CADASTROS */}
         {isDirectorOrRh && (
           <View style={[styles.sectionCard, { borderColor: '#3b82f6', borderWidth: 1.5 }]}>
             <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
               <Text style={[styles.sectionTitle, { color: '#1d4ed8', marginBottom: 0 }]}>
-                📑 Triagem Documental de Novos Cadastros ({pendingHrReview.length})
+                📑 Aprovação de Novos Cadastros ({pendingHrReview.length})
               </Text>
               {pendingHrReview.length > 0 && (
                 <View style={{ backgroundColor: '#dbeafe', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 }}>
-                  <Text style={{ color: '#1e40af', fontWeight: '800', fontSize: 12 }}>Aguardando RH</Text>
+                  <Text style={{ color: '#1e40af', fontWeight: '800', fontSize: 12 }}>Aguardando Diretoria / RH</Text>
                 </View>
               )}
             </View>
             <Text style={styles.sectionDesc}>
-              Corretores que enviaram cadastro público com documentos. Valide os dados e aprove para liberar o cadastro para o Gerente responsável.
+              Aprovação centralizada exclusivamente na Diretoria e no RH. Ao aprovar, o corretor é ativado imediatamente e liberado para check-in.
             </Text>
 
             {pendingHrReview.length === 0 ? (
               <View style={{ paddingVertical: 14, alignItems: 'center' }}>
-                <Text style={styles.emptyText}>Nenhum corretor aguardando triagem documental no momento.</Text>
+                <Text style={styles.emptyText}>Nenhum corretor aguardando aprovação no momento.</Text>
               </View>
             ) : (
               <View style={{ gap: 10, marginTop: 10 }}>
@@ -565,37 +572,41 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                           📧 {candidate.email} · CRECI: <Text style={{ fontWeight: '600' }}>{candidate.creci || '—'}</Text>
                         </Text>
                         <Text style={{ fontSize: 12, color: '#c13a28', marginTop: 2 }}>
-                          👤 Gerente Indicado: <Text style={{ fontWeight: '700' }}>Gerente {candidate.manager_nome_guerra || 'Sem gerente'}</Text>
+                          👤 Equipe Vinculada: <Text style={{ fontWeight: '700' }}>Gerente {candidate.manager_nome_guerra || 'Sem gerente'}</Text>
                         </Text>
                         <Text style={{ fontSize: 11, color: '#c13a28', marginTop: 2 }}>
                           🕒 Enviado em: {new Date(candidate.created_at).toLocaleString('pt-BR')}
                         </Text>
                       </View>
 
-                      <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-                        <TouchableOpacity
-                          style={{ backgroundColor: '#16a34a', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6 }}
-                          onPress={() => handleApproveByHr(candidate)}
+                      <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', alignItems: 'center' }}>
+                        <IconButton
+                          name="check-circle"
+                          label="Aprovar e Ativar"
+                          size="small"
+                          borderColor={primaryColor}
+                          loading={processingCandidateId === candidate.id}
                           disabled={processingCandidateId === candidate.id}
-                        >
-                          <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 12 }}>✓ Aprovar</Text>
-                        </TouchableOpacity>
+                          onPress={() => handleApproveByHr(candidate, 0)}
+                        />
 
-                        <TouchableOpacity
-                          style={{ backgroundColor: '#2563eb', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 6 }}
+                        <IconButton
+                          name="edit-2"
+                          label="Ajustar"
+                          size="small"
+                          borderColor={primaryColor}
+                          disabled={processingCandidateId === candidate.id}
                           onPress={() => handleOpenEditCandidate(candidate)}
-                          disabled={processingCandidateId === candidate.id}
-                        >
-                          <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 12 }}>✏️ Ajustar</Text>
-                        </TouchableOpacity>
+                        />
 
-                        <TouchableOpacity
-                          style={{ backgroundColor: '#ef4444', paddingHorizontal: 10, paddingVertical: 8, borderRadius: 6 }}
-                          onPress={() => handleHardDeleteCandidate(candidate)}
+                        <IconButton
+                          name="trash-2"
+                          label="Excluir"
+                          size="small"
+                          borderColor={primaryColor}
                           disabled={processingCandidateId === candidate.id}
-                        >
-                          <Text style={{ color: '#ffffff', fontWeight: '700', fontSize: 12 }}>🗑️ Excluir</Text>
-                        </TouchableOpacity>
+                          onPress={() => handleHardDeleteCandidate(candidate)}
+                        />
                       </View>
                     </View>
                   </View>
@@ -637,16 +648,28 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
           )}
           
           {inviteLink ? (
-            <View style={styles.linkContainer}>
-              <Text style={styles.linkLabel} numberOfLines={1}>{inviteLink}</Text>
-              <TouchableOpacity style={[styles.copyButton, { backgroundColor: primaryColor }]} onPress={handleCopyLink}>
-                <Text style={styles.copyButtonText}>Copiar Link</Text>
-              </TouchableOpacity>
+            <View style={[styles.linkContainer, { flexDirection: 'column', alignItems: 'center', gap: 10 }]}>
+              <Text style={styles.linkLabel} numberOfLines={2}>{inviteLink}</Text>
+              <IconButton
+                name="copy"
+                label="Copiar Link"
+                size="medium"
+                borderColor={primaryColor}
+                onPress={handleCopyLink}
+              />
             </View>
           ) : (
-            <TouchableOpacity style={[styles.generateButton, { backgroundColor: primaryColor }]} onPress={handleGenerateLink} disabled={generatingLink}>
-              {generatingLink ? <ActivityIndicator color="#FFF" /> : <Text style={styles.generateButtonText}>Gerar Link de Cadastro</Text>}
-            </TouchableOpacity>
+            <View style={{ alignItems: 'center', marginTop: 10 }}>
+              <IconButton
+                name="link"
+                label="Gerar Link de Cadastro"
+                size="large"
+                borderColor={primaryColor}
+                onPress={handleGenerateLink}
+                disabled={generatingLink}
+                loading={generatingLink}
+              />
+            </View>
           )}
         </View>
 
@@ -823,53 +846,9 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
           </View>
         )}
 
-        {/* MODO GERENTE: APROVAÇÕES PENDENTES, EQUIPE E FILA DE LEADS */}
+        {/* MODO GERENTE: EQUIPE E FILA DE LEADS (Aprovações centralizadas exclusivamente na Diretoria/RH) */}
         {!isDirectorOrRh && (
           <>
-            {/* FILA DE APROVAÇÕES PENDENTES */}
-            <Text style={styles.subHeader}>Aprovações Pendentes ({pending.length})</Text>
-            <FlatList
-              data={pending}
-              keyExtractor={(item) => item.id}
-              style={styles.list}
-              scrollEnabled={false}
-              ListEmptyComponent={<Text style={styles.emptyText}>Nenhum corretor aguardando aprovação.</Text>}
-              renderItem={({ item }) => (
-                <TouchableOpacity style={styles.brokerCard} activeOpacity={0.8} onPress={() => setSelectedBrokerId(item.id)}>
-                  <View style={styles.brokerInfo}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <Text style={styles.brokerName}>{item.name}</Text>
-                      {renderStageBadge(item)}
-                    </View>
-                    <Text style={styles.brokerSub}>Nome de Guerra: {item.nome_guerra}</Text>
-                    <Text style={styles.brokerSub}>E-mail: {item.email}</Text>
-                    <Text style={styles.brokerSub}>CRECI: {item.creci || 'Não informado / Em formação'}</Text>
-                  </View>
-
-                  {approvingId === item.id ? (
-                    <ActivityIndicator color={primaryColor} />
-                  ) : (
-                    <View style={styles.actionContainer}>
-                      <Text style={styles.actionLabel}>Aprovar Corretor:</Text>
-                      <View style={styles.buttonGroup}>
-                        <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#15803d' }]} onPress={() => handleApprove(item.id, 0)}>
-                          <Text style={styles.approveBtnText}>Sem carência</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#34c759' }]} onPress={() => handleApprove(item.id, 7)}>
-                          <Text style={styles.approveBtnText}>7 Dias</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#ff9500' }]} onPress={() => handleApprove(item.id, 15)}>
-                          <Text style={styles.approveBtnText}>15 Dias</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity style={[styles.approveBtn, { backgroundColor: '#ff3b30' }]} onPress={() => handleApprove(item.id, 30)}>
-                          <Text style={styles.approveBtnText}>30 Dias</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              )}
-            />
 
             {/* FILA DA ROLETA / LEADS AO VIVO DA GERÊNCIA */}
             <Text style={styles.subHeader}>Fila da Roleta e Leads da Equipe ({leadsQueue.length})</Text>
@@ -910,9 +889,13 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                         {item.isHabilitado}
                       </Text>
                       {isHabilitado && (
-                        <TouchableOpacity style={[styles.copyNameBtn, { backgroundColor: primaryColor }]} onPress={() => handleCopyBrokerName(item.nomeGuerra)}>
-                          <Text style={styles.copyNameBtnText}>Copiar Nome</Text>
-                        </TouchableOpacity>
+                        <IconButton
+                          name="copy"
+                          label="Copiar Nome"
+                          size="small"
+                          borderColor={primaryColor}
+                          onPress={() => handleCopyBrokerName(item.nomeGuerra)}
+                        />
                       )}
                     </View>
                   </View>
