@@ -102,18 +102,21 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
         });
       } catch {
         location = await Location.getLastKnownPositionAsync();
-        if (!location) {
-          throw new Error('Não foi possível obter sua localização GPS. Verifique se a localização está ativada no celular e tente novamente.');
+        const ageMs = Date.now() - (location?.timestamp ?? 0);
+        if (!location || ageMs > 90_000) {
+          throw new Error('Não foi possível obter uma localização GPS recente. Aproxime-se de uma janela ou área aberta e tente novamente.');
         }
       }
 
       const { latitude, longitude } = location.coords;
+      const capturedAt = location.timestamp || Date.now();
 
       // C. Dispara a requisição de check-in para o backend
       const response = await api.post('/presences/check-in', {
         boothId: booth.id,
         latitude,
         longitude,
+        capturedAt,
       });
 
       // D. Notifica o componente pai sobre o sucesso do check-in

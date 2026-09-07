@@ -229,13 +229,20 @@ export default function Dashboard() {
         location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
       } catch {
         location = await Location.getLastKnownPositionAsync();
-        if (!location) throw new Error('Não foi possível obter sua localização GPS para confirmar o ping.');
+        const ageMs = Date.now() - (location?.timestamp ?? 0);
+        // Para a confirmação de presença (antifraude), tolerância máxima estrita de 60 segundos
+        if (!location || ageMs > 60_000) {
+          throw new Error('Não foi possível obter sinal de GPS recente no plantão para confirmar presença. Aproxime-se de uma área aberta ou conecte-se ao Wi-Fi oficial.');
+        }
       }
+
+      const capturedAt = location.timestamp || Date.now();
 
       const response = await api.post('/presences/ping-response', {
         pingLogId: pendingSessionPingId,
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
+        capturedAt,
       });
       setPendingSessionPingIdState(null);
       alert(response.data?.message || 'Presença confirmada. O próximo ciclo será calculado automaticamente.');
