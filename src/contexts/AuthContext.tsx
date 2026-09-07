@@ -127,10 +127,21 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // 4. Método de Logout: Limpa os dados e encerra a sessão de forma segura
   const logout = async () => {
     try {
+      // Inativa o token de push deste dispositivo no backend para não receber notificações após desconectar
+      try {
+        const storedFcmToken = await AsyncStorage.getItem('@abiatar:fcm_token');
+        if (storedFcmToken) {
+          await api.post('/notifications/devices/deactivate', { token: storedFcmToken });
+        }
+      } catch (pushErr) {
+        console.warn('[AUTH] Falha ao desativar token push no logout:', pushErr);
+      }
+
       await AsyncStorage.multiRemove([
         '@abiatar:token',
         '@abiatar:user',
         '@abiatar:tenant',
+        '@abiatar:fcm_token',
       ]);
       
       setUser(null);
@@ -140,6 +151,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         '[AUTH - ERRO] Falha ao limpar o armazenamento durante o logout:',
         error instanceof Error ? error.message : String(error),
       );
+      setUser(null);
+      setTenant(null);
     }
   };
 

@@ -1,5 +1,6 @@
 // src/services/push.ts
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import api from './api';
 
 const firebaseConfig = {
@@ -84,6 +85,10 @@ export async function registerWebPushNotifications(): Promise<boolean> {
       platform: 'web',
       deviceLabel: navigator.userAgent.slice(0, 140),
     });
+
+    try {
+      await AsyncStorage.setItem('@abiatar:fcm_token', token);
+    } catch {}
 
     onMessage(messaging, (payload) => {
       window.dispatchEvent(new CustomEvent('abiatar:push', { detail: payload }));

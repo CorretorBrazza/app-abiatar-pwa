@@ -94,10 +94,18 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
         throw new Error('Permissão de localização (GPS) é necessária para realizar o check-in.');
       }
 
-      // B. Captura as coordenadas atuais de latitude/longitude
-      const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
+      // B. Captura as coordenadas atuais de latitude/longitude com resiliência para ambientes fechados
+      let location;
+      try {
+        location = await Location.getCurrentPositionAsync({
+          accuracy: Location.Accuracy.Balanced,
+        });
+      } catch {
+        location = await Location.getLastKnownPositionAsync();
+        if (!location) {
+          throw new Error('Não foi possível obter sua localização GPS. Verifique se a localização está ativada no celular e tente novamente.');
+        }
+      }
 
       const { latitude, longitude } = location.coords;
 

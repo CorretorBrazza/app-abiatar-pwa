@@ -223,10 +223,22 @@ export default function Dashboard() {
       setConfirmingPresence(true);
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') throw new Error('A confirmação exige permissão de localização.');
-      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
-      await api.post('/presences/ping-response', { pingLogId: pendingSessionPingId, latitude: location.coords.latitude, longitude: location.coords.longitude });
+      
+      let location;
+      try {
+        location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      } catch {
+        location = await Location.getLastKnownPositionAsync();
+        if (!location) throw new Error('Não foi possível obter sua localização GPS para confirmar o ping.');
+      }
+
+      const response = await api.post('/presences/ping-response', {
+        pingLogId: pendingSessionPingId,
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
       setPendingSessionPingIdState(null);
-      alert('Presença confirmada. O próximo ciclo será calculado automaticamente.');
+      alert(response.data?.message || 'Presença confirmada. O próximo ciclo será calculado automaticamente.');
       const current = await api.get('/presences/current');
       setActiveSession(current.data.presence);
     } catch (error: any) { alert(error.response?.data?.message || error.message || 'Não foi possível confirmar a presença.'); }
@@ -547,7 +559,7 @@ export default function Dashboard() {
                   </View>
                 </View>
                 <Text style={{ color: '#fff', fontSize: 24, fontWeight: '900', marginVertical: 4 }}>
-                  🎰 {brokerSummary.activeShift.roletaPosition}º Lugar na Fila
+                  🎰 {brokerSummary.activeShift.effectivePosition || brokerSummary.activeShift.roletaPosition}º Lugar na Fila
                 </Text>
                 <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 10, marginVertical: 8, gap: 4 }}>
                   <Text style={{ color: '#f0b5ab', fontSize: 12 }}>
@@ -619,7 +631,7 @@ export default function Dashboard() {
                   >
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                       <View style={{ backgroundColor: '#1c1c1e', width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center' }}>
-                        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{item.roletaPosition || '—'}º</Text>
+                        <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{item.effectivePosition || item.roletaPosition || '—'}º</Text>
                       </View>
                       <View>
                         <Text style={{ fontWeight: '700', color: '#111827', fontSize: 14 }}>
