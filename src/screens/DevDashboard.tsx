@@ -178,6 +178,147 @@ interface UserProfile {
   }>;
 }
 
+interface GridPosition {
+  presenceId: string;
+  brokerId: string;
+  nomeGuerra: string;
+  roletaPosition: number | null;
+  roletaEntryType: string | null;
+  checkInAt: string;
+  minutesActive: number;
+  lastConfirmedAt: string | null;
+  nextConfirmationAt: string | null;
+  accumulatedMinutes: number;
+  hasPendingPing: boolean;
+}
+
+interface RoletaGroup {
+  roletaName: string;
+  waitingDraw: number;
+  positions: Array<GridPosition>;
+}
+
+interface PendingPingItem {
+  id: string;
+  presenceId: string;
+  brokerId: string | null;
+  nomeGuerra: string;
+  boothId: string | null;
+  boothName: string;
+  tenantName: string;
+  sentAt: string;
+  minutesSince: number;
+  deadlineMinutes: number;
+  overdue: boolean;
+}
+
+interface BoothGridItem {
+  boothId: string;
+  boothName: string;
+  tenantId: string;
+  tenantName: string;
+  address: string | null;
+  lifecycleStatus: string;
+  publishedAt: string | null;
+  wifiCount: number;
+  minBrokersRequired: number;
+  gpsRadius: number;
+  ruleVersion: number | null;
+  roletaSchedule: {
+    roleta1: string | null;
+    roleta2: string | null;
+    roleta3: string | null;
+    weekend: string | null;
+    checkinEarlyMinutes: number;
+    posBarraMinutes: number;
+    pingIntervalMinutes: number;
+    pingDeadlineMinutes: number;
+  } | null;
+  onlineCount: number;
+  awaitingRevalidation: number;
+  pendingPingCount: number;
+  todayCheckins: number;
+  lastCheckInAt: string | null;
+  coverageOk: boolean;
+  coverageGap: number;
+  currentRoletas: RoletaGroup[];
+}
+
+interface BrokerOverviewData {
+  updatedAt: string;
+  overall: {
+    onlineTotal: number;
+    awaitingRevalidation: number;
+    waitingDraw: number;
+    inQueue: number;
+    pendingPingsTotal: number;
+  };
+  byBooth: Array<{
+    boothId: string;
+    boothName: string;
+    tenantName: string;
+    lifecycleStatus: string;
+    onlineCount: number;
+    awaitingRevalidation: number;
+    pendingPingCount: number;
+    coverageOk: boolean;
+    coverageGap: number;
+    waitingDraw: number;
+    inQueue: number;
+    roletas: RoletaGroup[];
+  }>;
+  pendingPings: Array<PendingPingItem>;
+}
+
+interface DeadmanOverviewData {
+  updatedAt: string;
+  summary: {
+    totalOnline: number;
+    pending: number;
+    overdue: number;
+    aboutToPing: number;
+    suspendedToday: number;
+  };
+  status24h: Record<string, number>;
+  pendingPings: Array<PendingPingItem>;
+  aboutToPing: Array<{
+    presenceId: string;
+    brokerId: string;
+    nomeGuerra: string;
+    boothId: string;
+    boothName: string;
+    tenantName: string;
+    nextConfirmationAt: string;
+    minutesOverdue: number;
+  }>;
+}
+
+interface StatsHistoryData {
+  updatedAt: string;
+  days: number;
+  perDay: Array<{
+    date: string;
+    total: number;
+    online: number;
+    completed: number;
+    invalidated: number;
+    absent: number;
+    paused: number;
+  }>;
+  today: { total: number; byStatus: Record<string, number> };
+  topBrokersToday: Array<{ nome_guerra: string; email: string; tenant_name: string; checkins: string | number; minutes_sum: string | number }>;
+  boothCheckinsToday: Array<{ booth_id: string; booth_name: string; lifecycle_status: string; checkins: string | number }>;
+}
+
+interface SqlResultData {
+  success: boolean;
+  durationMs: number;
+  rowCount: number;
+  truncated: boolean;
+  columns: string[];
+  rows: Array<Record<string, any>>;
+}
+
 // ========================= RÓTULOS =========================
 
 const ROLE_LABELS: Record<string, string> = {
@@ -251,7 +392,7 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
   const [authError, setAuthError] = useState('');
   const [authLoading, setAuthLoading] = useState(false);
 
-  type TabKey = 'health' | 'tenants' | 'audit' | 'tools' | 'db' | 'live' | 'users';
+  type TabKey = 'health' | 'tenants' | 'audit' | 'tools' | 'db' | 'live' | 'users' | 'broker' | 'deadman' | 'stats' | 'sql';
   const [currentTab, setCurrentTab] = useState<TabKey>('health');
 
   const [healthData, setHealthData] = useState<HealthData | null>(null);
@@ -264,6 +405,17 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
   const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
   const [liveData, setLiveData] = useState<LiveOverview | null>(null);
   const [liveTenantFilter, setLiveTenantFilter] = useState<string>('');
+  const [gridData, setGridData] = useState<BoothGridItem[]>([]);
+
+  const [brokerData, setBrokerData] = useState<BrokerOverviewData | null>(null);
+  const [deadmanData, setDeadmanData] = useState<DeadmanOverviewData | null>(null);
+  const [statsData, setStatsData] = useState<StatsHistoryData | null>(null);
+  const [statsDays, setStatsDays] = useState(14);
+  const [statsTenantFilter, setStatsTenantFilter] = useState<string>('');
+
+  const [sqlInput, setSqlInput] = useState('');
+  const [sqlResult, setSqlResult] = useState<SqlResultData | null>(null);
+  const [runningSql, setRunningSql] = useState(false);
 
   const [usersPayload, setUsersPayload] = useState<UsersPayload | null>(null);
   const [userSearch, setUserSearch] = useState('');
@@ -290,6 +442,9 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
   const [sendingTestEmail, setSendingTestEmail] = useState(false);
   const [testPushTitle, setTestPushTitle] = useState('Teste de Notificação DEV');
   const [testPushBody, setTestPushBody] = useState('Mensagem de telemetria enviada pelo SuperAdmin.');
+  const [testPushScope, setTestPushScope] = useState<'first5' | 'all'>('first5');
+  const [testPushUserId, setTestPushUserId] = useState('');
+  const [testPushTenantId, setTestPushTenantId] = useState('');
   const [sendingTestPush, setSendingTestPush] = useState(false);
 
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
@@ -325,7 +480,12 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
     setHealthData(null);
     setDbStatus(null);
     setLiveData(null);
+    setGridData([]);
     setUsersPayload(null);
+    setBrokerData(null);
+    setDeadmanData(null);
+    setStatsData(null);
+    setSqlResult(null);
     if (typeof window !== 'undefined') {
       sessionStorage.removeItem('@abiatar:dev_token');
     }
@@ -429,15 +589,126 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
     }
   }, [devToken, userSearch, userTenantFilter, userRoleFilter, userStatusFilter, userPage, getDevHeaders]);
 
+  const loadBoothGrid = useCallback(async () => {
+    if (!devToken) return;
+    try {
+      const res = await api.get('/dev/booths/grid', {
+        ...getDevHeaders(),
+        params: liveTenantFilter ? { tenantId: liveTenantFilter } : {},
+      });
+      setGridData(res.data?.booths || []);
+    } catch (err: any) {
+      console.error('Erro ao carregar grade de plantões:', err);
+    }
+  }, [devToken, liveTenantFilter, getDevHeaders]);
+
+  const loadBrokerOverview = useCallback(async () => {
+    if (!devToken) return;
+    try {
+      setLoading(true);
+      const res = await api.get('/dev/broker/overview', getDevHeaders());
+      setBrokerData(res.data);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: 'Falha ao carregar filas/broker: ' + (err.response?.data?.message || err.message) });
+    } finally {
+      setLoading(false);
+    }
+  }, [devToken, getDevHeaders]);
+
+  const loadDeadmanOverview = useCallback(async () => {
+    if (!devToken) return;
+    try {
+      setLoading(true);
+      const res = await api.get('/dev/deadman/overview', getDevHeaders());
+      setDeadmanData(res.data);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: 'Falha ao carregar monitor deadman: ' + (err.response?.data?.message || err.message) });
+    } finally {
+      setLoading(false);
+    }
+  }, [devToken, getDevHeaders]);
+
+  const loadStatsHistory = useCallback(async () => {
+    if (!devToken) return;
+    try {
+      setLoading(true);
+      const res = await api.get('/dev/stats/history', {
+        ...getDevHeaders(),
+        params: { days: statsDays, tenantId: statsTenantFilter || undefined },
+      });
+      setStatsData(res.data);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: 'Falha ao carregar histórico: ' + (err.response?.data?.message || err.message) });
+    } finally {
+      setLoading(false);
+    }
+  }, [devToken, statsDays, statsTenantFilter, getDevHeaders]);
+
+  const handleRunSql = async () => {
+    if (!sqlInput.trim()) {
+      setFeedback({ type: 'error', message: 'Digite uma consulta SQL (somente leitura).' });
+      return;
+    }
+    try {
+      setRunningSql(true);
+      setFeedback(null);
+      const res = await api.post('/dev/sql', { sql: sqlInput.trim() }, getDevHeaders());
+      setSqlResult(res.data);
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.response?.data?.message || 'Erro ao executar consulta.' });
+    } finally {
+      setRunningSql(false);
+    }
+  };
+
+  const handleReprocessQueue = async () => {
+    try {
+      setLoading(true);
+      setFeedback(null);
+      const res = await api.post('/dev/broker/process', {}, getDevHeaders());
+      setFeedback({ type: res.data?.success ? 'success' : 'error', message: `Motor reprocessado: ${res.data?.processedPresences ?? 0} presenças, ${res.data?.pingsGenerated ?? 0} pings, ${res.data?.brokersSuspended ?? 0} suspensos.` });
+      loadBrokerOverview();
+      loadDeadmanOverview();
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.response?.data?.message || 'Erro ao reprocessar fila.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForceDeadmanPing = async (presenceId: string) => {
+    try {
+      setFeedback(null);
+      const res = await api.post(`/dev/deadman/${presenceId}/force-ping`, {}, getDevHeaders());
+      setFeedback({ type: res.data?.success ? 'success' : 'error', message: res.data?.message || 'Ping manual disparado.' });
+      loadDeadmanOverview();
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.response?.data?.message || 'Erro ao disparar ping manual.' });
+    }
+  };
+
   useEffect(() => {
     if (!devToken) return;
     if (currentTab === 'health') loadHealth();
     if (currentTab === 'tenants') loadTenants();
     if (currentTab === 'audit') loadAuditLogs();
     if (currentTab === 'db') loadDbStatus();
-    if (currentTab === 'live') loadLiveOverview();
+    if (currentTab === 'live') {
+      loadLiveOverview();
+      loadBoothGrid();
+      if (tenants.length === 0) loadTenants();
+    }
     if (currentTab === 'users') loadUsers();
-  }, [devToken, currentTab, loadHealth, loadTenants, loadAuditLogs, loadDbStatus, loadLiveOverview, loadUsers]);
+    if (currentTab === 'broker') {
+      loadBrokerOverview();
+      if (tenants.length === 0) loadTenants();
+    }
+    if (currentTab === 'deadman') loadDeadmanOverview();
+    if (currentTab === 'stats') {
+      loadStatsHistory();
+      if (tenants.length === 0) loadTenants();
+    }
+  }, [devToken, currentTab, loadHealth, loadTenants, loadAuditLogs, loadDbStatus, loadLiveOverview, loadUsers, loadBrokerOverview, loadDeadmanOverview, loadStatsHistory, loadBoothGrid, tenants.length]);
 
   useEffect(() => {
     if (!devToken || currentTab !== 'users') return;
@@ -516,7 +787,17 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
     try {
       setSendingTestPush(true);
       setFeedback(null);
-      const res = await api.post('/dev/test-push', { title: testPushTitle, body: testPushBody }, getDevHeaders());
+      const res = await api.post(
+        '/dev/test-push',
+        {
+          title: testPushTitle,
+          body: testPushBody,
+          scope: testPushScope,
+          userId: testPushUserId.trim() || undefined,
+          tenantId: testPushTenantId || undefined,
+        },
+        getDevHeaders(),
+      );
       setFeedback({ type: res.data.success ? 'success' : 'error', message: res.data.message });
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.response?.data?.message || 'Erro ao disparar push de teste.' });
@@ -619,7 +900,11 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
     { key: 'audit', label: 'Auditoria' },
     { key: 'db', label: 'Banco & Migrações' },
     { key: 'live', label: 'Presenças / Booths' },
+    { key: 'broker', label: 'Filas / Broker' },
+    { key: 'deadman', label: 'Deadman' },
+    { key: 'stats', label: 'Histórico' },
     { key: 'users', label: 'Usuários' },
+    { key: 'sql', label: 'SQL Console' },
     { key: 'tools', label: 'Dev Tools' },
   ];
 
@@ -1079,6 +1364,43 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
                 </View>
 
                 <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Grade de Plantões · Cobertura & Regras</Text>
+                  <View style={{ gap: 8, marginTop: 10 }}>
+                    {gridData.length === 0 ? (
+                      <Text style={{ color: '#71717a', fontSize: 12 }}>Nenhum plantão na grade.</Text>
+                    ) : (
+                      gridData.map((b) => (
+                        <View key={b.boothId} style={{ borderBottomWidth: 1, borderBottomColor: '#1e1e24', paddingVertical: 10 }}>
+                          <View style={styles.rowBetween}>
+                            <View style={{ flexShrink: 1 }}>
+                              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>{b.boothName}</Text>
+                              <Text style={{ color: '#71717a', fontSize: 11 }}>
+                                {b.tenantName} · {b.lifecycleStatus} · Wi-Fi {b.wifiCount} · raio {b.gpsRadius}m
+                              </Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                              <Badge color={b.coverageOk ? '#22c55e' : '#ef4444'} label={b.coverageOk ? 'COBERTO' : `FALTAM ${b.coverageGap}`} />
+                              <Badge color="#38bdf8" label={`${b.onlineCount}/${b.minBrokersRequired} min`} />
+                              <Badge color={b.pendingPingCount > 0 ? '#eab308' : '#3f3f46'} label={`${b.pendingPingCount} pings`} />
+                            </View>
+                          </View>
+                          {b.roletaSchedule && (
+                            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+                              <Text style={{ color: '#a1a1aa', fontSize: 11 }}>Roletas: {[b.roletaSchedule.roleta1, b.roletaSchedule.roleta2, b.roletaSchedule.roleta3].filter(Boolean).join(', ') || '—'} {b.roletaSchedule.weekend ? `(fim de semana ${b.roletaSchedule.weekend})` : ''}</Text>
+                              <Text style={{ color: '#a1a1aa', fontSize: 11 }}>Ping: {b.roletaSchedule.pingIntervalMinutes}min · prazo {b.roletaSchedule.pingDeadlineMinutes}min</Text>
+                              <Text style={{ color: '#71717a', fontSize: 11 }}>v{Number(b.ruleVersion) || 0}</Text>
+                            </View>
+                          )}
+                          {b.lastCheckInAt ? (
+                            <Text style={{ color: '#3f3f46', fontSize: 11, marginTop: 4 }}>Último check-in: {formatDate(b.lastCheckInAt)} · hoje: {b.todayCheckins}</Text>
+                          ) : null}
+                        </View>
+                      ))
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.sectionCard}>
                   <Text style={styles.sectionTitle}>Logs do Deadman (últimos)</Text>
                   <View style={{ gap: 8, marginTop: 10 }}>
                     {liveData.deadmanRecent.length === 0 ? (
@@ -1222,6 +1544,408 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
           </View>
         )}
 
+        {/* ---------------- FILAS / BROKER ---------------- */}
+        {currentTab === 'broker' && (
+          <View style={{ gap: 16 }}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.sectionTitle}>Filas & Broker em Tempo Real</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity style={styles.refreshBtn} onPress={loadBrokerOverview}>
+                  <Text style={styles.refreshBtnText}>Atualizar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.createBtn} onPress={handleReprocessQueue} disabled={loading}>
+                  <Text style={styles.createBtnText}>{loading ? 'Processando...' : 'Reprocessar Motor'}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {brokerData ? (
+              <>
+                <View style={styles.metricsGrid}>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricLabel}>Corretores on-line</Text>
+                    <Text style={[styles.metricValue, { color: '#22c55e' }]}>{brokerData.overall.onlineTotal}</Text>
+                    <Text style={styles.metricSub}>Em plantão agora</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricLabel}>Aguardando revalidar</Text>
+                    <Text style={[styles.metricValue, { color: '#f97316' }]}>{brokerData.overall.awaitingRevalidation}</Text>
+                    <Text style={styles.metricSub}>Ausentes pós-ticket</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricLabel}>Aguardando sorteio</Text>
+                    <Text style={[styles.metricValue, { color: '#eab308' }]}>{brokerData.overall.waitingDraw}</Text>
+                    <Text style={styles.metricSub}>Sem posição na roleta</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricLabel}>Na fila (posição)</Text>
+                    <Text style={[styles.metricValue, { color: '#38bdf8' }]}>{brokerData.overall.inQueue}</Text>
+                    <Text style={styles.metricSub}>Com posição definida</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricLabel}>Pings pendentes</Text>
+                    <Text style={[styles.metricValue, { color: '#ef4444' }]}>{brokerData.overall.pendingPingsTotal}</Text>
+                    <Text style={styles.metricSub}>Deadman aguardando</Text>
+                  </View>
+                </View>
+
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Filas por Plantão</Text>
+                  <View style={{ gap: 8, marginTop: 10 }}>
+                    {brokerData.byBooth.length === 0 ? (
+                      <Text style={{ color: '#71717a', fontSize: 12 }}>Nenhum plantão cadastrado.</Text>
+                    ) : (
+                      brokerData.byBooth.map((b) => (
+                        <View key={b.boothId} style={{ borderBottomWidth: 1, borderBottomColor: '#1e1e24', paddingVertical: 10 }}>
+                          <View style={styles.rowBetween}>
+                            <View style={{ flexShrink: 1 }}>
+                              <Text style={{ color: '#fff', fontSize: 14, fontWeight: '700' }}>{b.boothName}</Text>
+                              <Text style={{ color: '#71717a', fontSize: 11 }}>{b.tenantName} · {b.lifecycleStatus}</Text>
+                            </View>
+                            <View style={{ flexDirection: 'row', gap: 6 }}>
+                              <Badge color={b.coverageOk ? '#22c55e' : '#ef4444'} label={b.coverageOk ? 'COBERTO' : `FALTA ${b.coverageGap}`} />
+                              <Badge color="#38bdf8" label={`${b.onlineCount} on`} />
+                              <Badge color={b.pendingPingCount > 0 ? '#eab308' : '#3f3f46'} label={`${b.pendingPingCount} pings`} />
+                            </View>
+                          </View>
+                          {b.roletas.length === 0 ? (
+                            <Text style={{ color: '#71717a', fontSize: 12, marginTop: 8 }}>Nenhum corretor na roleta agora.</Text>
+                          ) : (
+                            b.roletas.map((r) => (
+                              <View key={r.roletaName} style={{ marginTop: 8, paddingLeft: 10, borderLeftWidth: 2, borderLeftColor: '#27272a' }}>
+                                <Text style={{ color: '#38bdf8', fontSize: 12, fontWeight: '700' }}>
+                                  {r.roletaName} · {r.positions.length} na fila{r.waitingDraw > 0 ? ` · ${r.waitingDraw} aguardando sorteio` : ''}
+                                </Text>
+                                {r.positions.map((p) => (
+                                  <View key={p.presenceId} style={styles.tableRow}>
+                                    <Text style={{ color: '#fff', fontSize: 12, width: 26 }}>#{p.roletaPosition ?? '—'}</Text>
+                                    <Text style={{ color: '#fff', fontSize: 12, flex: 1 }}>{p.nomeGuerra}</Text>
+                                    <Text style={{ color: p.hasPendingPing ? '#eab308' : '#71717a', fontSize: 11, marginRight: 8 }}>
+                                      {p.minutesActive} min{p.hasPendingPing ? ' · ping!' : ''}
+                                    </Text>
+                                    <Text style={{ color: '#71717a', fontSize: 11 }}>check {formatTime(p.checkInAt)}</Text>
+                                  </View>
+                                ))}
+                              </View>
+                            ))
+                          )}
+                        </View>
+                      ))
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Pings pendentes do Deadman</Text>
+                  <View style={{ gap: 8, marginTop: 10 }}>
+                    {brokerData.pendingPings.length === 0 ? (
+                      <Text style={{ color: '#71717a', fontSize: 12 }}>Nenhum ping pendente.</Text>
+                    ) : (
+                      brokerData.pendingPings.map((p) => (
+                        <View key={p.id} style={styles.tableRow}>
+                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: p.overdue ? '#ef4444' : '#eab308' }} />
+                          <Text style={{ color: '#fff', fontSize: 13, marginLeft: 6, flex: 1 }}>{p.nomeGuerra}</Text>
+                          <Text style={{ color: '#a1a1aa', fontSize: 11, flex: 1.2 }}>{p.boothName}</Text>
+                          <Text style={{ color: p.overdue ? '#ef4444' : '#eab308', fontSize: 11 }}>
+                            {p.minutesSince}min / {p.deadlineMinutes}min {p.overdue ? '· ATRASADO' : ''}
+                          </Text>
+                        </View>
+                      ))
+                    )}
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#38bdf8" />
+                <Text style={{ color: '#71717a', marginTop: 10 }}>Consultando filas e broker...</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ---------------- DEADMAN ---------------- */}
+        {currentTab === 'deadman' && (
+          <View style={{ gap: 16 }}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.sectionTitle}>Monitor do Dead Man's Switch</Text>
+              <TouchableOpacity style={styles.refreshBtn} onPress={loadDeadmanOverview}>
+                <Text style={styles.refreshBtnText}>Atualizar</Text>
+              </TouchableOpacity>
+            </View>
+
+            {deadmanData ? (
+              <>
+                <View style={styles.metricsGrid}>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricLabel}>Presenças on-line</Text>
+                    <Text style={[styles.metricValue, { color: '#22c55e' }]}>{deadmanData.summary.totalOnline}</Text>
+                    <Text style={styles.metricSub}>Sendo monitoradas</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricLabel}>Pings pendentes</Text>
+                    <Text style={[styles.metricValue, { color: '#eab308' }]}>{deadmanData.summary.pending}</Text>
+                    <Text style={styles.metricSub}>Aguardando resposta</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricLabel}>Atrasados</Text>
+                    <Text style={[styles.metricValue, { color: '#ef4444' }]}>{deadmanData.summary.overdue}</Text>
+                    <Text style={styles.metricSub}>Acima do prazo</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricLabel}>Prestes a pingar</Text>
+                    <Text style={[styles.metricValue, { color: '#f97316' }]}>{deadmanData.summary.aboutToPing}</Text>
+                    <Text style={styles.metricSub}>Vencendo agora</Text>
+                  </View>
+                  <View style={styles.metricCard}>
+                    <Text style={styles.metricLabel}>Suspensos hoje</Text>
+                    <Text style={[styles.metricValue, { color: '#38bdf8' }]}>{deadmanData.summary.suspendedToday}</Text>
+                    <Text style={styles.metricSub}>Sem resposta / fora da área</Text>
+                  </View>
+                </View>
+
+                {Object.keys(deadmanData.status24h).length > 0 && (
+                  <View style={styles.sectionCard}>
+                    <Text style={styles.sectionTitle}>Respostas nas últimas 24h</Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                      {Object.entries(deadmanData.status24h).map(([status, count]) => (
+                        <Badge key={status} color={DEADMAN_STATUS_COLOR[status] || '#a1a1aa'} label={`${status.replace(/_/g, ' ')}: ${count}`} />
+                      ))}
+                    </View>
+                  </View>
+                )}
+
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Pings pendentes ({deadmanData.pendingPings.length})</Text>
+                  <View style={{ gap: 8, marginTop: 10 }}>
+                    {deadmanData.pendingPings.length === 0 ? (
+                      <Text style={{ color: '#71717a', fontSize: 12 }}>Tudo em dia — nenhum ping pendente.</Text>
+                    ) : (
+                      deadmanData.pendingPings.map((p) => (
+                        <View key={p.id} style={[styles.tableRow, { justifyContent: 'space-between' }]}>
+                          <View style={{ flex: 1 }}>
+                            <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: p.overdue ? '#ef4444' : '#eab308' }} />
+                              <Text style={{ color: '#fff', fontSize: 13, marginLeft: 6 }}>{p.nomeGuerra}</Text>
+                            </View>
+                            <Text style={{ color: '#a1a1aa', fontSize: 11, marginTop: 2 }}>
+                              {p.boothName} · {p.tenantName} · enviado {formatTime(p.sentAt)}
+                            </Text>
+                            <Text style={{ color: p.overdue ? '#ef4444' : '#eab308', fontSize: 11 }}>
+                              {p.minutesSince}min sem resposta (prazo {p.deadlineMinutes}min)
+                            </Text>
+                          </View>
+                          <TouchableOpacity style={styles.actionBtn} onPress={() => handleForceDeadmanPing(p.presenceId)}>
+                            <Text style={styles.actionBtnText}>Reenviar ping</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Prestes a pingar ({deadmanData.aboutToPing.length})</Text>
+                  <View style={{ gap: 8, marginTop: 10 }}>
+                    {deadmanData.aboutToPing.length === 0 ? (
+                      <Text style={{ color: '#71717a', fontSize: 12 }}>Nenhuma presença vencida neste momento.</Text>
+                    ) : (
+                      deadmanData.aboutToPing.map((p) => (
+                        <View key={p.presenceId} style={styles.tableRow}>
+                          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#f97316' }} />
+                          <Text style={{ color: '#fff', fontSize: 13, marginLeft: 6, flex: 1 }}>{p.nomeGuerra}</Text>
+                          <Text style={{ color: '#a1a1aa', fontSize: 11, flex: 1.2 }}>{p.boothName} · {p.tenantName}</Text>
+                          <Text style={{ color: '#f97316', fontSize: 11 }}>próx. ping {formatTime(p.nextConfirmationAt)}</Text>
+                        </View>
+                      ))
+                    )}
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#38bdf8" />
+                <Text style={{ color: '#71717a', marginTop: 10 }}>Consultando monitor deadman...</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ---------------- HISTÓRICO ---------------- */}
+        {currentTab === 'stats' && (
+          <View style={{ gap: 16 }}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.sectionTitle}>Histórico e Métricas ({statsData?.days ?? statsDays} dias)</Text>
+              <TouchableOpacity style={styles.refreshBtn} onPress={loadStatsHistory}>
+                <Text style={styles.refreshBtnText}>Atualizar</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              {[7, 14, 30, 60].map((d) => (
+                <TouchableOpacity key={d} style={[styles.filterChip, statsDays === d && styles.filterChipActive]} onPress={() => setStatsDays(d)}>
+                  <Text style={statsDays === d ? styles.filterChipTextActive : styles.filterChipText}>{d} dias</Text>
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={[styles.filterChip, statsTenantFilter === '' && styles.filterChipActive]} onPress={() => setStatsTenantFilter('')}>
+                <Text style={statsTenantFilter === '' ? styles.filterChipTextActive : styles.filterChipText}>Todos</Text>
+              </TouchableOpacity>
+              {tenants.map((t) => (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[styles.filterChip, statsTenantFilter === t.id && styles.filterChipActive]}
+                  onPress={() => setStatsTenantFilter(statsTenantFilter === t.id ? '' : t.id)}
+                >
+                  <Text style={statsTenantFilter === t.id ? styles.filterChipTextActive : styles.filterChipText}>{t.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {statsData ? (
+              <>
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Presenças por dia</Text>
+                  {(() => {
+                    const max = Math.max(1, ...statsData.perDay.map((d) => d.total));
+                    return (
+                      <View style={{ marginTop: 12, gap: 6 }}>
+                        {statsData.perDay.map((d) => (
+                          <View key={d.date} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                            <Text style={{ color: '#71717a', fontSize: 11, width: 78 }}>{formatDate(d.date + 'T12:00:00')}</Text>
+                            <View style={{ flex: 1, height: 18, backgroundColor: '#18181c', borderRadius: 4, overflow: 'hidden' }}>
+                              <View style={{ width: `${(d.total / max) * 100}%`, height: '100%', backgroundColor: d.total > 0 ? '#38bdf8' : '#27272a', borderRadius: 4 }} />
+                            </View>
+                            <Text style={{ color: '#fff', fontSize: 12, width: 60, textAlign: 'right' }}>
+                              {d.total > 0 ? `${d.total} (${d.online || 0} on)` : '—'}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    );
+                  })()}
+                </View>
+
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Hoje · {statsData.today.total} presenças</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                    {Object.entries(statsData.today.byStatus).length === 0 ? (
+                      <Text style={{ color: '#71717a', fontSize: 12 }}>Nenhuma presença registrada hoje ainda.</Text>
+                    ) : (
+                      Object.entries(statsData.today.byStatus).map(([status, count]) => (
+                        <Badge key={status} color="#38bdf8" label={`${PRESENCE_STATUS_LABELS[status] || status}: ${count}`} />
+                      ))
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Top corretores hoje</Text>
+                  <View style={{ gap: 8, marginTop: 10 }}>
+                    {statsData.topBrokersToday.length === 0 ? (
+                      <Text style={{ color: '#71717a', fontSize: 12 }}>Sem dados hoje.</Text>
+                    ) : (
+                      statsData.topBrokersToday.map((b, i) => (
+                        <View key={`${b.email}-${i}`} style={styles.tableRow}>
+                          <Text style={{ color: '#71717a', fontSize: 12, width: 24 }}>#{i + 1}</Text>
+                          <Text style={{ color: '#fff', fontSize: 13, flex: 1 }}>{b.nome_guerra}</Text>
+                          <Text style={{ color: '#a1a1aa', fontSize: 11, flex: 1.1 }}>{b.tenant_name}</Text>
+                          <Text style={{ color: '#38bdf8', fontSize: 12 }}>{b.checkins} check-ins</Text>
+                          <Text style={{ color: '#71717a', fontSize: 11, marginLeft: 8 }}>{Number(b.minutes_sum)}min</Text>
+                        </View>
+                      ))
+                    )}
+                  </View>
+                </View>
+
+                <View style={styles.sectionCard}>
+                  <Text style={styles.sectionTitle}>Movimentação por plantão (hoje)</Text>
+                  <View style={{ gap: 8, marginTop: 10 }}>
+                    {statsData.boothCheckinsToday.length === 0 ? (
+                      <Text style={{ color: '#71717a', fontSize: 12 }}>Sem check-ins hoje.</Text>
+                    ) : (
+                      statsData.boothCheckinsToday.map((b) => (
+                        <View key={b.booth_id} style={styles.tableRow}>
+                          <Text style={{ color: '#fff', fontSize: 13, flex: 1 }}>{b.booth_name}</Text>
+                          <Badge color={b.lifecycle_status === 'published' ? '#22c55e' : '#eab308'} label={b.lifecycle_status} />
+                          <Text style={{ color: '#38bdf8', fontSize: 12, marginLeft: 8 }}>{b.checkins} check-ins</Text>
+                        </View>
+                      ))
+                    )}
+                  </View>
+                </View>
+              </>
+            ) : (
+              <View style={{ padding: 40, alignItems: 'center' }}>
+                <ActivityIndicator size="large" color="#38bdf8" />
+                <Text style={{ color: '#71717a', marginTop: 10 }}>Consultando histórico...</Text>
+              </View>
+            )}
+          </View>
+        )}
+
+        {/* ---------------- SQL CONSOLE ---------------- */}
+        {currentTab === 'sql' && (
+          <View style={{ gap: 16 }}>
+            <View style={styles.rowBetween}>
+              <Text style={styles.sectionTitle}>Console SQL somente leitura</Text>
+              <TouchableOpacity style={styles.createBtn} onPress={handleRunSql} disabled={runningSql}>
+                <Text style={styles.createBtnText}>{runningSql ? 'Executando...' : 'Executar'}</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={{ fontSize: 12, color: '#71717a' }}>
+              Apenas SELECT / WITH / SHOW / VALUES / EXPLAIN. Comandos de escrita são bloqueados; limite de 500 linhas e timeout de 5s.
+            </Text>
+            <TextInput
+              style={styles.sqlInput}
+              multiline
+              numberOfLines={6}
+              placeholder="SELECT t.name, COUNT(u.id) AS users FROM tenants t LEFT JOIN users u ON u.tenant_id = t.id GROUP BY t.name"
+              placeholderTextColor="#3f3f46"
+              value={sqlInput}
+              onChangeText={setSqlInput}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+
+            {sqlResult ? (
+              <View style={styles.sectionCard}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.sectionTitle}>Resultado</Text>
+                  <Text style={{ color: '#38bdf8', fontSize: 12 }}>
+                    {sqlResult.rowCount} linha(s) · {sqlResult.durationMs}ms{sqlResult.truncated ? ' · truncado' : ''}
+                  </Text>
+                </View>
+                {sqlResult.columns.length === 0 ? (
+                  <Text style={{ color: '#71717a', fontSize: 12, marginTop: 8 }}>A consulta não retornou colunas.</Text>
+                ) : (
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginTop: 10 }}>
+                    <View>
+                      <View style={{ flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: '#27272a', paddingBottom: 6 }}>
+                        {sqlResult.columns.map((c) => (
+                          <Text key={c} style={{ color: '#38bdf8', fontSize: 12, fontWeight: '800', width: 160 }}>{c}</Text>
+                        ))}
+                      </View>
+                      {sqlResult.rows.map((row, i) => (
+                        <View key={i} style={{ flexDirection: 'row', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#18181c' }}>
+                          {sqlResult.columns.map((c) => {
+                            const v = row[c];
+                            const str = v === null || v === undefined ? 'NULL' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+                            return (
+                              <Text key={c} style={{ color: v === null || v === undefined ? '#3f3f46' : '#fff', fontSize: 12, width: 160 }} numberOfLines={2}>
+                                {str}
+                              </Text>
+                            );
+                          })}
+                        </View>
+                      ))}
+                    </View>
+                  </ScrollView>
+                )}
+              </View>
+            ) : null}
+          </View>
+        )}
+
         {/* ---------------- DEV TOOLS ---------------- */}
         {currentTab === 'tools' && (
           <View style={{ gap: 16 }}>
@@ -1253,8 +1977,18 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
                 Disparo de Notificação Push (Firebase FCM)
               </Text>
               <Text style={{ fontSize: 12, color: '#a1a1aa', marginBottom: 12 }}>
-                Dispara um push de telemetria para os dispositivos conectados.
+                Dispara um push por segmento: primeiros 5 dispositivos, todos, usuário específico e/ou tenant.
               </Text>
+
+              <View style={{ flexDirection: 'row', gap: 8, marginBottom: 10 }}>
+                <TouchableOpacity style={[styles.filterChip, testPushScope === 'first5' && styles.filterChipActive]} onPress={() => setTestPushScope('first5')}>
+                  <Text style={testPushScope === 'first5' ? styles.filterChipTextActive : styles.filterChipText}>Primeiros 5</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.filterChip, testPushScope === 'all' && styles.filterChipActive]} onPress={() => setTestPushScope('all')}>
+                  <Text style={testPushScope === 'all' ? styles.filterChipTextActive : styles.filterChipText}>Todos</Text>
+                </TouchableOpacity>
+              </View>
+
               <TextInput
                 style={[styles.searchInput, { marginBottom: 8 }]}
                 placeholder="Título da notificação..."
@@ -1263,12 +1997,33 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
                 onChangeText={setTestPushTitle}
               />
               <TextInput
-                style={[styles.searchInput, { marginBottom: 12 }]}
+                style={[styles.searchInput, { marginBottom: 8 }]}
                 placeholder="Corpo da mensagem..."
                 placeholderTextColor="#71717a"
                 value={testPushBody}
                 onChangeText={setTestPushBody}
               />
+              <View style={{ flexDirection: 'row', gap: 10, marginBottom: 12 }}>
+                <TextInput
+                  style={[styles.searchInput, { flex: 1 }]}
+                  placeholder="ID do usuário (opcional)"
+                  placeholderTextColor="#71717a"
+                  value={testPushUserId}
+                  onChangeText={setTestPushUserId}
+                  autoCapitalize="none"
+                />
+                <TextInput
+                  style={[styles.searchInput, { flex: 1 }]}
+                  placeholder="ID do tenant (opcional)"
+                  placeholderTextColor="#71717a"
+                  value={testPushTenantId}
+                  onChangeText={setTestPushTenantId}
+                  autoCapitalize="none"
+                />
+              </View>
+              <Text style={{ fontSize: 11, color: '#3f3f46', marginBottom: 10 }}>
+                Sem filtros → segmento completo. Com tenantId → somente aquele tenant. Com userId → somente aquele usuário.
+              </Text>
               <TouchableOpacity style={[styles.createBtn, { alignSelf: 'flex-start' }, sendingTestPush && { opacity: 0.7 }]} onPress={handleSendTestPush} disabled={sendingTestPush}>
                 <Text style={styles.createBtnText}>{sendingTestPush ? 'Disparando...' : 'Disparar Push'}</Text>
               </TouchableOpacity>
@@ -1586,6 +2341,19 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     fontSize: 13,
     color: '#fff',
+  },
+  sqlInput: {
+    backgroundColor: '#08080a',
+    borderWidth: 1,
+    borderColor: '#27272a',
+    borderRadius: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 13,
+    fontFamily: 'monospace',
+    color: '#38bdf8',
+    minHeight: 120,
+    textAlignVertical: 'top',
   },
   auditTable: {
     backgroundColor: '#121215',
