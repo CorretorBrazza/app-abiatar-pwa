@@ -236,13 +236,10 @@ export default function Dashboard() {
         }
       }
 
-      const capturedAt = location.timestamp || Date.now();
-
       const response = await api.post('/presences/ping-response', {
         pingLogId: pendingSessionPingId,
         latitude: location.coords.latitude,
         longitude: location.coords.longitude,
-        capturedAt,
       });
       setPendingSessionPingIdState(null);
       alert(response.data?.message || 'Presença confirmada. O próximo ciclo será calculado automaticamente.');
