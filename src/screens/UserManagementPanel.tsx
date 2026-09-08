@@ -3,6 +3,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TextInput, TouchableOp
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import IconButton from '../components/IconButton';
+import TemporaryPasswordModal from '../components/TemporaryPasswordModal';
 
 interface ManagedUser { id: string; name: string; nome_guerra: string; email: string; role: string; status: string; }
 interface Booth { id: string; name: string; }
@@ -22,6 +23,7 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [tempPassword, setTempPassword] = useState('');
   const [showCreate, setShowCreate] = useState(false);
   const [managerInviteLink, setManagerInviteLink] = useState('');
   const [generatingInvite, setGeneratingInvite] = useState(false);
@@ -158,7 +160,7 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
 
   const reset = async () => {
     if (!selected) return;
-    try { setSaving(true); const res = await api.post(`/auth/reset-password/${selected.id}`, { reason: 'Redefinição solicitada pela Diretoria' }); alert(`Senha temporária:\n\n${res.data.temporaryPassword}\n\nExigir troca no próximo acesso.`); }
+    try { setSaving(true); const res = await api.post(`/auth/reset-password/${selected.id}`, { reason: 'Redefinição solicitada pela Diretoria' }); setTempPassword(res.data.temporaryPassword); }
     catch (err: any) { setError(err.response?.data?.message || 'Não foi possível redefinir a senha.'); }
     finally { setSaving(false); }
   };
@@ -446,6 +448,12 @@ export default function UserManagementPanel({ primaryColor, onBack }: Props) {
       </View>
     ) : null}
       </ScrollView>
+      <TemporaryPasswordModal
+        visible={!!tempPassword}
+        temporaryPassword={tempPassword}
+        primaryColor={primaryColor}
+        onClose={() => setTempPassword('')}
+      />
     </View>
   );
 }

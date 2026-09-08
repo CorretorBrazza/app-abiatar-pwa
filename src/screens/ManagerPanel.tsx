@@ -916,41 +916,58 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                 <Text style={styles.kpiLabel}>Elegíveis Domingo</Text>
                 <Text style={styles.kpiSub}>Meta de 6 roletas batida</Text>
               </View>
+              <View style={[styles.kpiCard, { borderColor: '#15803d' }]}>
+                <Text style={[styles.kpiValue, { color: '#15803d' }]}>{teamEligibility?.fullyEligibleCount ?? 0}</Text>
+                <Text style={styles.kpiLabel}>Elegíveis nos dois dias</Text>
+                <Text style={styles.kpiSub}>Sábado e Domingo batidos</Text>
+              </View>
               <View style={styles.kpiCard}>
                 <Text style={styles.kpiValue}>{teamEligibility?.inProgressCount ?? 0}</Text>
                 <Text style={styles.kpiLabel}>Em Progresso</Text>
-                <Text style={styles.kpiSub}>Acumulando roletas</Text>
+                <Text style={styles.kpiSub}>Nenhuma meta batida ainda</Text>
               </View>
             </View>
 
             {/* LISTA DETALHADA DE ELEGIBILIDADE POR CORRETOR DA EQUIPE */}
-            {(teamEligibility?.brokers || []).length > 0 && (
+            {(teamEligibility?.members || []).length > 0 && (
               <View style={{ marginBottom: 16 }}>
                 <Text style={{ fontSize: 13, fontWeight: '700', color: '#1f2937', marginBottom: 8 }}>
                   Detalhes por Corretor:
                 </Text>
-                {(teamEligibility?.brokers || []).map((bInfo: any) => (
+                {(teamEligibility?.members || []).map((bInfo: any) => {
+                  const statusColor = bInfo.isEligibleSaturday && bInfo.isEligibleSunday ? '#15803d' : bInfo.isEligibleSaturday || bInfo.isEligibleSunday ? '#b45309' : '#9ca3af';
+                  const statusLabel = bInfo.isEligibleSaturday && bInfo.isEligibleSunday ? '🟢 Totalmente Elegível' : bInfo.isEligibleSaturday ? '🟡 Elegível Sábado' : bInfo.isEligibleSunday ? '🟡 Elegível Domingo' : `⚪ Não Elegível`;
+                  const booths = bInfo.boothsStatus || [];
+                  const bestBooth = booths.length > 0
+                    ? booths.reduce((a: any, b: any) => ((b.validRoletasThisWeek ?? 0) > (a.validRoletasThisWeek ?? 0) ? b : a))
+                    : null;
+                  const bestSatReq = booths.length > 0 ? Math.min(...booths.map((bb: any) => bb.saturdayRequired ?? 5)) : 5;
+                  const bestSunReq = booths.length > 0 ? Math.min(...booths.map((bb: any) => bb.sundayRequired ?? 6)) : 6;
+                  return (
                   <View key={bInfo.brokerId} style={{ backgroundColor: '#fff', borderRadius: 8, padding: 10, marginBottom: 6, borderWidth: 1, borderColor: '#f0b5ab' }}>
                     <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <Text style={{ fontWeight: '700', color: '#111827' }}>{bInfo.brokerNomeGuerra}</Text>
-                      <Text style={{ fontSize: 12, fontWeight: '700', color: bInfo.saturdayEligible && bInfo.sundayEligible ? '#15803d' : '#b45309' }}>
-                        {bInfo.saturdayEligible && bInfo.sundayEligible ? '🟢 Totalmente Elegível' : bInfo.saturdayEligible ? '🟡 Elegível Sábado' : '⚪ Não Elegível'}
+                      <Text style={{ fontWeight: '700', color: '#111827' }}>{bInfo.nomeGuerra || bInfo.name || 'Corretor'}</Text>
+                      <Text style={{ fontSize: 12, fontWeight: '700', color: statusColor }}>
+                        {statusLabel}
                       </Text>
                     </View>
-                    <Text style={{ fontSize: 12, color: '#c13a28', marginTop: 2 }}>
-                      Roletas válidas na semana: <Text style={{ fontWeight: '700', color: '#111827' }}>{bInfo.accumulatedWeekPeriods}</Text> (Sáb: {bInfo.saturdayRequired} / Dom: {bInfo.sundayRequired})
-                    </Text>
-                    {bInfo.boothBreakdown && bInfo.boothBreakdown.length > 0 && (
+                    {bestBooth && (
+                      <Text style={{ fontSize: 12, color: '#c13a28', marginTop: 2 }}>
+                        Roletas válidas na semana: <Text style={{ fontWeight: '700', color: '#111827' }}>{bestBooth.validRoletasThisWeek ?? 0}</Text> (Sáb: {bestSatReq} / Dom: {bestSunReq})
+                      </Text>
+                    )}
+                    {booths.length > 0 && (
                       <View style={{ marginTop: 4, paddingTop: 4, borderTopWidth: 1, borderTopColor: '#f5d2cd' }}>
-                        {bInfo.boothBreakdown.map((b: any) => (
+                        {booths.map((b: any) => (
                           <Text key={b.boothId} style={{ fontSize: 12, color: '#c13a28' }}>
-                            • {b.boothName}: <Text style={{ fontWeight: '700' }}>{b.validRoletasThisWeek}</Text> roletas {b.saturdayEligible ? '🟢 Elegível' : `(faltam ${b.missingSaturday} p/ Sáb)`}
+                            • {b.boothName}: <Text style={{ fontWeight: '700' }}>{b.validRoletasThisWeek ?? 0}</Text> roletas {b.saturdayEligible ? '🟢 Elegível' : `(faltam ${b.missingSaturday ?? 0} p/ Sáb)`}
                           </Text>
                         ))}
                       </View>
                     )}
                   </View>
-                ))}
+                  );
+                })}
               </View>
             )}
 

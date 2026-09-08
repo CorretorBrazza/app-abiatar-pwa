@@ -3,6 +3,7 @@ import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TextInput, Touc
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import IconButton from '../components/IconButton';
+import TemporaryPasswordModal from '../components/TemporaryPasswordModal';
 
 interface BrokerProfile {
   id: string;
@@ -48,6 +49,7 @@ export default function BrokerManagementPanel({ brokerId, isDirector, isRh, mana
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [tempPassword, setTempPassword] = useState('');
 
   const loadProfile = async () => {
     if (!brokerId) return;
@@ -143,7 +145,7 @@ export default function BrokerManagementPanel({ brokerId, isDirector, isRh, mana
     try {
       setSaving(true); setError('');
       const response = await api.post(`/auth/reset-password/${profile.id}`, { reason: 'Redefinição solicitada pela gestão' });
-      alert(`Senha temporária criada:\n\n${response.data.temporaryPassword}\n\nEla expira em 30 minutos e deverá ser trocada no próximo acesso.`);
+      setTempPassword(response.data.temporaryPassword);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Não foi possível redefinir a senha.');
     } finally { setSaving(false); }
@@ -398,6 +400,12 @@ export default function BrokerManagementPanel({ brokerId, isDirector, isRh, mana
           )}
         </ScrollView>
       </View>
+      <TemporaryPasswordModal
+        visible={!!tempPassword}
+        temporaryPassword={tempPassword}
+        primaryColor={primaryColor}
+        onClose={() => setTempPassword('')}
+      />
     </Modal>
   );
 }

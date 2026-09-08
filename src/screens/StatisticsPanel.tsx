@@ -153,6 +153,24 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
     return { label: 'Corretor', bg: '#f5d2cd', text: '#c13a28' };
   }
 
+  // Calcula quantas roletas faltam para o corretor atingir a meta de fim de semana,
+  // considerando os requisitos por plantão (sábado/domingo). Retorna 0 se já elegível.
+  function computeWeekendShortfall(broker: any): number {
+    if (broker.weekendEligible) return 0;
+    if (Array.isArray(broker.boothsStatus) && broker.boothsStatus.length > 0) {
+      let shortfall = Number.POSITIVE_INFINITY;
+      for (const booth of broker.boothsStatus) {
+        if (booth.saturdayEligible || booth.sundayEligible) return 0;
+        const keep = booth.validRoletasThisWeek ?? 0;
+        const satReq = booth.saturdayRequired ?? 5;
+        const sunReq = booth.sundayRequired ?? 6;
+        shortfall = Math.min(shortfall, Math.max(0, satReq - keep), Math.max(0, sunReq - keep));
+      }
+      return shortfall === Number.POSITIVE_INFINITY ? 0 : shortfall;
+    }
+    return Math.max(0, 5 - (broker.currentWeekValidRoletas || 0));
+  }
+
   function handleCopyExecutiveSummary() {
     if (!realtimeData && !brokersReport && !managersReport) return;
 
@@ -528,7 +546,7 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
 
                           <View style={[styles.weekendBadge, broker.weekendEligible ? styles.weekendBadgeOk : styles.weekendBadgePending]}>
                             <Text style={[styles.weekendBadgeText, broker.weekendEligible ? styles.weekendBadgeTextOk : styles.weekendBadgeTextPending]}>
-                              {broker.weekendEligible ? '🟢 Apto Fim de Semana' : `🟡 Faltam ${Math.max(0, 5 - broker.currentWeekValidRoletas)} roletas`}
+                              {broker.weekendEligible ? '🟢 Apto Fim de Semana' : `🟡 Faltam ${computeWeekendShortfall(broker)} roletas`}
                             </Text>
                           </View>
                         </View>
