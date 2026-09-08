@@ -50,6 +50,24 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
     void loadData();
   }, [activeTab]);
 
+  // Atualiza a aba realtime em tempo real (SSE) com fallback de polling
+  useEffect(() => {
+    if (activeTab !== 'realtime') return;
+    const handleRealtime = () => { void loadData(); };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('abiatar:realtime', handleRealtime);
+      window.addEventListener('abiatar:booth_update', handleRealtime);
+    }
+    const intervalId = setInterval(() => { void loadData(); }, 10000);
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('abiatar:realtime', handleRealtime);
+        window.removeEventListener('abiatar:booth_update', handleRealtime);
+      }
+      clearInterval(intervalId);
+    };
+  }, [activeTab]);
+
   function getTodayString(): string {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

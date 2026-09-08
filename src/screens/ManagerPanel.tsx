@@ -227,6 +227,22 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
     loadData();
   }, [managerId, isDirector]);
 
+  useEffect(() => {
+    const handleRealtime = () => { void loadData(); };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('abiatar:realtime', handleRealtime);
+      window.addEventListener('abiatar:booth_update', handleRealtime);
+    }
+    const intervalId = setInterval(() => { void loadData(); }, 15000);
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('abiatar:realtime', handleRealtime);
+        window.removeEventListener('abiatar:booth_update', handleRealtime);
+      }
+      clearInterval(intervalId);
+    };
+  }, [managerId, isDirector]);
+
   const handleGenerateLink = async () => {
     try {
       setGeneratingLink(true);
