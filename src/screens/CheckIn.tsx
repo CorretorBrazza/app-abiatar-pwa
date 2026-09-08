@@ -109,7 +109,7 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
       }
 
       const { latitude, longitude } = location.coords;
-      const capturedAt = location.timestamp || Date.now();
+      const capturedAt = Date.now();
 
       // C. Dispara a requisição de check-in para o backend
       const response = await api.post('/presences/check-in', {

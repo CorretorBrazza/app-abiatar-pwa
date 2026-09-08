@@ -236,7 +236,7 @@ export default function Dashboard() {
         }
       }
 
-      const capturedAt = location.timestamp || Date.now();
+      const capturedAt = Date.now();
 
       const response = await api.post('/presences/ping-response', {
         pingLogId: pendingSessionPingId,
