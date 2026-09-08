@@ -104,6 +104,19 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   const [editManagerId, setEditManagerId] = useState('');
   const [processingCandidateId, setProcessingCandidateId] = useState<string | null>(null);
 
+  // Solicitar correção de documentos por e-mail ao corretor
+  const [correctionCandidate, setCorrectionCandidate] = useState<any | null>(null);
+  const [correctionMessage, setCorrectionMessage] = useState('');
+  const [correctionLoading, setCorrectionLoading] = useState(false);
+
+  const CORRECTION_TEMPLATES: Array<{ label: string; text: string }> = [
+    { label: '📷 Documento ilegível', text: 'Os documentos anexados estão ilegíveis. Por favor, reenvie fotos nítidas, sem cortes e sem reflexo.' },
+    { label: '📄 Documento incompleto', text: 'Algum documento foi enviado incompleto ou incorreto. Confira e reenvie o documento faltante ou válido.' },
+    { label: '🏠 Residência desatualizada', text: 'O comprovante de residência está desatualizado. Envie uma conta de luz, água ou contrato de aluguel com emissão nos últimos 90 dias.' },
+    { label: '🪪 CRECI divergente', text: 'O número do CRECI não pôde ser confirmado ou está divergente. Confira o documento e reenvie.' },
+    { label: '✏️ Dados divergentes', text: 'Os dados informados no cadastro não conferem com os documentos anexados. Revise nome, CPF e endereço.' },
+  ];
+
   const primaryColor = tenant?.primary_color || '#e53924';
   const managerId = user?.id || '';
   const isDirector = user?.role === 'diretoria_level_1' || user?.role === 'platform_admin_level_0';
@@ -226,6 +239,28 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
   useEffect(() => {
     loadData();
   }, [managerId, isDirector]);
+
+  const handleNotifyCorrection = async () => {
+    if (!correctionCandidate) return;
+    if (correctionMessage.trim().length < 3) {
+      alert('Escreva o motivo da correção (mínimo 3 caracteres).');
+      return;
+    }
+    try {
+      setCorrectionLoading(true);
+      setError('');
+      const res = await api.post(`/users/${correctionCandidate.id}/hr-notify-correction`, {
+        message: correctionMessage.trim(),
+      });
+      alert(res.data?.message || `Pedido de correção enviado para ${correctionCandidate.nome_guerra}.`);
+      setCorrectionCandidate(null);
+      setCorrectionMessage('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Falha ao enviar solicitação de correção.');
+    } finally {
+      setCorrectionLoading(false);
+    }
+  };
 
   useEffect(() => {
     const handleRealtime = () => { void loadData(); };
@@ -496,6 +531,73 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
         </Modal>
       )}
 
+      {correctionCandidate && (
+        <Modal visible={!!correctionCandidate} transparent animationType="fade" onRequestClose={() => setCorrectionCandidate(null)}>
+          <View style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+            <View style={{ backgroundColor: '#ffffff', borderRadius: 12, padding: 24, width: '100%', maxWidth: 520, maxHeight: '90%' }}>
+              <Text style={{ fontSize: 18, fontWeight: '800', color: '#0f172a', marginBottom: 4 }}>
+                📩 Solicitar Correção de Documentos
+              </Text>
+              <Text style={{ fontSize: 13, color: '#c13a28', marginBottom: 14 }}>
+                Um e-mail será enviado para <Text style={{ fontWeight: '800' }}>{correctionCandidate.nome_guerra}</Text> ({correctionCandidate.email}) solicitando o reenvio da documentação.
+              </Text>
+
+              <ScrollView style={{ marginBottom: 16 }}>
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155', marginBottom: 6 }}>Modelos prontos (toque para usar):</Text>
+                <View style={{ gap: 6, marginBottom: 12 }}>
+                  {CORRECTION_TEMPLATES.map((tpl) => (
+                    <TouchableOpacity
+                      key={tpl.label}
+                      style={{ backgroundColor: '#fdecea', borderRadius: 8, padding: 10, borderWidth: 1, borderColor: '#f0b5ab' }}
+                      onPress={() => setCorrectionMessage(tpl.text)}
+                    >
+                      <Text style={{ color: '#1e3a8a', fontSize: 12, fontWeight: '700' }}>{tpl.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <Text style={{ fontSize: 12, fontWeight: '700', color: '#334155', marginBottom: 4 }}>Motivo / Texto do e-mail *</Text>
+                <TextInput
+                  style={[styles.input, { minHeight: 96, textAlignVertical: 'top', paddingTop: 10 }]}
+                  value={correctionMessage}
+                  onChangeText={setCorrectionMessage}
+                  placeholder="Descreva o que precisa ser corrigido na documentação..."
+                  multiline
+                />
+
+                <View style={{ backgroundColor: '#fffbeb', borderRadius: 8, padding: 12, borderWidth: 1, borderColor: '#fcd34d', marginTop: 6 }}>
+                  <Text style={{ color: '#b45309', fontSize: 12, lineHeight: 18, fontWeight: '600' }}>
+                    ⚠️ O e-mail informará ao corretor: "Não responda este e-mail. Envie a documentação que está faltando para <Text style={{ fontWeight: '800' }}>gestaoautonomos@abiatar.com</Text>".
+                  </Text>
+                </View>
+              </ScrollView>
+
+              <View style={{ flexDirection: 'row', gap: 14, justifyContent: 'flex-end', alignItems: 'center' }}>
+                <IconButton
+                  name="x"
+                  label="Cancelar"
+                  size="small"
+                  borderColor="#c13a28"
+                  color="#c13a28"
+                  textColor="#c13a28"
+                  onPress={() => setCorrectionCandidate(null)}
+                  disabled={correctionLoading}
+                />
+                <IconButton
+                  name="send"
+                  label="Enviar E-mail"
+                  size="small"
+                  borderColor="#b45309"
+                  onPress={handleNotifyCorrection}
+                  disabled={correctionLoading}
+                  loading={correctionLoading}
+                />
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+
       <BrokerManagementPanel
         brokerId={selectedBrokerId}
         isDirector={isDirector}
@@ -613,6 +715,18 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                           borderColor={primaryColor}
                           disabled={processingCandidateId === candidate.id}
                           onPress={() => handleOpenEditCandidate(candidate)}
+                        />
+
+                        <IconButton
+                          name="mail"
+                          label="Solicitar Correção"
+                          size="small"
+                          borderColor="#b45309"
+                          disabled={processingCandidateId === candidate.id}
+                          onPress={() => {
+                            setCorrectionCandidate(candidate);
+                            setCorrectionMessage('');
+                          }}
                         />
 
                         <IconButton
