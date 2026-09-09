@@ -553,7 +553,33 @@ export default function Dashboard() {
 
           {/* DESTAQUE DA POSIÇÃO NA ROLETA / PÓS-BARRA */}
           <View style={[styles.card, { backgroundColor: '#1c1c1e', borderColor: '#333', borderWidth: 1 }]}>
-            {brokerSummary?.activeShift?.roletaPosition ? (
+            {brokerSummary?.activeShift?.attendedAt ? (
+              <>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <Text style={{ color: '#4ade80', fontSize: 13, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                    ✓ ATENDIMENTO REALIZADO
+                  </Text>
+                  {brokerSummary.activeShift.roletaName ? (
+                    <View style={{ backgroundColor: '#14532d', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 }}>
+                      <Text style={{ color: '#86efac', fontSize: 11, fontWeight: '800' }}>
+                        {brokerSummary.activeShift.roletaEntryType === 'pos_barra' ? 'PÓS-BARRA' : brokerSummary.activeShift.roletaName}
+                      </Text>
+                    </View>
+                  ) : null}
+                </View>
+                <Text style={{ color: '#fff', fontSize: 20, fontWeight: '900', marginVertical: 4 }}>
+                  Você foi atendido na recepção 🎉
+                </Text>
+                <View style={{ backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 10, marginVertical: 8, gap: 4 }}>
+                  <Text style={{ color: '#bbf7d0', fontSize: 12 }}>
+                    🕒 Atendimento registrado às: {brokerSummary.activeShift.attendedAt ? new Date(brokerSummary.activeShift.attendedAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) : '—'}
+                  </Text>
+                </View>
+                <Text style={{ color: '#c13a28', fontSize: 12, lineHeight: 17 }}>
+                  Sua posição na roleta foi concluída. Continue online até o fim do turno para validar a pontualidade e receber novos leads.
+                </Text>
+              </>
+            ) : brokerSummary?.activeShift?.roletaPosition ? (
               <>
                 <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <Text style={{ color: '#facc15', fontSize: 13, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5 }}>
