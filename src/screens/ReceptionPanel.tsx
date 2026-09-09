@@ -235,8 +235,20 @@ export default function ReceptionPanel() {
                           <Text style={styles.queuePosition}>#{item.effectivePosition}</Text>
                           <View>
                             <Text style={styles.queueName}>{item.nomeGuerra}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                              <View style={[styles.entryBadge, { backgroundColor: item.roletaEntryType === 'pos_barra' ? '#f59e0b' : '#15803d' }]}>
+                                <Text style={styles.entryBadgeText}>
+                                  {item.roletaEntryType === 'pos_barra' ? 'PÓS-BARRA' : 'PONTUAL'}
+                                </Text>
+                              </View>
+                              {item.checkInAt && (
+                                <Text style={styles.queueMeta}>
+                                  {new Date(item.checkInAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                              )}
+                            </View>
                             <Text style={styles.queueMeta}>
-                              {item.roletaEntryType === 'pos_barra' ? `Pós-barra (${item.roletaPosition}º)` : `Sorteado ${item.roletaPosition}º`} · {item.minutesActive} min ativo
+                              {item.roletaEntryType === 'pos_barra' ? `Posição ${item.roletaPosition}º` : `Sorteado ${item.roletaPosition}º`} · {item.minutesActive} min ativo
                             </Text>
                           </View>
                         </View>
@@ -454,4 +466,6 @@ const styles = StyleSheet.create({
   badgeText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' },
   logout: { width: '100%', maxWidth: 520, height: 50, borderWidth: 2, borderRadius: 8, alignItems: 'center', justifyContent: 'center', marginTop: 12 },
   logoutText: { fontWeight: 'bold', fontSize: 16 },
+  entryBadge: { paddingVertical: 2, paddingHorizontal: 8, borderRadius: 6 },
+  entryBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.3 },
 });
