@@ -687,6 +687,25 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const handleFinalizeAllStale = async () => {
+    const confirmed = typeof window === 'undefined' ? true : window.confirm(
+      'ZERAR FILA DE PRESENÇAS?\n\nEncerra TODAS as presenças online/suspensas pendentes (zumbis), liberando novos check-ins. Nenhum registro é apagado e o tempo não é mantido. Continuar?'
+    );
+    if (!confirmed) return;
+    try {
+      setLoading(true);
+      setFeedback(null);
+      const res = await api.post('/dev/presences/finalize-all', { forceAll: true }, getDevHeaders());
+      setFeedback({ type: 'success', message: `Fila zerada: ${res.data?.total ?? 0} presenças finalizadas.` });
+      loadBrokerOverview();
+      loadDeadmanOverview();
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.response?.data?.message || 'Erro ao finalizar presenças pendentes.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (!devToken) return;
     if (currentTab === 'health') loadHealth();
@@ -1555,6 +1574,9 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
                 </TouchableOpacity>
                 <TouchableOpacity style={styles.createBtn} onPress={handleReprocessQueue} disabled={loading}>
                   <Text style={styles.createBtnText}>{loading ? 'Processando...' : 'Reprocessar Motor'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.createBtn, { backgroundColor: '#dc2626' }]} onPress={handleFinalizeAllStale} disabled={loading}>
+                  <Text style={styles.createBtnText}>{loading ? 'Finalizando...' : 'Zerar Fila / Finalizar Suspensos'}</Text>
                 </TouchableOpacity>
               </View>
             </View>
