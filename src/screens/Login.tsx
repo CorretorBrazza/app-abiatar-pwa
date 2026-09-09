@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
 import IconButton from '../components/IconButton';
+import api from '../services/api';
 
 interface LoginProps {
   onGoToRegister: () => void; // <-- ADICIONADO ESTE PARÂMETRO
@@ -24,6 +25,11 @@ export default function Login({ onGoToRegister }: LoginProps) {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotMessage, setForgotMessage] = useState('');
 
   const handleLogin = async () => {
     if (!email || !password) {
@@ -39,6 +45,23 @@ export default function Login({ onGoToRegister }: LoginProps) {
       setError(err.message || 'Falha ao logar.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!forgotEmail.trim()) {
+      setForgotMessage('Informe seu e-mail cadastrado.');
+      return;
+    }
+    try {
+      setForgotLoading(true);
+      setForgotMessage('');
+      const res = await api.post('/auth/forgot-password', { email: forgotEmail.trim().toLowerCase() });
+      setForgotMessage(res.data?.message || 'Senha temporária enviada para o seu e-mail.');
+    } catch (err: any) {
+      setForgotMessage(err.response?.data?.message || 'Não foi possível enviar a recuperação. Tente novamente.');
+    } finally {
+      setForgotLoading(false);
     }
   };
 
@@ -73,6 +96,34 @@ export default function Login({ onGoToRegister }: LoginProps) {
           secureTextEntry
           autoCapitalize="none"
         />
+
+        {showForgot ? (
+          <View style={styles.forgotBox}>
+            <Text style={styles.forgotTitle}>🔄 Recuperar senha</Text>
+            <Text style={styles.forgotSub}>
+              Informe o e-mail cadastrado. Enviaremos uma senha temporária (válida por 30 minutos).
+            </Text>
+            <TextInput
+              style={styles.input}
+              placeholder="E-mail cadastrado"
+              value={forgotEmail}
+              onChangeText={setForgotEmail}
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            <TouchableOpacity style={styles.forgotButton} onPress={handleForgotPassword} disabled={forgotLoading}>
+              <Text style={styles.forgotButtonText}>{forgotLoading ? 'Enviando...' : 'Enviar senha temporária'}</Text>
+            </TouchableOpacity>
+            {forgotMessage ? <Text style={styles.forgotMessageStyle}>{forgotMessage}</Text> : null}
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={{ alignItems: 'center', marginTop: -6, marginBottom: 4 }}
+            onPress={() => { setShowForgot(true); setError(''); }}
+          >
+            <Text style={styles.forgotLink}>Esqueceu a senha?</Text>
+          </TouchableOpacity>
+        )}
 
         <View style={{ alignItems: 'center', marginTop: 14 }}>
           <IconButton
@@ -179,5 +230,52 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
     fontWeight: 'bold',
+  },
+  forgotLink: {
+    color: '#c13a28',
+    fontSize: 14,
+    fontWeight: '600',
+    textDecorationLine: 'underline',
+    marginBottom: 10,
+  },
+  forgotBox: {
+    backgroundColor: '#fdecea',
+    borderColor: '#f0b5ab',
+    borderWidth: 1,
+    borderRadius: 8,
+    padding: 12,
+    marginBottom: 12,
+  },
+  forgotTitle: {
+    color: '#1c1c1e',
+    fontSize: 14,
+    fontWeight: '800',
+    marginBottom: 4,
+  },
+  forgotSub: {
+    color: '#c13a28',
+    fontSize: 12,
+    lineHeight: 17,
+    marginBottom: 10,
+  },
+  forgotButton: {
+    height: 44,
+    backgroundColor: '#1c1c1e',
+    borderRadius: 8,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  forgotButtonText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  forgotMessageStyle: {
+    color: '#15803d',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 10,
+    lineHeight: 17,
+    fontWeight: '600',
   },
 });
