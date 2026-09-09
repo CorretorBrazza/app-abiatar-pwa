@@ -55,6 +55,7 @@ interface LeadsQueueItem {
   isHabilitado: string;
   roletaPosition?: number | null;
   roletaEntryType?: string | null;
+  checkInAt?: string | null;
   minutesActive?: number;
   minimumRequiredMinutes?: number;
   dataAtualizacao: string;
@@ -1007,6 +1008,20 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
                         <Text style={styles.queueName}>{item.nomeGuerra}</Text>
                       </View>
                       <Text style={styles.queueSub}>Presença: {item.statusPresenca}</Text>
+                      {item.roletaEntryType && (
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                          <View style={{ backgroundColor: item.roletaEntryType === 'pos_barra' ? '#f59e0b' : '#15803d', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 }}>
+                            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 11, letterSpacing: 0.3 }}>
+                              {item.roletaEntryType === 'pos_barra' ? 'PÓS-BARRA' : 'PONTUAL'}
+                            </Text>
+                          </View>
+                          {item.checkInAt && (
+                            <Text style={[styles.queueSub, { fontSize: 12 }]}>
+                              Check-in às {new Date(item.checkInAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}
+                            </Text>
+                          )}
+                        </View>
+                      )}
                       <Text style={styles.queueSub}>Carência: {item.statusCarencia}</Text>
                       {item.minutesActive !== undefined && (
                         <Text style={[styles.queueSub, { color: item.minutesActive >= (item.minimumRequiredMinutes ?? 120) ? '#15803d' : '#c13a28', fontWeight: '600', marginTop: 2 }]}>

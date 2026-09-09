@@ -476,9 +476,16 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
                                       <Text style={[styles.stageBadgeText, { color: badge.text }]}>{badge.label}</Text>
                                     </View>
                                   </View>
-                                  <Text style={styles.brokerLiveDetails}>
-                                    {broker.roletaName} | Entrada às {new Date(broker.checkInAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}
-                                  </Text>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                    <Text style={styles.brokerLiveDetails}>
+                                      {broker.roletaName} · Entrada às {new Date(broker.checkInAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}
+                                    </Text>
+                                    <View style={[styles.entryBadge, { backgroundColor: broker.roletaEntryType === 'pos_barra' ? '#f59e0b' : '#15803d' }]}>
+                                      <Text style={styles.entryBadgeText}>
+                                        {broker.roletaEntryType === 'pos_barra' ? 'PÓS-BARRA' : 'PONTUAL'}
+                                      </Text>
+                                    </View>
+                                  </View>
                                 </View>
 
                                 <View style={styles.timeActiveBox}>
@@ -1301,5 +1308,16 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#c13a28',
     marginTop: 2,
+  },
+  entryBadge: {
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+    borderRadius: 6,
+  },
+  entryBadgeText: {
+    color: '#fff',
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
 });
