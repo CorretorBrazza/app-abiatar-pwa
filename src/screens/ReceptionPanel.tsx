@@ -270,6 +270,13 @@ export default function ReceptionPanel() {
                         <View key={item.presenceId} style={styles.queueItem}>
                           <View style={styles.queueLeft}>
                             <Text style={styles.queueName}>{item.nomeGuerra}</Text>
+                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 3 }}>
+                              {item.checkInAt && (
+                                <Text style={styles.queueMeta}>
+                                  Entrada às {new Date(item.checkInAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' })}
+                                </Text>
+                              )}
+                            </View>
                             <Text style={styles.queueMeta}>{item.roletaPosition ? `Posição ${item.roletaPosition}º mantida` : 'Aguardando sorteio'}</Text>
                           </View>
                           <TouchableOpacity

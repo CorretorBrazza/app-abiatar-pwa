@@ -418,6 +418,12 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
                     <Text style={styles.heroTitle}>Horas Cumpridas Hoje</Text>
                     <Text style={styles.heroSubtitle}>Tempo presencial validado</Text>
                   </View>
+
+                  <View style={[styles.heroCard, { borderLeftColor: '#f59e0b' }]}>
+                    <Text style={[styles.heroNumber, { color: '#b45309' }]}>{realtimeData.absentBrokersCount ?? 0}</Text>
+                    <Text style={styles.heroTitle}>Presenças Suspensas</Text>
+                    <Text style={styles.heroSubtitle}>Corretores com ausência não revalidada</Text>
+                  </View>
                 </View>
 
                 {/* BOTÃO ATUALIZAR TEMPO REAL */}
@@ -494,6 +500,37 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
                               </View>
                             );
                           })}
+                        </View>
+                      )}
+
+                      {booth.absentBrokers?.length > 0 && (
+                        <View style={styles.absentBoothBlock}>
+                          <Text style={styles.absentBoothTitle}>⛔ Presenças suspensas (ausência) — {booth.absentBrokers.length}</Text>
+                          <View style={styles.brokerListInBooth}>
+                            {booth.absentBrokers.map((broker: any) => (
+                              <View key={broker.presenceId} style={[styles.brokerLiveItem, { backgroundColor: '#fff7ed' }]}>
+                                <View style={[styles.roletaPosBadge, { backgroundColor: '#b45309' }]}>
+                                  <Text style={styles.roletaPosNumber}>#{broker.roletaPosition || '-'}</Text>
+                                </View>
+
+                                <View style={{ flex: 1 }}>
+                                  <Text style={styles.brokerLiveNomeGuerra}>{broker.nomeGuerra}</Text>
+                                  <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 }}>
+                                    <Text style={styles.brokerLiveDetails}>
+                                      {broker.roletaName} · Entrada às {broker.checkInAt ? new Date(broker.checkInAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                    </Text>
+                                    <View style={[styles.entryBadge, { backgroundColor: '#f59e0b' }]}>
+                                      <Text style={styles.entryBadgeText}>SUSPENSO</Text>
+                                    </View>
+                                  </View>
+                                </View>
+
+                                <View style={styles.timeActiveBox}>
+                                  <Text style={[styles.timeActiveText, { color: '#b45309' }]}>⛔ {broker.hoursFormatted}</Text>
+                                </View>
+                              </View>
+                            ))}
+                          </View>
                         </View>
                       )}
                     </View>
@@ -972,6 +1009,19 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#c13a28',
     fontStyle: 'italic',
+  },
+  absentBoothBlock: {
+    marginTop: 10,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#fca5a5',
+  },
+  absentBoothTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#b45309',
+    marginBottom: 8,
+    paddingHorizontal: 10,
   },
   brokerListInBooth: {
     padding: 10,

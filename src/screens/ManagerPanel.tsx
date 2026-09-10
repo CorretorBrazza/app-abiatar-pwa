@@ -56,6 +56,8 @@ interface LeadsQueueItem {
   roletaPosition?: number | null;
   roletaEntryType?: string | null;
   checkInAt?: string | null;
+  statusPresence?: string | null;
+  suspendedAt?: string | null;
   minutesActive?: number;
   minimumRequiredMinutes?: number;
   dataAtualizacao: string;
@@ -988,7 +990,7 @@ export default function ManagerPanel({ onBack }: ManagerPanelProps) {
               keyExtractor={(item) => item.brokerId}
               style={styles.list}
               scrollEnabled={false}
-              ListEmptyComponent={<Text style={styles.emptyText}>Nenhum corretor da sua equipe ativo na fila no momento.</Text>}
+              ListEmptyComponent={<Text style={styles.emptyText}>Nenhum corretor da sua equipe na fila da roleta no momento.</Text>}
               renderItem={({ item }) => {
                 const isHabilitado = item.isHabilitado.includes('HABILITADO');
                 return (
