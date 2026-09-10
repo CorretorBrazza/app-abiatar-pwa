@@ -89,14 +89,26 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
   function applyPeriodPreset(preset: PeriodPreset) {
     const today = getTodayString();
     if (preset === 'today') {
-      setStartDate(today);
-      setEndDate(today);
+      const s = today, e = today;
+      setStartDate(s);
+      setEndDate(e);
+      if (activeTab !== 'realtime') {
+        void loadData(s, e);
+      }
     } else if (preset === 'week') {
-      setStartDate(getStartOfWeekString());
-      setEndDate(today);
+      const s = getStartOfWeekString(), e = today;
+      setStartDate(s);
+      setEndDate(e);
+      if (activeTab !== 'realtime') {
+        void loadData(s, e);
+      }
     } else if (preset === 'month') {
-      setStartDate(getStartOfMonthString());
-      setEndDate(today);
+      const s = getStartOfMonthString(), e = today;
+      setStartDate(s);
+      setEndDate(e);
+      if (activeTab !== 'realtime') {
+        void loadData(s, e);
+      }
     }
   }
 
@@ -109,17 +121,19 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
     }
   }
 
-  async function loadData() {
+  async function loadData(startOverride?: string, endOverride?: string) {
     setLoading(true);
     try {
+      const effectiveStart = startOverride !== undefined ? startOverride : startDate;
+      const effectiveEnd = endOverride !== undefined ? endOverride : endDate;
       if (activeTab === 'realtime') {
         const res = await api.get('/presences/reports/realtime');
         setRealtimeData(res.data);
       } else if (activeTab === 'brokers') {
         const res = await api.get('/presences/reports/brokers', {
           params: {
-            startDate: startDate || undefined,
-            endDate: endDate || undefined,
+            startDate: effectiveStart || undefined,
+            endDate: effectiveEnd || undefined,
             boothId: selectedBoothFilter || undefined,
           },
         });
@@ -127,16 +141,16 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
       } else if (activeTab === 'managers') {
         const res = await api.get('/presences/reports/managers', {
           params: {
-            startDate: startDate || undefined,
-            endDate: endDate || undefined,
+            startDate: effectiveStart || undefined,
+            endDate: effectiveEnd || undefined,
           },
         });
         setManagersReport(res.data);
       } else if (activeTab === 'booths') {
         const res = await api.get('/presences/reports/booths', {
           params: {
-            startDate: startDate || undefined,
-            endDate: endDate || undefined,
+            startDate: effectiveStart || undefined,
+            endDate: effectiveEnd || undefined,
           },
         });
         setBoothsReport(res.data);
@@ -243,19 +257,19 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
 
       {/* HEADER DA DIRETORIA */}
       <View style={[styles.header, { backgroundColor: primaryColor }]}>
-        <IconButton
-          name="arrow-left"
-          label="Voltar ao Painel"
-          size="small"
-          borderColor="#ffffff"
-          color="#ffffff"
-          textColor="#ffffff"
-          backgroundColor="transparent"
-          onPress={onBack}
-        />
         <Text style={{ color: '#FFF', fontSize: 18, fontWeight: '800', letterSpacing: 0.3 }}>{tenant?.name || 'ABIATAR'}</Text>
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <View>
+        <View style={styles.headerRow}>
+          <IconButton
+            name="arrow-left"
+            size={21}
+            borderColor="#ffffff"
+            color="#ffffff"
+            backgroundColor="transparent"
+            onPress={onBack}
+            accessibilityLabel="Voltar ao Painel"
+            title="Voltar ao Painel"
+          />
+          <View style={styles.headerTitleBox}>
             <Text style={styles.title}>Torre de Controle & Relatórios</Text>
             <Text style={styles.headerSubtitle}>Inteligência Operacional da Força de Vendas</Text>
           </View>
@@ -420,9 +434,9 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
                   </View>
 
                   <View style={[styles.heroCard, { borderLeftColor: '#f59e0b' }]}>
-                    <Text style={[styles.heroNumber, { color: '#b45309' }]}>{realtimeData.absentBrokersCount ?? 0}</Text>
-                    <Text style={styles.heroTitle}>Presenças Suspensas</Text>
-                    <Text style={styles.heroSubtitle}>Corretores com ausência não revalidada</Text>
+                    <Text style={[styles.heroNumber, { color: '#b45309' }]}>{realtimeData.invalidatedBrokersCount ?? 0}</Text>
+                    <Text style={styles.heroTitle}>Desconsideradas Hoje</Text>
+                    <Text style={styles.heroSubtitle}>Presenças descartadas automaticamente</Text>
                   </View>
                 </View>
 
@@ -503,11 +517,11 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
                         </View>
                       )}
 
-                      {booth.absentBrokers?.length > 0 && (
+                      {booth.invalidatedBrokers?.length > 0 && (
                         <View style={styles.absentBoothBlock}>
-                          <Text style={styles.absentBoothTitle}>⛔ Presenças suspensas (ausência) — {booth.absentBrokers.length}</Text>
+                          <Text style={styles.absentBoothTitle}>⛔ Desconsideradas hoje — {booth.invalidatedBrokers.length}</Text>
                           <View style={styles.brokerListInBooth}>
-                            {booth.absentBrokers.map((broker: any) => (
+                            {booth.invalidatedBrokers.map((broker: any) => (
                               <View key={broker.presenceId} style={[styles.brokerLiveItem, { backgroundColor: '#fff7ed' }]}>
                                 <View style={[styles.roletaPosBadge, { backgroundColor: '#b45309' }]}>
                                   <Text style={styles.roletaPosNumber}>#{broker.roletaPosition || '-'}</Text>
@@ -519,14 +533,16 @@ export default function StatisticsPanel({ onBack }: { onBack: () => void }) {
                                     <Text style={styles.brokerLiveDetails}>
                                       {broker.roletaName} · Entrada às {broker.checkInAt ? new Date(broker.checkInAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) : '—'}
                                     </Text>
-                                    <View style={[styles.entryBadge, { backgroundColor: '#f59e0b' }]}>
-                                      <Text style={styles.entryBadgeText}>SUSPENSO</Text>
+                                    <View style={[styles.entryBadge, { backgroundColor: '#b45309' }]}>
+                                      <Text style={styles.entryBadgeText}>DESCONSIDERADA</Text>
                                     </View>
                                   </View>
                                 </View>
 
                                 <View style={styles.timeActiveBox}>
-                                  <Text style={[styles.timeActiveText, { color: '#b45309' }]}>⛔ {broker.hoursFormatted}</Text>
+                                  <Text style={[styles.timeActiveText, { color: '#b45309' }]}>
+                                    {broker.invalidatedAt ? new Date(broker.invalidatedAt).toLocaleTimeString('pt-BR', { timeZone: 'America/Sao_Paulo', hour: '2-digit', minute: '2-digit' }) : '—'}
+                                  </Text>
                                 </View>
                               </View>
                             ))}
@@ -773,6 +789,18 @@ const styles = StyleSheet.create({
     paddingTop: 16,
     paddingBottom: 16,
     paddingHorizontal: 20,
+  },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginTop: 6,
+    gap: 8,
+  },
+  headerTitleBox: {
+    flex: 1,
+    alignItems: 'flex-start',
+    paddingHorizontal: 8,
   },
   backButton: {
     flexDirection: 'row',

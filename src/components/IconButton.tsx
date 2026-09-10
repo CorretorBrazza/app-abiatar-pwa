@@ -92,7 +92,7 @@ export default function IconButton({
   let boxSize = 72;
   let iconSize = 34;
   let imageSize = 48;
-  let borderRadius = 18;
+  let borderRadius = 6;
   let labelFontSize = 12;
   let containerWidth: number | string = 105;
 
@@ -100,23 +100,30 @@ export default function IconButton({
     boxSize = 42;
     iconSize = 20;
     imageSize = 26;
-    borderRadius = 10;
+    borderRadius = 4;
     labelFontSize = 10;
     containerWidth = 72;
   } else if (size === 'medium') {
     boxSize = 56;
     iconSize = 26;
     imageSize = 36;
-    borderRadius = 14;
+    borderRadius = 5;
     labelFontSize = 11;
     containerWidth = 88;
   } else if (typeof size === 'number') {
     boxSize = size;
     iconSize = Math.round(size * 0.48);
     imageSize = Math.round(size * 0.68);
-    borderRadius = Math.round(size * 0.25);
+    borderRadius = Math.round(size * 0.1);
     labelFontSize = 11;
     containerWidth = Math.round(size * 1.3);
+  } else {
+    boxSize = 72;
+    iconSize = 34;
+    imageSize = 48;
+    borderRadius = 6;
+    labelFontSize = 12;
+    containerWidth = 105;
   }
 
   const activeBorderColor = disabled ? '#f0b5ab' : borderColor;

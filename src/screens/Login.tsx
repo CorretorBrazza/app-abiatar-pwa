@@ -86,6 +86,7 @@ export default function Login({ onGoToRegister }: LoginProps) {
           onChangeText={setEmail}
           autoCapitalize="none"
           keyboardType="email-address"
+          autoComplete="email"
         />
 
         <TextInput
@@ -95,6 +96,7 @@ export default function Login({ onGoToRegister }: LoginProps) {
           onChangeText={setPassword}
           secureTextEntry
           autoCapitalize="none"
+          autoComplete="current-password"
         />
 
         {showForgot ? (
