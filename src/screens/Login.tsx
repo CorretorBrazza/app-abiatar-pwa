@@ -48,6 +48,27 @@ export default function Login({ onGoToRegister }: LoginProps) {
     }
   };
 
+  const formRef = React.useRef<any>(null);
+
+  const setWebName = (name: string) => (node: any) => {
+    if (Platform.OS === 'web' && node && typeof node.setAttribute === 'function') {
+      node.setAttribute('name', name);
+    }
+  };
+
+  const handleFormSubmit = (e: any) => {
+    e.preventDefault();
+    void handleLogin();
+  };
+
+  const handleSubmitPress = () => {
+    if (Platform.OS === 'web' && formRef.current && typeof formRef.current.requestSubmit === 'function') {
+      formRef.current.requestSubmit();
+      return;
+    }
+    void handleLogin();
+  };
+
   const handleForgotPassword = async () => {
     if (!forgotEmail.trim()) {
       setForgotMessage('Informe seu e-mail cadastrado.');
@@ -79,65 +100,93 @@ export default function Login({ onGoToRegister }: LoginProps) {
 
         {error ? <Text style={styles.errorText}>{error}</Text> : null}
 
-        <TextInput
-          style={styles.input}
-          placeholder="Seu e-mail de trabalho"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          autoComplete="email"
-        />
-
-        <TextInput
-          style={styles.input}
-          placeholder="Sua senha"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoCapitalize="none"
-          autoComplete="current-password"
-        />
-
-        {showForgot ? (
-          <View style={styles.forgotBox}>
-            <Text style={styles.forgotTitle}>🔄 Recuperar senha</Text>
-            <Text style={styles.forgotSub}>
-              Informe o e-mail cadastrado. Enviaremos uma senha temporária (válida por 30 minutos).
-            </Text>
+        {(() => {
+          const emailInput = (
             <TextInput
               style={styles.input}
-              placeholder="E-mail cadastrado"
-              value={forgotEmail}
-              onChangeText={setForgotEmail}
+              id="login-email"
+              placeholder="Seu e-mail de trabalho"
+              value={email}
+              onChangeText={setEmail}
               autoCapitalize="none"
               keyboardType="email-address"
+              autoComplete="email"
+              ref={setWebName('email')}
             />
-            <TouchableOpacity style={styles.forgotButton} onPress={handleForgotPassword} disabled={forgotLoading}>
-              <Text style={styles.forgotButtonText}>{forgotLoading ? 'Enviando...' : 'Enviar senha temporária'}</Text>
+          );
+          const passwordInput = (
+            <TextInput
+              style={styles.input}
+              id="login-password"
+              placeholder="Sua senha"
+              value={password}
+              onChangeText={setPassword}
+              secureTextEntry
+              autoCapitalize="none"
+              autoComplete="current-password"
+              ref={setWebName('password')}
+            />
+          );
+          const forgotBlock = showForgot ? (
+            <View style={styles.forgotBox}>
+              <Text style={styles.forgotTitle}>🔄 Recuperar senha</Text>
+              <Text style={styles.forgotSub}>
+                Informe o e-mail cadastrado. Enviaremos uma senha temporária (válida por 30 minutos).
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="E-mail cadastrado"
+                value={forgotEmail}
+                onChangeText={setForgotEmail}
+                autoCapitalize="none"
+                keyboardType="email-address"
+              />
+              <TouchableOpacity style={styles.forgotButton} onPress={handleForgotPassword} disabled={forgotLoading}>
+                <Text style={styles.forgotButtonText}>{forgotLoading ? 'Enviando...' : 'Enviar senha temporária'}</Text>
+              </TouchableOpacity>
+              {forgotMessage ? <Text style={styles.forgotMessageStyle}>{forgotMessage}</Text> : null}
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={{ alignItems: 'center', marginTop: -6, marginBottom: 4 }}
+              onPress={() => { setShowForgot(true); setError(''); }}
+            >
+              <Text style={styles.forgotLink}>Esqueceu a senha?</Text>
             </TouchableOpacity>
-            {forgotMessage ? <Text style={styles.forgotMessageStyle}>{forgotMessage}</Text> : null}
-          </View>
-        ) : (
-          <TouchableOpacity
-            style={{ alignItems: 'center', marginTop: -6, marginBottom: 4 }}
-            onPress={() => { setShowForgot(true); setError(''); }}
-          >
-            <Text style={styles.forgotLink}>Esqueceu a senha?</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={{ alignItems: 'center', marginTop: 14 }}>
-          <IconButton
-            name="log-in"
-            label="Entrar no Sistema"
-            size="large"
-            borderColor="#e53924"
-            onPress={handleLogin}
-            disabled={loading}
-            loading={loading}
-          />
-        </View>
+          );
+          const submitBlock = (
+            <View style={{ alignItems: 'center', marginTop: 14 }}>
+              <IconButton
+                name="log-in"
+                label="Entrar no Sistema"
+                size="large"
+                borderColor="#e53924"
+                onPress={handleSubmitPress}
+                disabled={loading}
+                loading={loading}
+              />
+            </View>
+          );
+          if (Platform.OS === 'web') {
+            return React.createElement(
+              'form',
+              { ref: formRef, onSubmit: handleFormSubmit, style: { width: '100%' } },
+              React.createElement('input', { type: 'submit', style: { display: 'none' }, tabIndex: -1 }),
+              emailInput,
+              passwordInput,
+              forgotBlock,
+              submitBlock
+            );
+          }
+          return (
+            <>
+              {emailInput}
+              {passwordInput}
+              {forgotBlock}
+              {submitBlock}
+            </>
+          );
+        })()}
 
         {/* LINK PARA IR PARA A TELA DE CADASTRO */}
         <View style={{ alignItems: 'center', marginTop: 16 }}>
