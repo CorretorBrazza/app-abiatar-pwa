@@ -91,8 +91,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // 3. Método de Login: Chama a API, valida credenciais e salva as cores de estilização do inquilino
   const login = async (email: string, passwordHash: string) => {
     try {
-      setLoading(true);
-      
       const response = await api.post('/auth/login', {
         email,
         passwordHash,
@@ -114,13 +112,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setTenant(loggedTenant);
       void registerWebPushNotifications();
     } catch (error) {
-      setLoading(false);
       const errorMessage = axios.isAxiosError(error)
         ? error.response?.data?.message || 'Falha na autenticação. Verifique suas credenciais.'
         : 'Falha na autenticação. Verifique suas credenciais.';
       throw new Error(errorMessage);
-    } finally {
-      setLoading(false);
     }
   };
 
