@@ -666,7 +666,7 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
       setLoading(true);
       setFeedback(null);
       const res = await api.post('/dev/broker/process', {}, getDevHeaders());
-      setFeedback({ type: res.data?.success ? 'success' : 'error', message: `Motor reprocessado: ${res.data?.processedPresences ?? 0} presenças, ${res.data?.pingsGenerated ?? 0} pings, ${res.data?.brokersSuspended ?? 0} suspensos.` });
+      setFeedback({ type: res.data?.success ? 'success' : 'error', message: `Motor reprocessado: ${res.data?.processedPresences ?? 0} presenças, ${res.data?.pingsGenerated ?? 0} pings, ${res.data?.brokersSuspended ?? 0} desconsiderados.` });
       loadBrokerOverview();
       loadDeadmanOverview();
     } catch (err: any) {
