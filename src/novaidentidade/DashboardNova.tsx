@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   ChevronDown,
   Clock3,
+  History,
   LogOut,
   MapPin,
   PanelLeftClose,
@@ -41,6 +42,7 @@ import NovaPessoas from './NovaPessoas';
 import NovaConvidarCorretores from './NovaConvidarCorretores';
 import NovaPerformance from './NovaPerformance';
 import NovaMensagens from './NovaMensagens';
+import NovaHistoricoCorretor from './NovaHistoricoCorretor';
 import { colors, font, fonts, radius, semantic, shadow, statusTone } from './tokens';
 import { useNovaFonts } from './fonts';
 import {
@@ -493,6 +495,7 @@ const elig = StyleSheet.create({
 
 function NovaMyShifts() {
   const [summary, setSummary] = React.useState<any | null>(null);
+  const [showHistory, setShowHistory] = React.useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -508,6 +511,19 @@ function NovaMyShifts() {
   }, []);
 
   const shifts = Array.isArray(summary?.shifts) ? summary.shifts : Array.isArray(summary?.boothsEligibility) ? summary.boothsEligibility : [];
+
+  if (showHistory) {
+    return (
+      <View>
+        <PageHeader
+          eyebrow="Histórico do corretor"
+          title="Meu histórico"
+          description="Roletas realizadas, check-ins e aproveitamento por período."
+        />
+        <NovaHistoricoCorretor isMobile />
+      </View>
+    );
+  }
 
   return (
     <View>
@@ -565,6 +581,11 @@ function NovaMyShifts() {
           </View>
         )}
       </View>
+
+      <TouchableOpacity style={shifts.historyBtn} onPress={() => setShowHistory(true)} accessibilityRole="button">
+        <History size={15} color="#fff" />
+        <Text style={shifts.historyBtnText}>Ver meu histórico</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -616,6 +637,17 @@ const shifts = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  historyBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 14,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    backgroundColor: colors.coral600,
+  },
+  historyBtnText: { color: '#fff', fontFamily: font.body, fontWeight: '700' as const, fontSize: 12 },
   rowName: { color: semantic.textBody, fontFamily: font.body, fontWeight: '700' as const, fontSize: 12 },
   rowDetail: { color: colors.slate500, fontFamily: font.body, fontWeight: '400' as const, fontSize: 11, marginTop: 4 },
 });
@@ -665,6 +697,13 @@ export default function DashboardNova() {
 
     if (profile === 'recepcao') {
       if (view === 'inbox') return <Inbox onBack={onBack} />;
+      if (view === 'my_history') {
+        return (
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={contentPad}>
+            <NovaHistoricoCorretor isMobile={isMobile} />
+          </ScrollView>
+        );
+      }
       return <NovaReception view={view} onOpen={setView} isMobile={isMobile} />;
     }
 
@@ -680,7 +719,9 @@ export default function DashboardNova() {
         if (profile === 'gerencia') return <NovaConvidarCorretores managerId={user?.id} />;
         return <NovaPessoas isMobile={isMobile} sidebarOffset={sidebarOffset} topOffset={topOffset} />;
       case 'performance':
-        return <NovaPerformance isMobile={isMobile} />;
+        return <NovaPerformance isMobile={isMobile} canDrillHistory={profile === 'diretoria'} />;
+      case 'rh_history':
+        return <NovaHistoricoCorretor canSelect isMobile={isMobile} />;
       case 'messaging':
         return <NovaMensagens isMobile={isMobile} isManager={profile === 'gerencia'} />;
       case 'team':

@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Modal,
   ScrollView,
   StyleSheet,
   Text,
@@ -13,6 +14,7 @@ import {
   Clock,
   Copy,
   RefreshCw,
+  History,
   Radio,
   Search,
   Trophy,
@@ -22,6 +24,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { colors, font, fonts, radius, semantic, shadow, statusTone } from './tokens';
+import NovaHistoricoCorretor from './NovaHistoricoCorretor';
 
 type TabType = 'realtime' | 'brokers' | 'managers' | 'booths';
 type PeriodPreset = 'today' | 'week' | 'month' | 'custom';
@@ -80,9 +83,10 @@ const TABS: { key: TabType; label: string; icon: React.ComponentType<any> }[] = 
   { key: 'booths', label: 'Plantões', icon: Building2 },
 ];
 
-export default function NovaPerformance({ isMobile }: { isMobile?: boolean }) {
+export default function NovaPerformance({ isMobile, canDrillHistory }: { isMobile?: boolean; canDrillHistory?: boolean }) {
   const { tenant } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('realtime');
+  const [historyBrokerId, setHistoryBrokerId] = useState<string | null>(null);
   const [periodPreset, setPeriodPreset] = useState<PeriodPreset>('month');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -466,6 +470,12 @@ export default function NovaPerformance({ isMobile }: { isMobile?: boolean }) {
                       {broker.weekendEligible ? 'Apto Fim de Semana' : `Faltam ${computeWeekendShortfall(broker)} roletas`}
                     </Text>
                   </View>
+                  {canDrillHistory && (
+                    <TouchableOpacity style={styles.historyBtn} onPress={() => setHistoryBrokerId(broker.brokerId)} accessibilityRole="button">
+                      <History size={12} color={colors.coral600} />
+                      <Text style={styles.historyBtnText}>Histórico</Text>
+                    </TouchableOpacity>
+                  )}
                 </View>
                 <View style={styles.metricGrid}>
                   <View style={styles.metricItem}>
@@ -679,6 +689,11 @@ export default function NovaPerformance({ isMobile }: { isMobile?: boolean }) {
           </>
         )}
       </ScrollView>
+      <Modal visible={!!historyBrokerId} animationType="slide" onRequestClose={() => setHistoryBrokerId(null)}>
+        <View style={{ flex: 1, backgroundColor: semantic.background }}>
+          <NovaHistoricoCorretor brokerId={historyBrokerId} isMobile={isMobile} onClose={() => setHistoryBrokerId(null)} />
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -814,6 +829,12 @@ const styles = StyleSheet.create({
   brokerCardManager: { color: semantic.textMuted, fontFamily: font.body, fontSize: 10.5, marginTop: 2 },
   weekendBadge: { paddingVertical: 5, paddingHorizontal: 10, borderRadius: radius.full },
   weekendBadgeText: { fontFamily: font.body, fontWeight: '800', fontSize: 9.5 },
+  historyBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+    paddingVertical: 5, paddingHorizontal: 10, borderRadius: radius.md,
+    borderWidth: 1, borderColor: colors.coral300, backgroundColor: semantic.card,
+  },
+  historyBtnText: { color: colors.coral600, fontFamily: font.body, fontWeight: '700', fontSize: 10 },
   metricGrid: {
     flexDirection: 'row', flexWrap: 'wrap',
     backgroundColor: colors.slate050, borderRadius: radius.md, borderWidth: 1, borderColor: semantic.border,

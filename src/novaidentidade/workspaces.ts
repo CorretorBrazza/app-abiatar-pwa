@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarDays,
   Clock3,
+  History,
   LayoutDashboard,
   MessageSquare,
   ShieldCheck,
@@ -29,7 +30,9 @@ export type NovaView =
   | 'inbox'
   | 'materials'
   | 'rh_careers'
-  | 'rh_credentials';
+  | 'rh_credentials'
+  | 'rh_history'
+  | 'my_history';
 
 export type NovaProfile = 'diretoria' | 'gerencia' | 'recepcao' | 'rh' | 'corretor';
 
@@ -104,6 +107,7 @@ export const PROFILES: ProfileMeta[] = [
     nav: [
       { view: 'command', label: 'Cockpit do plantão', icon: LayoutDashboard },
       { view: 'operation', label: 'Fila de atendimento', icon: Target },
+      { view: 'my_history', label: 'Meu histórico', icon: Clock3 },
       { view: 'inbox', label: 'Mensagens', icon: MessageSquare },
     ],
   },
@@ -117,7 +121,7 @@ export const PROFILES: ProfileMeta[] = [
       { view: 'command', label: 'Visão RH', icon: LayoutDashboard },
       { view: 'rh_careers', label: 'Carreiras e estágios', icon: Users },
       { view: 'rh_credentials', label: 'Vigências e CRECI', icon: ShieldCheck },
-      { view: 'performance', label: 'Performance', icon: TrendingUp },
+      { view: 'rh_history', label: 'Histórico', icon: History },
     ],
   },
   {
@@ -160,4 +164,6 @@ export const VIEW_TITLE: Record<string, string> = {
   materials: 'Materiais',
   rh_careers: 'Carreiras e estágios',
   rh_credentials: 'Vigências e CRECI',
+  rh_history: 'Histórico',
+  my_history: 'Meu histórico',
 };
