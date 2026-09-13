@@ -701,7 +701,7 @@ export default function NovaPerformance({
         )}
       </ScrollView>
       {Platform.OS === 'web' && !isMobile ? (
-        <Modal visible transparent animationType="fade" onRequestClose={() => setHistoryBrokerId(null)}>
+        <Modal visible={!!historyBrokerId} transparent animationType="fade" onRequestClose={() => setHistoryBrokerId(null)}>
           <View style={styles.sheetWrap}>
             <TouchableOpacity
               style={[styles.sheetBackdrop, { left: sidebarOffset, top: topOffset }]}
