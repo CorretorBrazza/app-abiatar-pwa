@@ -18,13 +18,11 @@ import {
   CalendarDays,
   CheckCircle2,
   ChevronDown,
-  CircleHelp,
   Clock3,
   LogOut,
   MapPin,
   PanelLeftClose,
   PanelLeftOpen,
-  Settings2,
   UserCheck,
 } from 'lucide-react-native';
 const FAVICON = require('../../assets/favicon.png');
@@ -754,14 +752,6 @@ export default function DashboardNova() {
           </View>
 
           <View style={shell.sidebarBottom}>
-            <TouchableOpacity style={shell.navItem}>
-              <CircleHelp size={17} color="#A6B7C7" strokeWidth={2} />
-              {!collapsed && <Text style={shell.navItemText}>Central de ajuda</Text>}
-            </TouchableOpacity>
-            <TouchableOpacity style={shell.navItem}>
-              <Settings2 size={17} color="#A6B7C7" strokeWidth={2} />
-              {!collapsed && <Text style={shell.navItemText}>Configurações</Text>}
-            </TouchableOpacity>
             <View style={shell.sidebarUser}>
               <View style={[shell.switchAvatar, { backgroundColor: statusTone[meta.accent].fg }]}>
                 <Text style={{ color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 10 }}>{meta.initials}</Text>
@@ -809,6 +799,11 @@ export default function DashboardNova() {
                 <ChevronDown size={13} color={colors.slate500} />
               </TouchableOpacity>
             </View>
+          )}
+          {isMobile && (
+            <TouchableOpacity style={shell.mobileLogoutBtn} onPress={handleLogout} accessibilityLabel="Sair">
+              <LogOut size={17} color={colors.slate600} />
+            </TouchableOpacity>
           )}
         </View>
 
@@ -925,6 +920,13 @@ const shell = StyleSheet.create({
   breadcrumbCurrent: { color: colors.slate500, fontFamily: font.body, fontWeight: '400', fontSize: 12 },
   breadcrumbSep: { color: colors.slate300 },
   topActions: { flexDirection: 'row' as const, alignItems: 'center', gap: 14 },
+  mobileLogoutBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: radius.md,
+    alignItems: 'center' as const,
+    justifyContent: 'center',
+  },
   periodSelector: { height: 34, paddingHorizontal: 11, flexDirection: 'row' as const, alignItems: 'center', gap: 8, borderWidth: 1, borderColor: semantic.border, borderRadius: radius.md, backgroundColor: '#fff' },
   periodText: { color: colors.slate700, fontFamily: font.body, fontWeight: '600', fontSize: 11 },
   content: { flex: 1 },
