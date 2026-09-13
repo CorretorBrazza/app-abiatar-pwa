@@ -16,7 +16,6 @@ import {
   Bell,
   Building2,
   CalendarDays,
-  Check,
   CheckCircle2,
   ChevronDown,
   CircleHelp,
@@ -51,7 +50,6 @@ import {
   PROFILES,
   PROFILE_LABEL,
   VIEW_TITLE,
-  type NovaProfile,
   type NovaView,
 } from './workspaces';
 import { StaleBanner } from './components/States';
@@ -629,13 +627,10 @@ export default function DashboardNova() {
   const { width } = useWindowDimensions();
 
   const demo = isDemoContext();
-  const profileFromRole = profileForRole(user?.role);
-  const [demoProfile, setDemoProfile] = useState<NovaProfile>(profileFromRole);
-  const profile: NovaProfile = demo ? demoProfile : profileFromRole;
-  const [view, setView] = useState<NovaView>(() => firstView(profileFromRole));
+  const profile = profileForRole(user?.role);
+  const [view, setView] = useState<NovaView>(() => firstView(profile));
 
   const [collapsed, setCollapsed] = useState(false);
-  const [profileMenu, setProfileMenu] = useState(false);
 
   const isMobile = width < 768;
   const sidebarOffset = isMobile ? 0 : collapsed ? 76 : 256;
@@ -644,12 +639,6 @@ export default function DashboardNova() {
   const meta = PROFILES.find((p) => p.profile === profile) ?? PROFILES[0];
   const nav = meta.nav;
   const currentLabel = VIEW_TITLE[view] ?? 'Visão geral';
-
-  useEffect(() => {
-    if (profile !== demoProfile && demo) {
-      setView(firstView(profile));
-    }
-  }, [profile, demoProfile, demo]);
 
   function renderContent() {
     const onBack = () => setView(firstView(profile));
@@ -739,43 +728,17 @@ export default function DashboardNova() {
 
           {demo && (
             <View style={shell.workspaceSwitcher}>
-              <TouchableOpacity
-                style={{ flexDirection: 'row', alignItems: 'center', gap: 9, flex: 1 }}
-                onPress={() => setProfileMenu(!profileMenu)}
-              >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 9 }}>
                 <View style={[shell.switchAvatar, { backgroundColor: statusTone[meta.accent].fg }]}>
                   <Text style={{ color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 10 }}>{meta.initials}</Text>
                 </View>
                 {!collapsed && (
-                  <>
-                    <View style={{ flex: 1, minWidth: 0 }}>
-                      <Text style={{ color: '#fff', fontFamily: font.body, fontWeight: '700', fontSize: 12 }}>{meta.label}</Text>
-                      <Text style={{ color: '#73889B', fontFamily: font.body, fontWeight: '400', fontSize: 10 }}>{meta.subtitle}</Text>
-                    </View>
-                    <ChevronDown size={14} color="#73889B" />
-                  </>
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ color: '#fff', fontFamily: font.body, fontWeight: '700', fontSize: 12 }}>{meta.label}</Text>
+                    <Text style={{ color: '#73889B', fontFamily: font.body, fontWeight: '400', fontSize: 10 }}>{meta.subtitle}</Text>
+                  </View>
                 )}
-              </TouchableOpacity>
-              {profileMenu && !collapsed && (
-                <View style={shell.roleMenu}>
-                  {PROFILES.map((p) => (
-                    <TouchableOpacity
-                      key={p.profile}
-                      style={{ flexDirection: 'row', alignItems: 'center', gap: 9, padding: 9, borderRadius: radius.md }}
-                      onPress={() => {
-                        setDemoProfile(p.profile);
-                        setProfileMenu(false);
-                      }}
-                    >
-                      <View style={[shell.switchAvatar, { backgroundColor: statusTone[p.accent].fg }]}>
-                        <Text style={{ color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 10 }}>{p.initials}</Text>
-                      </View>
-                      <Text style={{ color: '#D9E2EC', fontFamily: font.body, fontWeight: '400', fontSize: 12, flex: 1 }}>{p.label}</Text>
-                      {p.profile === profile && <Check size={14} color={colors.coral500} />}
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
+              </View>
             </View>
           )}
 
@@ -911,17 +874,6 @@ const shell = StyleSheet.create({
     borderRadius: radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  roleMenu: {
-    position: 'absolute' as const,
-    top: 'calc(100% + 8px)' as any,
-    left: 0,
-    right: 0,
-    padding: 6,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 12,
-    backgroundColor: colors.navy800,
   },
   navLabel: {
     paddingHorizontal: 23,
