@@ -88,7 +88,7 @@ export const PROFILES: ProfileMeta[] = [
     initials: 'GT',
     accent: 'info',
     nav: [
-      { view: 'team', label: 'Minha equipe', icon: Users },
+      { view: 'team', label: 'Equipe', icon: Users },
       { view: 'operation', label: 'Operação', icon: Activity },
       { view: 'messaging', label: 'Comunicação', icon: MessageSquare },
       { view: 'people', label: 'Pessoas e equipes', icon: Building2 },
@@ -150,7 +150,7 @@ export const VIEW_TITLE: Record<string, string> = {
   command: 'Visão geral',
   operation: 'Operação',
   booth_rules: 'Plantões e escalas',
-  team: 'Minha equipe',
+  team: 'Equipe',
   people: 'Pessoas e equipes',
   performance: 'Performance',
   messaging: 'Comunicação',

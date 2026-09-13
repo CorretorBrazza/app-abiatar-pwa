@@ -38,6 +38,7 @@ import NovaVisaoRh from './NovaVisaoRh';
 import NovaPerfisRh from './NovaPerfisRh';
 import NovaOperacao from './NovaOperacao';
 import NovaPessoas from './NovaPessoas';
+import NovaConvidarCorretores from './NovaConvidarCorretores';
 import NovaPerformance from './NovaPerformance';
 import NovaMensagens from './NovaMensagens';
 import { colors, font, fonts, radius, semantic, shadow, statusTone } from './tokens';
@@ -676,6 +677,7 @@ export default function DashboardNova() {
       case 'operation':
         return <NovaOperacao isMobile={isMobile} canManage={profile === 'diretoria'} />;
       case 'people':
+        if (profile === 'gerencia') return <NovaConvidarCorretores managerId={user?.id} />;
         return <NovaPessoas isMobile={isMobile} sidebarOffset={sidebarOffset} topOffset={topOffset} />;
       case 'performance':
         return <NovaPerformance isMobile={isMobile} />;
