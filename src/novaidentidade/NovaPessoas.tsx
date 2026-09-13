@@ -26,13 +26,15 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { colors, font, fonts, radius, semantic, shadow, statusTone } from './tokens';
+import NovaGestaoCorretores from './NovaGestaoCorretores';
 
-type TabKey = 'gerencia_level_2' | 'recepcao_level_3' | 'rh_level_2';
+type TabKey = 'gerencia_level_2' | 'recepcao_level_3' | 'rh_level_2' | 'corretor_level_3';
 
 const TAB_LABEL: Record<TabKey, string> = {
   gerencia_level_2: 'Gerentes',
   recepcao_level_3: 'Recepção',
   rh_level_2: 'RH',
+  corretor_level_3: 'Corretores',
 };
 
 const roleLabel = (role: string) =>
@@ -59,7 +61,11 @@ interface Meta {
 }
 
 export default function NovaPessoas({ isMobile }: { isMobile?: boolean }) {
-  const { tenant } = useAuth();
+  const { tenant, user } = useAuth();
+  const isExecutive = user?.role === 'diretoria_level_1' || user?.role === 'platform_admin_level_0';
+  const visibleTabs: TabKey[] = isExecutive
+    ? ['gerencia_level_2', 'recepcao_level_3', 'rh_level_2', 'corretor_level_3']
+    : ['gerencia_level_2', 'recepcao_level_3', 'rh_level_2'];
   const [tab, setTab] = useState<TabKey>('gerencia_level_2');
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
@@ -106,6 +112,7 @@ export default function NovaPessoas({ isMobile }: { isMobile?: boolean }) {
   };
 
   const load = useCallback(async () => {
+    if (tab === 'corretor_level_3') return;
     setLoading(true);
     setError('');
     try {
@@ -468,6 +475,7 @@ export default function NovaPessoas({ isMobile }: { isMobile?: boolean }) {
   );
 
   const renderActionBar = () => {
+    if (tab === 'corretor_level_3') return null;
     if (tab === 'gerencia_level_2') {
       return (
         <View style={styles.actionBar}>
@@ -508,10 +516,16 @@ export default function NovaPessoas({ isMobile }: { isMobile?: boolean }) {
         <View style={[styles.hero, { backgroundImage: 'linear-gradient(135deg, #2F4A60 0%, #17212B 60%, #101C2A 100%)' } as any]}>
           <View style={styles.heroBadge}>
             <Users size={12} color="#fff" />
-            <Text style={styles.heroBadgeText}>Diretoria · Gestão de usuários</Text>
+            <Text style={styles.heroBadgeText}>
+              {tab === 'corretor_level_3' ? 'Diretoria · Gestão Executiva de Corretores' : 'Diretoria · Gestão de usuários'}
+            </Text>
           </View>
-          <Text style={styles.heroTitle}>Controle de acessos.</Text>
-          <Text style={styles.heroSubtitle}>Gerentes, Recepção e RH com permissões claras e reutilizáveis.</Text>
+          <Text style={styles.heroTitle}>{tab === 'corretor_level_3' ? 'Estrutura comercial.' : 'Controle de acessos.'}</Text>
+          <Text style={styles.heroSubtitle}>
+            {tab === 'corretor_level_3'
+              ? 'Hierarquia por gerência, aprovação de cadastros, convites e ficha individual do corretor.'
+              : 'Gerentes, Recepção e RH com permissões claras e reutilizáveis.'}
+          </Text>
         </View>
 
         {!!error && (
@@ -534,13 +548,17 @@ export default function NovaPessoas({ isMobile }: { isMobile?: boolean }) {
         )}
 
         <View style={styles.tabs}>
-          {(Object.keys(TAB_LABEL) as TabKey[]).map((t) => (
+          {visibleTabs.map((t) => (
             <TouchableOpacity key={t} style={[styles.tab, tab === t && styles.tabActive]} onPress={() => setTab(t)}>
               <Text style={[styles.tabText, tab === t && styles.tabTextActive]}>{TAB_LABEL[t]}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
+        {tab === 'corretor_level_3' ? (
+          <NovaGestaoCorretores hideTitle />
+        ) : (
+          <>
         {renderActionBar()}
 
         {showCreate && tab === 'gerencia_level_2' && renderCreateForm('Criar Gerente', createManager, false)}
@@ -675,6 +693,9 @@ export default function NovaPessoas({ isMobile }: { isMobile?: boolean }) {
               </TouchableOpacity>
             </View>
           </View>
+        )}
+
+        </>
         )}
 
         {tempPassword ? (
