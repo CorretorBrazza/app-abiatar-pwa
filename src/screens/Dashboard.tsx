@@ -15,7 +15,7 @@ import * as Location from 'expo-location';
 import CheckIn from './CheckIn';
 import Inbox from './Inbox'; 
 import ManagerPanel from './ManagerPanel'; 
-import StatisticsPanel from './StatisticsPanel'; // <-- ADICIONE ESTA IMPORTAÇÃO DO PAINEL DE BI
+import StatisticsPanel from './StatisticsPanel';
 import BoothRulesPanel from './BoothRulesPanel';
 import ReceptionPanel from './ReceptionPanel';
 import PushToast from '../components/PushToast';

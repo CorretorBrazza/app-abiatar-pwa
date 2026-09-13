@@ -16,7 +16,7 @@ import IconButton from '../components/IconButton';
 import api from '../services/api';
 
 interface LoginProps {
-  onGoToRegister: () => void; // <-- ADICIONADO ESTE PARÂMETRO
+  onGoToRegister: () => void;
 }
 
 export default function Login({ onGoToRegister }: LoginProps) {

@@ -4,7 +4,7 @@ import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import Login from './src/screens/Login';
 import Dashboard from './src/screens/Dashboard';
-import RegisterBroker from './src/screens/RegisterBroker'; // <-- IMPORTADO AQUI
+import RegisterBroker from './src/screens/RegisterBroker';
 import ProjectStatus from './src/screens/ProjectStatus';
 import ChangePassword from './src/screens/ChangePassword';
 import DevDashboard from './src/screens/DevDashboard';
@@ -13,7 +13,7 @@ import InstallAppButton from './src/components/InstallAppButton';
 
 function AppContent({ inviteToken }: { inviteToken?: string }) {
   const { signed, loading, user } = useAuth();
-  const [currentScreen, setCurrentScreen] = useState<'login' | 'register'>('login'); // <-- CONTROLE DE TELA
+  const [currentScreen, setCurrentScreen] = useState<'login' | 'register'>('login');
 
   // Se o aplicativo estiver buscando os dados salvos no celular, exibe tela de carregamento [15]
   if (loading) {
