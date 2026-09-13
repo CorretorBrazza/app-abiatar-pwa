@@ -515,6 +515,9 @@ function NovaMyShifts() {
   if (showHistory) {
     return (
       <View>
+        <TouchableOpacity style={shifts.backBtn} onPress={() => setShowHistory(false)} accessibilityRole="button">
+          <Text style={shifts.backBtnText}>← Voltar aos meus plantões</Text>
+        </TouchableOpacity>
         <PageHeader
           eyebrow="Histórico do corretor"
           title="Meu histórico"
@@ -648,6 +651,8 @@ const shifts = StyleSheet.create({
     backgroundColor: colors.coral600,
   },
   historyBtnText: { color: '#fff', fontFamily: font.body, fontWeight: '700' as const, fontSize: 12 },
+  backBtn: { alignSelf: 'flex-start', paddingVertical: 7, paddingHorizontal: 10, borderRadius: radius.md, backgroundColor: colors.slate100, marginBottom: 10 },
+  backBtnText: { color: colors.slate700, fontFamily: font.body, fontWeight: '700' as const, fontSize: 11.5 },
   rowName: { color: semantic.textBody, fontFamily: font.body, fontWeight: '700' as const, fontSize: 12 },
   rowDetail: { color: colors.slate500, fontFamily: font.body, fontWeight: '400' as const, fontSize: 11, marginTop: 4 },
 });
