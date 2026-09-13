@@ -24,11 +24,9 @@ import {
   LogOut,
   MapPin,
   Menu,
-  Monitor,
   PanelLeftClose,
   PanelLeftOpen,
   Settings2,
-  Smartphone,
   UserCheck,
 } from 'lucide-react-native';
 const FAVICON = require('../../assets/favicon.png');
@@ -864,18 +862,6 @@ export default function DashboardNova() {
             )}
           </View>
           <View style={shell.topActions}>
-            {demo && (
-              <View style={shell.viewSwitcher}>
-                <TouchableOpacity style={[shell.viewSwitcherBtn, shell.viewSwitcherActive]} onPress={() => setDisplayMode('desktop')} accessibilityLabel="Visualização desktop">
-                  <Monitor size={14} color={colors.navy900} />
-                  {!isMobile && <Text style={[shell.viewSwitcherText, { color: colors.navy900 }]}>Desktop</Text>}
-                </TouchableOpacity>
-                <TouchableOpacity style={shell.viewSwitcherBtn} onPress={() => setDisplayMode('mobile')} accessibilityLabel="Visualização mobile">
-                  <Smartphone size={14} color={colors.slate500} />
-                  {!isMobile && <Text style={shell.viewSwitcherText}>Mobile</Text>}
-                </TouchableOpacity>
-              </View>
-            )}
             <TouchableOpacity style={shell.periodSelector}>
               <CalendarDays size={14} color={colors.slate600} />
               {!isMobile && <Text style={shell.periodText}>{today}</Text>}
@@ -1062,19 +1048,6 @@ const shell = StyleSheet.create({
   topActions: { flexDirection: 'row' as const, alignItems: 'center', gap: 14 },
   topIconBtn: { position: 'relative' as const, width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
   notificationDot: { position: 'absolute' as const, top: 7, right: 7, width: 6, height: 6, borderRadius: 3, borderWidth: 1.5, borderColor: '#fff', backgroundColor: colors.coral600 },
-  viewSwitcher: {
-    flexDirection: 'row' as const,
-    alignItems: 'center',
-    gap: 2,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: semantic.border,
-    borderRadius: radius.md,
-    backgroundColor: colors.slate050,
-  },
-  viewSwitcherBtn: { height: 27, paddingHorizontal: 9, flexDirection: 'row' as const, alignItems: 'center', gap: 5, borderRadius: 6 },
-  viewSwitcherActive: { backgroundColor: '#fff', shadowColor: '#101C2A', shadowOpacity: 0.12, shadowRadius: 6, shadowOffset: { width: 0, height: 2 } },
-  viewSwitcherText: { color: colors.slate500, fontFamily: font.body, fontWeight: '800', fontSize: 10 },
   periodSelector: { height: 34, paddingHorizontal: 11, flexDirection: 'row' as const, alignItems: 'center', gap: 8, borderWidth: 1, borderColor: semantic.border, borderRadius: radius.md, backgroundColor: '#fff' },
   periodText: { color: colors.slate700, fontFamily: font.body, fontWeight: '600', fontSize: 11 },
   avatarSmall: { width: 29, height: 29, borderRadius: 9 },
