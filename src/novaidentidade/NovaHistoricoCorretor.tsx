@@ -14,6 +14,8 @@ import {
 import {
   BadgeCheck,
   CalendarRange,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   Search,
   ShieldCheck,
@@ -41,6 +43,22 @@ const PERIOD_PRESETS: { key: PeriodKey; label: string }[] = [
   { key: 'month', label: 'Este mês' },
   { key: 'custom', label: 'Período' },
 ];
+
+type StageKey = 'corretor_creci' | 'estagiario' | 'treinamento';
+
+const STAGE_ORDER: StageKey[] = ['corretor_creci', 'estagiario', 'treinamento'];
+
+const STAGE_LABEL: Record<StageKey, string> = {
+  corretor_creci: 'Corretores CRECI',
+  estagiario: 'Estagiários',
+  treinamento: 'Em treinamento',
+};
+
+const STAGE_BADGE: Record<StageKey, string> = {
+  corretor_creci: 'CRECI',
+  estagiario: 'Estágio',
+  treinamento: 'Treinamento',
+};
 
 function dateInTz(d: Date, tz = 'America/Sao_Paulo'): string {
   const parts = new Intl.DateTimeFormat('en-CA', {
@@ -365,6 +383,11 @@ export default function NovaHistoricoCorretor({
   const [search, setSearch] = useState('');
   const [candidates, setCandidates] = useState<any[]>([]);
   const [loadingList, setLoadingList] = useState(false);
+  const [expandedStages, setExpandedStages] = useState<Record<StageKey, boolean>>({
+    corretor_creci: false,
+    estagiario: false,
+    treinamento: false,
+  });
 
   const allowSelect = canSelect && !brokerId;
 
@@ -402,6 +425,17 @@ export default function NovaHistoricoCorretor({
     );
   }, [candidates, search]);
 
+  const groups = useMemo(
+    () =>
+      STAGE_ORDER.map((s) => ({
+        stage: s,
+        brokers: filtered.filter((c) => (c.broker_stage || 'corretor_creci') === s),
+      })).filter((g) => g.brokers.length > 0),
+    [filtered],
+  );
+
+  const searching = search.trim().length > 0;
+
   if (!selected && !allowSelect) {
     if (!user?.id) return null;
     return <HistoricoContent brokerId={user.id} isMobile={isMobile} />;
@@ -437,21 +471,51 @@ export default function NovaHistoricoCorretor({
             <Text style={styles.emptyText}>Nenhum corretor encontrado.</Text>
           </View>
         ) : (
-          <View style={{ gap: 8 }}>
-            {filtered.map((c, idx) => (
-              <TouchableOpacity key={c.id} style={styles.brokerRow} onPress={() => setSelected(c.id)}>
-                <View style={[styles.avatar, { backgroundColor: NAVY_AVATAR_PALETTE[idx % NAVY_AVATAR_PALETTE.length] }]}>
-                  <Text style={styles.avatarText}>{(c.nome_guerra || '?').charAt(0)}</Text>
+          <View style={{ gap: 10 }}>
+            {groups.map((g) => {
+              const open = searching || !!expandedStages[g.stage];
+              const tone = g.stage === 'corretor_creci' ? 'positive' : g.stage === 'treinamento' ? 'info' : 'attention';
+              const t = statusTone[tone];
+              return (
+                <View key={g.stage}>
+                  <TouchableOpacity
+                    style={styles.groupHead}
+                    onPress={() =>
+                      setExpandedStages((prev) => ({
+                        ...prev,
+                        [g.stage]: !prev[g.stage],
+                      }))
+                    }
+                  >
+                    <View style={[styles.groupBullet, { backgroundColor: t.bg }]} />
+                    <Text style={styles.groupTitle}>{STAGE_LABEL[g.stage]}</Text>
+                    <Text style={styles.groupCount}>{g.brokers.length}</Text>
+                    <View style={styles.chevronBox}>
+                      {open ? <ChevronUp size={14} color={colors.slate500} /> : <ChevronDown size={14} color={colors.slate500} />}
+                    </View>
+                  </TouchableOpacity>
+                  {open && (
+                    <View style={styles.groupList}>
+                      {g.brokers.map((c: any, idx: number) => (
+                        <TouchableOpacity key={c.id} style={styles.brokerRow} onPress={() => setSelected(c.id)}>
+                          <View style={[styles.avatar, { backgroundColor: NAVY_AVATAR_PALETTE[idx % NAVY_AVATAR_PALETTE.length] }]}>
+                            <Text style={styles.avatarText}>{(c.nome_guerra || '?').charAt(0)}</Text>
+                          </View>
+                          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                            <Text style={styles.rowName}>{c.nome_guerra}</Text>
+                            <Text style={styles.rowMeta}>
+                              CRECI: {c.creci || '—'} · {c.manager_nome_guerra ? `Ger.: ${c.manager_nome_guerra}` : 'Sem gerente'}
+                            </Text>
+                          </View>
+                          <Text style={[styles.badgeText, { color: t.fg, backgroundColor: t.bg }]}>{STAGE_BADGE[g.stage]}</Text>
+                          <Text style={styles.rowMeta}>Abrir ›</Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  )}
                 </View>
-                <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                  <Text style={styles.rowName}>{c.nome_guerra}</Text>
-                  <Text style={styles.rowMeta}>
-                    CRECI: {c.creci || '—'} · {c.manager_nome_guerra ? `Ger.: ${c.manager_nome_guerra}` : 'Sem gerente'}
-                  </Text>
-                </View>
-                <Text style={styles.rowMeta}>Abrir ›</Text>
-              </TouchableOpacity>
-            ))}
+              );
+            })}
           </View>
         )}
       </ScrollView>
@@ -564,6 +628,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   searchInput: { flex: 1, paddingVertical: 10, fontSize: 13, color: semantic.textPrimary, fontFamily: font.body },
+  groupHead: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: semantic.card, borderRadius: radius.md, borderWidth: 1, borderColor: semantic.border,
+    paddingVertical: 10, paddingHorizontal: 12, ...shadow.card,
+  },
+  groupBullet: { width: 10, height: 10, borderRadius: 4 },
+  groupTitle: { color: semantic.textPrimary, fontFamily: font.display, fontWeight: '800', fontSize: 14, flex: 1 },
+  groupCount: { color: colors.slate500, fontFamily: font.body, fontWeight: '700', fontSize: 12 },
+  chevronBox: { width: 26, height: 26, borderRadius: 8, backgroundColor: colors.slate100, alignItems: 'center', justifyContent: 'center' },
+  groupList: { gap: 8, marginTop: 8 },
+  badgeText: {
+    fontFamily: font.body, fontWeight: '800', fontSize: 9.5, letterSpacing: 0.3,
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm, overflow: 'hidden',
+  },
   brokerRow: {
     flexDirection: 'row', alignItems: 'center', gap: 11,
     backgroundColor: semantic.card, borderRadius: radius.lg, borderWidth: 1, borderColor: semantic.border,
