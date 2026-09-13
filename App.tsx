@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, View, StyleSheet, Platform } from 'react-native';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import Login from './src/screens/Login';
-import Dashboard from './src/screens/Dashboard';
+import LayoutGate from './src/novaidentidade/LayoutGate';
 import RegisterBroker from './src/screens/RegisterBroker';
 import ProjectStatus from './src/screens/ProjectStatus';
 import ChangePassword from './src/screens/ChangePassword';
@@ -33,9 +33,9 @@ function AppContent({ inviteToken }: { inviteToken?: string }) {
     return <ChangePassword />;
   }
 
-  // Se o usuário estiver logado, exibe o Dashboard diretamente [15]
+  // Se o usuário estiver logado, o LayoutGate decide a camada visual (clássica ou nova)
   if (signed) {
-    return <Dashboard />;
+    return <LayoutGate />;
   }
 
   // Se não estiver logado, alterna dinamicamente entre Login e Cadastro

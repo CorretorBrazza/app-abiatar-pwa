@@ -51,6 +51,8 @@ interface TenantItem {
   limite_plantoes: number;
   limite_corretores: number;
   created_at: string;
+  features?: { nova_identidade?: boolean };
+  settings?: { features?: { nova_identidade?: boolean } };
   stats: {
     totalUsers: number;
     totalBrokers: number;
@@ -785,6 +787,24 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
     }
   };
 
+  const handleToggleNovaIdentidade = async (tenant: TenantItem) => {
+    const next = !tenant.features?.nova_identidade;
+    try {
+      const res = await api.patch(
+        `/dev/tenants/${tenant.id}/settings`,
+        { features: { nova_identidade: next } },
+        getDevHeaders(),
+      );
+      setFeedback({
+        type: 'success',
+        message: res.data?.message || `Nova Identidade ${next ? 'ATIVADA' : 'DESATIVADA'} para ${tenant.name}.`,
+      });
+      loadTenants();
+    } catch (err: any) {
+      setFeedback({ type: 'error', message: err.response?.data?.message || 'Erro ao alterar configuração do tenant.' });
+    }
+  };
+
   const handleSendTestEmail = async () => {
     if (!testEmailAddress.trim()) {
       setFeedback({ type: 'error', message: 'Informe um e-mail de destino para o teste.' });
@@ -1103,6 +1123,15 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
                         <Text style={styles.actionBtnText}>{t.status_assinatura === 'active' ? 'Suspender' : 'Ativar'}</Text>
                       </TouchableOpacity>
                     </View>
+                  </View>
+                  <View style={styles.rowBetween}>
+                    <Text style={{ fontSize: 12, color: '#a1a1aa' }}>Nova Identidade (enquanto em validação)</Text>
+                    <TouchableOpacity
+                      onPress={() => handleToggleNovaIdentidade(t)}
+                      style={[styles.switch, t.features?.nova_identidade ? styles.switchOn : styles.switchOff]}
+                    >
+                      <View style={[styles.switchKnob, t.features?.nova_identidade && styles.switchKnobOn]} />
+                    </TouchableOpacity>
                   </View>
                   <View style={styles.tenantStatsRow}>
                     <Text style={styles.tenantStatItem}>Corretores: <Text style={{ color: '#fff', fontWeight: 'bold' }}>{t.stats?.totalBrokers || 0}</Text></Text>
@@ -2344,6 +2373,23 @@ const styles = StyleSheet.create({
     borderColor: '#3f3f46',
   },
   actionBtnText: { fontSize: 11, fontWeight: '700', color: '#fff' },
+  switch: {
+    width: 42,
+    height: 24,
+    borderRadius: 12,
+    padding: 3,
+    justifyContent: 'center',
+  },
+  switchOn: { backgroundColor: '#22c55e' },
+  switchOff: { backgroundColor: '#3f3f46' },
+  switchKnob: {
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    backgroundColor: '#fff',
+    alignSelf: 'flex-start',
+  },
+  switchKnobOn: { alignSelf: 'flex-end' },
   tenantStatsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
