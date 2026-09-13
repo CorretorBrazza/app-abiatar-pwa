@@ -94,6 +94,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await api.post('/auth/login', {
         email,
         passwordHash,
+        userAgent: typeof navigator !== 'undefined' ? navigator.userAgent.slice(0, 512) : undefined,
       });
 
       const { access_token, user: loggedUser, tenant: loggedTenant } = response.data;
