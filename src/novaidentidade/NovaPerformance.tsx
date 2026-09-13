@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -83,7 +84,17 @@ const TABS: { key: TabType; label: string; icon: React.ComponentType<any> }[] = 
   { key: 'booths', label: 'Plantões', icon: Building2 },
 ];
 
-export default function NovaPerformance({ isMobile, canDrillHistory }: { isMobile?: boolean; canDrillHistory?: boolean }) {
+export default function NovaPerformance({
+  isMobile,
+  canDrillHistory,
+  sidebarOffset = 0,
+  topOffset = 0,
+}: {
+  isMobile?: boolean;
+  canDrillHistory?: boolean;
+  sidebarOffset?: number;
+  topOffset?: number;
+}) {
   const { tenant } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('realtime');
   const [historyBrokerId, setHistoryBrokerId] = useState<string | null>(null);
@@ -689,11 +700,26 @@ export default function NovaPerformance({ isMobile, canDrillHistory }: { isMobil
           </>
         )}
       </ScrollView>
-      <Modal visible={!!historyBrokerId} animationType="slide" onRequestClose={() => setHistoryBrokerId(null)}>
-        <View style={{ flex: 1, backgroundColor: semantic.background }}>
-          <NovaHistoricoCorretor brokerId={historyBrokerId} isMobile={isMobile} onClose={() => setHistoryBrokerId(null)} />
-        </View>
-      </Modal>
+      {Platform.OS === 'web' && !isMobile ? (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setHistoryBrokerId(null)}>
+          <View style={styles.sheetWrap}>
+            <TouchableOpacity
+              style={[styles.sheetBackdrop, { left: sidebarOffset, top: topOffset }]}
+              onPress={() => setHistoryBrokerId(null)}
+              activeOpacity={1}
+            />
+            <View style={[styles.sheetPanel, { top: topOffset }]}>
+              <NovaHistoricoCorretor brokerId={historyBrokerId} onClose={() => setHistoryBrokerId(null)} />
+            </View>
+          </View>
+        </Modal>
+      ) : (
+        <Modal visible={!!historyBrokerId} animationType="slide" onRequestClose={() => setHistoryBrokerId(null)}>
+          <View style={{ flex: 1, backgroundColor: semantic.background }}>
+            <NovaHistoricoCorretor brokerId={historyBrokerId} isMobile onClose={() => setHistoryBrokerId(null)} />
+          </View>
+        </Modal>
+      )}
     </View>
   );
 }
@@ -835,6 +861,31 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: colors.coral300, backgroundColor: semantic.card,
   },
   historyBtnText: { color: colors.coral600, fontFamily: font.body, fontWeight: '700', fontSize: 10 },
+  sheetWrap: { flex: 1, position: 'relative', backgroundColor: 'transparent' },
+  sheetBackdrop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(10,20,32,0.35)',
+  },
+  sheetPanel: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 640,
+    maxWidth: '92%',
+    backgroundColor: semantic.background,
+    borderTopLeftRadius: radius.lg,
+    borderBottomLeftRadius: radius.lg,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowOffset: { width: -8, height: 0 },
+    shadowRadius: 24,
+    elevation: 16,
+    overflow: 'hidden',
+  },
   metricGrid: {
     flexDirection: 'row', flexWrap: 'wrap',
     backgroundColor: colors.slate050, borderRadius: radius.md, borderWidth: 1, borderColor: semantic.border,

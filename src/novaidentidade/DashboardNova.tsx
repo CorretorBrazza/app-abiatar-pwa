@@ -724,7 +724,7 @@ export default function DashboardNova() {
         if (profile === 'gerencia') return <NovaConvidarCorretores managerId={user?.id} />;
         return <NovaPessoas isMobile={isMobile} sidebarOffset={sidebarOffset} topOffset={topOffset} />;
       case 'performance':
-        return <NovaPerformance isMobile={isMobile} canDrillHistory={profile === 'diretoria'} />;
+        return <NovaPerformance isMobile={isMobile} canDrillHistory={profile === 'diretoria'} sidebarOffset={sidebarOffset} topOffset={topOffset} />;
       case 'rh_history':
         return <NovaHistoricoCorretor canSelect isMobile={isMobile} />;
       case 'messaging':
