@@ -148,8 +148,9 @@ function getHolidayDayOfWeek(isoDate: string): string {
 
 const confirmDelete = (message: string) => (typeof window === 'undefined' ? true : window.confirm(message));
 
-export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
+export default function NovaOperacao({ isMobile, canManage }: { isMobile?: boolean; canManage?: boolean }) {
   const { tenant } = useAuth();
+  const readOnly = !canManage;
   const [activeTab, setActiveTab] = useState<'booths' | 'holidays'>('booths');
 
   const [booths, setBooths] = useState<Booth[]>([]);
@@ -552,8 +553,9 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
         value={value}
-        onChangeText={onChange}
-        style={styles.input}
+        onChangeText={readOnly ? () => {} : onChange}
+        editable={!readOnly}
+        style={[styles.input, readOnly && styles.inputReadOnly]}
         placeholder={placeholder}
         placeholderTextColor={colors.slate400}
         keyboardType={numeric ? 'numeric' : 'default'}
@@ -567,10 +569,20 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
         <View style={[styles.hero, { backgroundImage: 'linear-gradient(135deg, #2F4A60 0%, #17212B 60%, #101C2A 100%)' } as any]}>
           <View style={styles.heroBadge}>
             <Settings2 size={12} color="#fff" />
-            <Text style={styles.heroBadgeText}>Diretoria · Operação</Text>
+            <Text style={styles.heroBadgeText}>{readOnly ? 'Gerência · Operação (somente leitura)' : 'Diretoria · Operação'}</Text>
           </View>
           <Text style={styles.heroTitle}>Plantões, Roletas e regras.</Text>
-          <Text style={styles.heroSubtitle}>Grade de horários, regras operacionais e feriados com roleta única.</Text>
+          <Text style={styles.heroSubtitle}>
+            {readOnly
+              ? 'Consulta de horários, regras operacionais e feriados com roleta única. Alterações apenas pelo painel da Diretoria.'
+              : 'Grade de horários, regras operacionais e feriados com roleta única.'}
+          </Text>
+          {readOnly && (
+            <View style={styles.readOnlyBadge}>
+              <Clock size={12} color="#F2E8C2" />
+              <Text style={styles.readOnlyBadgeText}>Somente leitura — criação e edição são exclusivas da Diretoria</Text>
+            </View>
+          )}
         </View>
 
         <View style={styles.tabs}>
@@ -593,10 +605,12 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
 
             <View style={styles.boothToolbar}>
               <Text style={styles.toolbarLabel}>Selecionar plantão de vendas:</Text>
-              <TouchableOpacity style={styles.newBoothBtn} onPress={startNewBooth}>
-                <Plus size={14} color="#fff" />
-                <Text style={styles.newBoothText}>Novo plantão</Text>
-              </TouchableOpacity>
+              {!readOnly && (
+                <TouchableOpacity style={styles.newBoothBtn} onPress={startNewBooth}>
+                  <Plus size={14} color="#fff" />
+                  <Text style={styles.newBoothText}>Novo plantão</Text>
+                </TouchableOpacity>
+              )}
             </View>
 
             {booths.length > 0 && (
@@ -650,19 +664,21 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                       <TextInput
                         value={(selectedBooth.wifis || []).map((w) => w.ssid).join('\n')}
                         onChangeText={(value) => {
+                          if (readOnly) return;
                           setSelectedBooth({
                             ...selectedBooth,
                             wifis: value.split('\n').map((ssid) => ({ ssid: ssid.trim() })).filter((w) => w.ssid),
                           });
                           setDirtyBooth(true);
                         }}
-                        style={[styles.input, styles.multiline]}
+                        editable={!readOnly}
+                        style={[styles.input, styles.multiline, readOnly && styles.inputReadOnly]}
                         multiline
                         placeholder="Ex: Wi-Fi_Plantao_01"
                         placeholderTextColor={colors.slate400}
                       />
 
-                      {selectedBoothId && (
+                      {selectedBoothId && !readOnly && (
                         <View style={styles.lifecycleRow}>
                           <TouchableOpacity style={[styles.lifecycleBtn, { borderColor: colors.green700 }]} onPress={() => void changeLifecycle('publish')}>
                             <CheckCircle2 size={13} color={colors.green700} />
@@ -707,8 +723,9 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                               return (
                                 <TouchableOpacity
                                   key={stage.key}
-                                  style={[styles.toggle, { backgroundColor: on ? colors.green100 : colors.red100 }]}
-                                  onPress={() => toggleStage(stage.key)}
+                                  style={[styles.toggle, { backgroundColor: on ? colors.green100 : colors.red100 }, readOnly && styles.toggleDisabled]}
+                                  onPress={() => !readOnly && toggleStage(stage.key)}
+                                  disabled={readOnly}
                                 >
                                   <Circle size={13} color={on ? colors.green700 : colors.red700} />
                                   <Text style={[styles.toggleText, { color: on ? colors.green700 : colors.red700 }]}>
@@ -738,6 +755,7 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                                     if (!next) updateField('roleta_3_time', '');
                                     else if (!rules.roleta_3_time) updateField('roleta_3_time', '18:00');
                                   }}
+                                  disabled={readOnly}
                                 >
                                   <Text style={[styles.roleta3ToggleText, { color: roleta3Enabled ? colors.green700 : colors.slate600 }]}>
                                     {roleta3Enabled ? 'HABILITADO' : 'DESABILITADO'}
@@ -747,8 +765,8 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                               <TextInput
                                 value={String(rules.roleta_3_time || '')}
                                 onChangeText={(v) => updateField('roleta_3_time', v)}
-                                editable={roleta3Enabled}
-                                style={[styles.input, !roleta3Enabled && { backgroundColor: colors.slate100, color: colors.slate400 }]}
+                                editable={!readOnly && roleta3Enabled}
+                                style={[styles.input, (!roleta3Enabled || readOnly) && { backgroundColor: colors.slate100, color: colors.slate400 }]}
                                 placeholder={roleta3Enabled ? 'Ex: 18:00 ou 19:00' : 'Desabilitado (Sem 3ª roleta)'}
                                 placeholderTextColor={colors.slate400}
                               />
@@ -774,7 +792,7 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                             <View style={styles.flex1}>{pair('Roletas para Domingo (Seg a Sex)', String(rules.sunday_required_periods ?? 6), (v) => updateField('sunday_required_periods', v), '6', true)}</View>
                           </View>
 
-                          <TouchableOpacity style={[styles.toggle, { backgroundColor: rules.weekend_enabled ? colors.green100 : colors.red100 }]} onPress={() => { setRules({ ...rules, weekend_enabled: !rules.weekend_enabled }); setDirtyRules(true); }}>
+                          <TouchableOpacity style={[styles.toggle, { backgroundColor: rules.weekend_enabled ? colors.green100 : colors.red100 }, readOnly && styles.toggleDisabled]} onPress={() => { if (readOnly) return; setRules({ ...rules, weekend_enabled: !rules.weekend_enabled }); setDirtyRules(true); }} disabled={readOnly}>
                             <Circle size={13} color={rules.weekend_enabled ? colors.green700 : colors.red700} />
                             <Text style={[styles.toggleText, { color: rules.weekend_enabled ? colors.green700 : colors.red700 }]}>
                               Habilitar Roletas em Fins de Semana: {rules.weekend_enabled ? 'SIM (Ativo)' : 'NÃO (Bloqueado)'}
@@ -791,15 +809,19 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                             <View style={styles.flex1}>{pair('Prazo de Resposta (Minutos)', String(rules.ping_response_deadline_minutes ?? 5), (v) => updateField('ping_response_deadline_minutes', v), '5', true)}</View>
                           </View>
 
-                          <Text style={styles.fieldLabel}>Motivo da Alteração das Regras (Auditoria)</Text>
-                          <TextInput
-                            value={reason}
-                            onChangeText={setReason}
-                            style={[styles.input, styles.multiline]}
-                            multiline
-                            placeholder="Informe o motivo para a trilha de auditoria"
-                            placeholderTextColor={colors.slate400}
-                          />
+                          {!readOnly && (
+                            <>
+                              <Text style={styles.fieldLabel}>Motivo da Alteração das Regras (Auditoria)</Text>
+                              <TextInput
+                                value={reason}
+                                onChangeText={setReason}
+                                style={[styles.input, styles.multiline]}
+                                multiline
+                                placeholder="Informe o motivo para a trilha de auditoria"
+                                placeholderTextColor={colors.slate400}
+                              />
+                            </>
+                          )}
                         </View>
 
                         <View style={styles.card}>
@@ -813,42 +835,46 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                             Configure horários diferenciados de abertura e Roleta Única exclusivos para este plantão (ex: shoppings aos domingos, eventos ou feriados). O horário especial tem prioridade soberana e substitui a grade padrão.
                           </Text>
 
-                          <Text style={styles.fieldLabel}>Dia da Semana:</Text>
-                          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
-                            <View style={styles.dayRow}>
-                              {DAY_NAMES.map((name, idx) => (
-                                <TouchableOpacity key={name} style={[styles.dayChip, specialDayOfWeek === idx && styles.dayChipActive]} onPress={() => setSpecialDayOfWeek(idx)}>
-                                  <Text style={[styles.dayChipText, specialDayOfWeek === idx && styles.dayChipTextActive]}>{name}</Text>
+                          {!readOnly && (
+                            <>
+                              <Text style={styles.fieldLabel}>Dia da Semana:</Text>
+                              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 12 }}>
+                                <View style={styles.dayRow}>
+                                  {DAY_NAMES.map((name, idx) => (
+                                    <TouchableOpacity key={name} style={[styles.dayChip, specialDayOfWeek === idx && styles.dayChipActive]} onPress={() => setSpecialDayOfWeek(idx)}>
+                                      <Text style={[styles.dayChipText, specialDayOfWeek === idx && styles.dayChipTextActive]}>{name}</Text>
+                                    </TouchableOpacity>
+                                  ))}
+                                </View>
+                              </ScrollView>
+
+                              <Text style={styles.fieldLabel}>Frequência de Aplicação:</Text>
+                              <View style={styles.scopeRow}>
+                                <TouchableOpacity style={[styles.scopeOption, specialScope === 'one_off' && styles.scopeOptionActive, styles.flex1]} onPress={() => setSpecialScope('one_off')}>
+                                  <Text style={[styles.scopeText, specialScope === 'one_off' && styles.scopeTextActive]}>Somente o Próximo ({DAY_NAMES[specialDayOfWeek]})</Text>
                                 </TouchableOpacity>
-                              ))}
-                            </View>
-                          </ScrollView>
+                                <TouchableOpacity style={[styles.scopeOption, specialScope === 'recurring' && styles.scopeOptionActive, styles.flex1]} onPress={() => setSpecialScope('recurring')}>
+                                  <Text style={[styles.scopeText, specialScope === 'recurring' && styles.scopeTextActive]}>Todos os ({DAY_NAMES[specialDayOfWeek]}s)</Text>
+                                </TouchableOpacity>
+                              </View>
 
-                          <Text style={styles.fieldLabel}>Frequência de Aplicação:</Text>
-                          <View style={styles.scopeRow}>
-                            <TouchableOpacity style={[styles.scopeOption, specialScope === 'one_off' && styles.scopeOptionActive, styles.flex1]} onPress={() => setSpecialScope('one_off')}>
-                              <Text style={[styles.scopeText, specialScope === 'one_off' && styles.scopeTextActive]}>Somente o Próximo ({DAY_NAMES[specialDayOfWeek]})</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity style={[styles.scopeOption, specialScope === 'recurring' && styles.scopeOptionActive, styles.flex1]} onPress={() => setSpecialScope('recurring')}>
-                              <Text style={[styles.scopeText, specialScope === 'recurring' && styles.scopeTextActive]}>Todos os ({DAY_NAMES[specialDayOfWeek]}s)</Text>
-                            </TouchableOpacity>
-                          </View>
+                              <View style={styles.pairRow}>
+                                <View style={[styles.flex1]}>
+                                  <Text style={styles.fieldLabel}>Horário da Roleta Única *</Text>
+                                  <TextInput style={styles.input} value={specialRoletaTime} onChangeText={setSpecialRoletaTime} placeholder="12:00" placeholderTextColor={colors.slate400} />
+                                </View>
+                                <View style={styles.flex2}>
+                                  <Text style={styles.fieldLabel}>Motivo / Descrição</Text>
+                                  <TextInput style={styles.input} value={specialDescription} onChangeText={setSpecialDescription} placeholder="Ex: Abertura Shopping às 12h" placeholderTextColor={colors.slate400} />
+                                </View>
+                              </View>
 
-                          <View style={styles.pairRow}>
-                            <View style={[styles.flex1]}>
-                              <Text style={styles.fieldLabel}>Horário da Roleta Única *</Text>
-                              <TextInput style={styles.input} value={specialRoletaTime} onChangeText={setSpecialRoletaTime} placeholder="12:00" placeholderTextColor={colors.slate400} />
-                            </View>
-                            <View style={styles.flex2}>
-                              <Text style={styles.fieldLabel}>Motivo / Descrição</Text>
-                              <TextInput style={styles.input} value={specialDescription} onChangeText={setSpecialDescription} placeholder="Ex: Abertura Shopping às 12h" placeholderTextColor={colors.slate400} />
-                            </View>
-                          </View>
-
-                          <TouchableOpacity style={styles.primaryBtn} onPress={() => void handleCreateSpecialSchedule()} disabled={creatingSpecial}>
-                            {creatingSpecial ? <ActivityIndicator size="small" color="#fff" /> : <CalendarRange size={14} color="#fff" />}
-                            <Text style={styles.primaryBtnText}>Adicionar Horário Especial Soberano</Text>
-                          </TouchableOpacity>
+                              <TouchableOpacity style={styles.primaryBtn} onPress={() => void handleCreateSpecialSchedule()} disabled={creatingSpecial}>
+                                {creatingSpecial ? <ActivityIndicator size="small" color="#fff" /> : <CalendarRange size={14} color="#fff" />}
+                                <Text style={styles.primaryBtnText}>Adicionar Horário Especial Soberano</Text>
+                              </TouchableOpacity>
+                            </>
+                          )}
 
                           <View style={styles.listBlock}>
                             <Text style={styles.listTitle}>
@@ -878,9 +904,11 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                                           : `Recorrente: Todos os ${schedule.day_of_week !== null ? DAY_NAMES[schedule.day_of_week] : ''}s`}
                                       </Text>
                                     </View>
-                                    <TouchableOpacity style={styles.deleteBtn} onPress={() => void handleDeleteSpecialSchedule(schedule)}>
-                                      <Trash2 size={14} color={colors.red700} />
-                                    </TouchableOpacity>
+                                    {!readOnly && (
+                                      <TouchableOpacity style={styles.deleteBtn} onPress={() => void handleDeleteSpecialSchedule(schedule)}>
+                                        <Trash2 size={14} color={colors.red700} />
+                                      </TouchableOpacity>
+                                    )}
                                   </View>
                                 ))}
                               </View>
@@ -908,62 +936,64 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
               Cadastre feriados nacionais, estaduais, municipais ou pontos facultativos. Nesses dias, os plantões configurados operarão com Roleta Única no horário determinado.
             </Text>
 
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>Incluir Novo Feriado</Text>
+            {!readOnly && (
+              <View style={styles.card}>
+                <Text style={styles.cardTitle}>Incluir Novo Feriado</Text>
 
-              <View style={styles.field}>
-                <Text style={styles.fieldLabel}>Data do Feriado (DD/MM/AAAA) *</Text>
-                <TextInput
-                  value={holidayDate}
-                  onChangeText={handleDateChange}
-                  style={styles.input}
-                  placeholder="Ex: 07/09/2026"
-                  placeholderTextColor={colors.slate400}
-                  maxLength={10}
-                  keyboardType="numeric"
-                />
-                {dateInfo.isValid && (
-                  <View style={[styles.dayBadge, { backgroundColor: dateInfo.isPast ? colors.red100 : colors.green100 }]}>
-                    <Text style={[styles.dayBadgeText, { color: dateInfo.isPast ? colors.red700 : colors.green700 }]}>
-                      {dateInfo.isPast ? `${dateInfo.label} (Data já passou - apenas datas futuras permitidas)` : `${dateInfo.label} (Roleta Única)`}
-                    </Text>
+                <View style={styles.field}>
+                  <Text style={styles.fieldLabel}>Data do Feriado (DD/MM/AAAA) *</Text>
+                  <TextInput
+                    value={holidayDate}
+                    onChangeText={handleDateChange}
+                    style={styles.input}
+                    placeholder="Ex: 07/09/2026"
+                    placeholderTextColor={colors.slate400}
+                    maxLength={10}
+                    keyboardType="numeric"
+                  />
+                  {dateInfo.isValid && (
+                    <View style={[styles.dayBadge, { backgroundColor: dateInfo.isPast ? colors.red100 : colors.green100 }]}>
+                      <Text style={[styles.dayBadgeText, { color: dateInfo.isPast ? colors.red700 : colors.green700 }]}>
+                        {dateInfo.isPast ? `${dateInfo.label} (Data já passou - apenas datas futuras permitidas)` : `${dateInfo.label} (Roleta Única)`}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+
+                {pair('Nome / Descrição do Feriado *', holidayName, setHolidayName, 'Ex: Independência do Brasil / Padroeira da Cidade')}
+                {pair('Horário da Roleta Única', holidayRoletaTime, setHolidayRoletaTime, '09:00')}
+
+                <Text style={styles.fieldLabel}>Aplicar para quais plantões?</Text>
+                <View style={styles.scopeRow}>
+                  <TouchableOpacity style={[styles.scopeOption, holidayScope === 'all' && styles.scopeOptionActive, styles.flex1]} onPress={() => setHolidayScope('all')}>
+                    <Text style={[styles.scopeText, holidayScope === 'all' && styles.scopeTextActive]}>Todos os Plantões da Construtora</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[styles.scopeOption, holidayScope === 'specific' && styles.scopeOptionActive, styles.flex1]} onPress={() => setHolidayScope('specific')}>
+                    <Text style={[styles.scopeText, holidayScope === 'specific' && styles.scopeTextActive]}>Plantões Específicos</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {holidayScope === 'specific' && (
+                  <View style={styles.specificBoothsBox}>
+                    <Text style={styles.listTitle}>Selecione os plantões que terão Roleta Única neste feriado:</Text>
+                    {booths.map((booth) => {
+                      const isChecked = selectedHolidayBoothIds.includes(booth.id);
+                      return (
+                        <TouchableOpacity key={booth.id} style={[styles.checkboxItem, isChecked && styles.checkboxItemChecked]} onPress={() => toggleBoothHolidaySelection(booth.id)}>
+                          {isChecked ? <CheckCircle2 size={14} color={colors.green700} /> : <Circle size={14} color={colors.slate400} />}
+                          <Text style={[styles.checkboxLabel, isChecked && { fontWeight: '800', color: semantic.textPrimary }]}>{booth.name}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </View>
                 )}
-              </View>
 
-              {pair('Nome / Descrição do Feriado *', holidayName, setHolidayName, 'Ex: Independência do Brasil / Padroeira da Cidade')}
-              {pair('Horário da Roleta Única', holidayRoletaTime, setHolidayRoletaTime, '09:00')}
-
-              <Text style={styles.fieldLabel}>Aplicar para quais plantões?</Text>
-              <View style={styles.scopeRow}>
-                <TouchableOpacity style={[styles.scopeOption, holidayScope === 'all' && styles.scopeOptionActive, styles.flex1]} onPress={() => setHolidayScope('all')}>
-                  <Text style={[styles.scopeText, holidayScope === 'all' && styles.scopeTextActive]}>Todos os Plantões da Construtora</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.scopeOption, holidayScope === 'specific' && styles.scopeOptionActive, styles.flex1]} onPress={() => setHolidayScope('specific')}>
-                  <Text style={[styles.scopeText, holidayScope === 'specific' && styles.scopeTextActive]}>Plantões Específicos</Text>
+                <TouchableOpacity style={styles.primaryBtn} onPress={() => void handleCreateHoliday()} disabled={creatingHoliday || dateInfo.isPast}>
+                  {creatingHoliday ? <ActivityIndicator size="small" color="#fff" /> : <CalendarDays size={14} color="#fff" />}
+                  <Text style={styles.primaryBtnText}>Cadastrar Feriado</Text>
                 </TouchableOpacity>
               </View>
-
-              {holidayScope === 'specific' && (
-                <View style={styles.specificBoothsBox}>
-                  <Text style={styles.listTitle}>Selecione os plantões que terão Roleta Única neste feriado:</Text>
-                  {booths.map((booth) => {
-                    const isChecked = selectedHolidayBoothIds.includes(booth.id);
-                    return (
-                      <TouchableOpacity key={booth.id} style={[styles.checkboxItem, isChecked && styles.checkboxItemChecked]} onPress={() => toggleBoothHolidaySelection(booth.id)}>
-                        {isChecked ? <CheckCircle2 size={14} color={colors.green700} /> : <Circle size={14} color={colors.slate400} />}
-                        <Text style={[styles.checkboxLabel, isChecked && { fontWeight: '800', color: semantic.textPrimary }]}>{booth.name}</Text>
-                      </TouchableOpacity>
-                    );
-                  })}
-                </View>
-              )}
-
-              <TouchableOpacity style={styles.primaryBtn} onPress={() => void handleCreateHoliday()} disabled={creatingHoliday || dateInfo.isPast}>
-                {creatingHoliday ? <ActivityIndicator size="small" color="#fff" /> : <CalendarDays size={14} color="#fff" />}
-                <Text style={styles.primaryBtnText}>Cadastrar Feriado</Text>
-              </TouchableOpacity>
-            </View>
+            )}
 
             <View style={styles.card}>
               <Text style={styles.cardTitle}>Feriados Cadastrados no Sistema</Text>
@@ -971,7 +1001,9 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                 <ActivityIndicator color={colors.coral600} style={{ marginVertical: 16 }} />
               ) : holidays.length === 0 ? (
                 <View style={styles.emptyBox}>
-                  <Text style={styles.emptyText}>Nenhum feriado cadastrado até o momento. Utilize o formulário acima para cadastrar.</Text>
+                  <Text style={styles.emptyText}>
+                    {readOnly ? 'Nenhum feriado cadastrado até o momento.' : 'Nenhum feriado cadastrado até o momento. Utilize o formulário acima para cadastrar.'}
+                  </Text>
                 </View>
               ) : (
                 <View style={{ gap: 10 }}>
@@ -989,9 +1021,11 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                           Roleta Única às <Text style={{ fontWeight: '800' }}>{h.roleta_time}</Text> | {h.boothName}
                         </Text>
                       </View>
-                      <TouchableOpacity style={styles.deleteBtn} onPress={() => void handleDeleteHoliday(h)}>
-                        <Trash2 size={14} color={colors.red700} />
-                      </TouchableOpacity>
+                      {!readOnly && (
+                        <TouchableOpacity style={styles.deleteBtn} onPress={() => void handleDeleteHoliday(h)}>
+                          <Trash2 size={14} color={colors.red700} />
+                        </TouchableOpacity>
+                      )}
                     </View>
                   ))}
                 </View>
@@ -1001,7 +1035,7 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
         )}
       </ScrollView>
 
-      {activeTab === 'booths' && (dirtyBooth || dirtyRules) && (
+      {activeTab === 'booths' && !readOnly && (dirtyBooth || dirtyRules) && (
         <View style={styles.saveBar}>
           <View style={styles.saveBarInfo}>
             <Text style={styles.saveBarTitle}>Alterações não salvas</Text>
@@ -1030,6 +1064,14 @@ const styles = StyleSheet.create({
   heroBadgeText: { color: '#fff', fontFamily: font.body, fontWeight: '700', fontSize: 10, letterSpacing: 0.3 },
   heroTitle: { color: '#fff', fontFamily: font.display, fontWeight: '800', fontSize: 23, letterSpacing: -0.8, marginTop: 16 },
   heroSubtitle: { color: '#9EB0C1', fontFamily: font.body, fontSize: 12, lineHeight: 18, marginTop: 6 },
+  readOnlyBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+    marginTop: 12, paddingHorizontal: 10, paddingVertical: 5, borderRadius: radius.full,
+    backgroundColor: 'rgba(242,232,194,0.14)',
+  },
+  readOnlyBadgeText: { color: '#F2E8C2', fontFamily: font.body, fontWeight: '700', fontSize: 10 },
+  inputReadOnly: { backgroundColor: colors.slate100, color: colors.slate600 },
+  toggleDisabled: { opacity: 0.75 },
   tabs: { flexDirection: 'row', gap: 8 },
   tab: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,

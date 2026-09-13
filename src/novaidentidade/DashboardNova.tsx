@@ -674,7 +674,7 @@ export default function DashboardNova() {
 
     switch (view) {
       case 'operation':
-        return <NovaOperacao isMobile={isMobile} />;
+        return <NovaOperacao isMobile={isMobile} canManage={profile === 'diretoria'} />;
       case 'people':
         return <NovaPessoas isMobile={isMobile} sidebarOffset={sidebarOffset} topOffset={topOffset} />;
       case 'performance':
