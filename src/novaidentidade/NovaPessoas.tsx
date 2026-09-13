@@ -60,7 +60,7 @@ interface Meta {
   totalPages: number;
 }
 
-export default function NovaPessoas({ isMobile }: { isMobile?: boolean }) {
+export default function NovaPessoas({ isMobile, sidebarOffset = 0, topOffset = 0 }: { isMobile?: boolean; sidebarOffset?: number; topOffset?: number }) {
   const { tenant, user } = useAuth();
   const isExecutive = user?.role === 'diretoria_level_1' || user?.role === 'platform_admin_level_0';
   const visibleTabs: TabKey[] = isExecutive
@@ -556,7 +556,7 @@ export default function NovaPessoas({ isMobile }: { isMobile?: boolean }) {
         </View>
 
         {tab === 'corretor_level_3' ? (
-          <NovaGestaoCorretores hideTitle />
+          <NovaGestaoCorretores hideTitle isMobile={isMobile} sidebarOffset={sidebarOffset} topOffset={topOffset} />
         ) : (
           <>
         {renderActionBar()}

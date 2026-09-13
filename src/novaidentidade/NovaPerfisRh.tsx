@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { BadgeCheck, ChevronRight, Clock3, Users } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
+import { FichaCorretorModal } from './NovaGestaoCorretores';
 import { colors, font, fonts, radius, semantic, shadow, statusTone } from './tokens';
 import { SkeletonBlock, StateError, StateOffline, StaleBanner } from './components/States';
 
@@ -27,7 +28,17 @@ const stageTone = (stage?: string): keyof typeof statusTone => {
 const formatDate = (iso?: string) =>
   iso ? new Date(iso).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
 
-export default function NovaPerfisRh({ view, isMobile }: { view: 'rh_careers' | 'rh_credentials'; isMobile?: boolean }) {
+export default function NovaPerfisRh({
+  view,
+  isMobile,
+  sidebarOffset = 0,
+  topOffset = 0,
+}: {
+  view: 'rh_careers' | 'rh_credentials';
+  isMobile?: boolean;
+  sidebarOffset?: number;
+  topOffset?: number;
+}) {
   const { user } = useAuth();
   const [brokers, setBrokers] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
@@ -36,6 +47,7 @@ export default function NovaPerfisRh({ view, isMobile }: { view: 'rh_careers' | 
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [fichaBrokerId, setFichaBrokerId] = useState<string | null>(null);
 
   const isCareers = view === 'rh_careers';
 
@@ -173,7 +185,7 @@ export default function NovaPerfisRh({ view, isMobile }: { view: 'rh_careers' | 
                       const suspended = broker.is_suspended || broker.is_stage_expired || broker.is_inactive_90d;
                       const tone = statusTone[suspended ? 'danger' : stageTone(g.stage)];
                       return (
-                        <View key={broker.id} style={styles.row}>
+                        <TouchableOpacity key={broker.id} style={styles.row} onPress={() => setFichaBrokerId(broker.id)}>
                           <View style={[styles.avatar, { backgroundColor: NAVY_AVATAR_PALETTE[idx % NAVY_AVATAR_PALETTE.length] }]}>
                             <Text style={styles.avatarText}>{(broker.nome_guerra || '?').charAt(0)}</Text>
                           </View>
@@ -188,7 +200,7 @@ export default function NovaPerfisRh({ view, isMobile }: { view: 'rh_careers' | 
                               {suspended ? 'Suspenso' : g.stage === 'corretor_creci' ? 'CRECI' : 'Estágio'}
                             </Text>
                           </View>
-                        </View>
+                        </TouchableOpacity>
                       );
                     })}
                   </View>
@@ -208,7 +220,7 @@ export default function NovaPerfisRh({ view, isMobile }: { view: 'rh_careers' | 
               credentialList.map((broker, idx) => {
                 const tone = statusTone[broker.is_stage_expired ? 'danger' : (broker.days_until_stage_expiry ?? 99999) <= 15 ? 'attention' : 'positive'];
                 return (
-                  <View key={broker.id} style={[styles.credRow, broker.is_stage_expired && styles.credRowExpired]}>
+                  <TouchableOpacity key={broker.id} style={[styles.credRow, broker.is_stage_expired && styles.credRowExpired]} onPress={() => setFichaBrokerId(broker.id)}>
                     <View style={[styles.avatar, { backgroundColor: NAVY_AVATAR_PALETTE[idx % NAVY_AVATAR_PALETTE.length] }]}>
                       <Text style={styles.avatarText}>{(broker.nome_guerra || '?').charAt(0)}</Text>
                     </View>
@@ -228,7 +240,7 @@ export default function NovaPerfisRh({ view, isMobile }: { view: 'rh_careers' | 
                         {broker.is_stage_expired ? 'VENCIDO' : `${broker.days_until_stage_expiry ?? '—'} dia(s)`}
                       </Text>
                     </View>
-                  </View>
+                  </TouchableOpacity>
                 );
               })
             )}
@@ -239,6 +251,17 @@ export default function NovaPerfisRh({ view, isMobile }: { view: 'rh_careers' | 
           {lastUpdated && <StaleBanner updatedAt={lastUpdated} />}
         </View>
       </ScrollView>
+
+      <FichaCorretorModal
+        brokerId={fichaBrokerId}
+        managers={managers}
+        isMobile={isMobile}
+        sidebarOffset={sidebarOffset}
+        topOffset={topOffset}
+        mode="rh"
+        onClose={() => setFichaBrokerId(null)}
+        onSaved={() => void loadData()}
+      />
     </View>
   );
 }

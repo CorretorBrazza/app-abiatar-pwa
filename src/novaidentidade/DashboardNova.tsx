@@ -643,6 +643,9 @@ export default function DashboardNova() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isMobile = width < 768 || displayMode === 'mobile';
+  const sidebarOffset = isMobile ? 0 : collapsed ? 76 : 256;
+  const topOffset = isMobile ? 0 : 72;
+
   const meta = PROFILES.find((p) => p.profile === profile) ?? PROFILES[0];
   const nav = meta.nav;
   const currentLabel = VIEW_TITLE[view] ?? 'Visão geral';
@@ -691,7 +694,7 @@ export default function DashboardNova() {
       case 'operation':
         return <NovaOperacao isMobile={isMobile} />;
       case 'people':
-        return <NovaPessoas isMobile={isMobile} />;
+        return <NovaPessoas isMobile={isMobile} sidebarOffset={sidebarOffset} topOffset={topOffset} />;
       case 'performance':
         return <NovaPerformance isMobile={isMobile} />;
       case 'messaging':
@@ -704,7 +707,7 @@ export default function DashboardNova() {
       case 'rh_careers':
       default:
         if (profile === 'rh') {
-          if (view === 'rh_credentials' || view === 'rh_careers') return <NovaPerfisRh view={view} isMobile={isMobile} />;
+          if (view === 'rh_credentials' || view === 'rh_careers') return <NovaPerfisRh view={view} isMobile={isMobile} sidebarOffset={sidebarOffset} topOffset={topOffset} />;
           return <NovaVisaoRh isMobile={isMobile} />;
         }
         if (profile === 'gerencia') return <NovaMinhaEquipe isMobile={isMobile} managerId={user?.id} />;

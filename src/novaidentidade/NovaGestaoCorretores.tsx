@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -26,7 +27,6 @@ import {
   Users,
   X,
 } from 'lucide-react-native';
-import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { colors, font, fonts, radius, semantic, shadow, statusTone } from './tokens';
 
@@ -130,8 +130,17 @@ function StageBadge({ broker }: { broker: BrokerItem | Candidate }) {
   );
 }
 
-export default function NovaGestaoCorretores({ hideTitle = false }: { hideTitle?: boolean }) {
-  const { user, tenant } = useAuth();
+export default function NovaGestaoCorretores({
+  hideTitle = false,
+  isMobile = false,
+  sidebarOffset = 0,
+  topOffset = 0,
+}: {
+  hideTitle?: boolean;
+  isMobile?: boolean;
+  sidebarOffset?: number;
+  topOffset?: number;
+}) {
   const [allBrokers, setAllBrokers] = useState<BrokerItem[]>([]);
   const [managers, setManagers] = useState<ManagerItem[]>([]);
   const [pending, setPending] = useState<Candidate[]>([]);
@@ -843,6 +852,10 @@ export default function NovaGestaoCorretores({ hideTitle = false }: { hideTitle?
       <FichaCorretorModal
         brokerId={fichaBrokerId}
         managers={managers}
+        isMobile={isMobile}
+        sidebarOffset={sidebarOffset}
+        topOffset={topOffset}
+        mode="diretoria"
         onClose={() => setFichaBrokerId(null)}
         onSaved={() => void loadData()}
       />
@@ -863,18 +876,26 @@ const stylesheetCandidate = {
   flexWrap: 'wrap' as const,
 };
 
-function FichaCorretorModal({
+export function FichaCorretorModal({
   brokerId,
   managers,
+  isMobile = false,
+  sidebarOffset = 0,
+  topOffset = 0,
+  mode = 'diretoria',
   onClose,
   onSaved,
 }: {
   brokerId: string | null;
   managers: ManagerItem[];
+  isMobile?: boolean;
+  sidebarOffset?: number;
+  topOffset?: number;
+  mode?: 'diretoria' | 'rh';
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const { tenant } = useAuth();
+  const isRh = mode === 'rh';
   const [profile, setProfile] = useState<BrokerProfile | null>(null);
   const [nomeGuerra, setNomeGuerra] = useState('');
   const [creci, setCreci] = useState('');
@@ -1030,116 +1051,120 @@ function FichaCorretorModal({
     }
   };
 
-  const stageTone = selectedStage === 'treinamento' ? statusTone.info : selectedStage === 'estagiario' ? statusTone.attention : statusTone.positive;
+  const isDesktopSheet = Platform.OS === 'web' && !isMobile;
 
-  return (
-    <Modal visible={!!brokerId} animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: semantic.background }}>
-        <View style={[styles.fichaHeader, { backgroundImage: 'linear-gradient(135deg, #2F4A60 0%, #17212B 60%, #101C2A 100%)' } as any]}>
-          <View style={styles.fichaHeaderRow}>
-            <TouchableOpacity style={styles.fichaBackBtn} onPress={onClose}>
-              <Text style={styles.fichaBackText}>← Voltar</Text>
-            </TouchableOpacity>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fichaHeaderTitle}>Ficha do Corretor</Text>
-              <Text style={styles.fichaHeaderSubtitle}>Gestão individual, operação e vínculo hierárquico</Text>
-            </View>
+  const renderBody = () => (
+    <>
+      <View style={[styles.fichaHeader, { backgroundImage: 'linear-gradient(135deg, #2F4A60 0%, #17212B 60%, #101C2A 100%)' } as any]}>
+        <View style={styles.fichaHeaderRow}>
+          <TouchableOpacity style={styles.fichaBackBtn} onPress={onClose}>
+            <Text style={styles.fichaBackText}>← Voltar</Text>
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.fichaHeaderTitle}>{isRh ? 'Gestão de Estágio do Corretor' : 'Ficha do Corretor'}</Text>
+            <Text style={styles.fichaHeaderSubtitle}>
+              {isRh ? 'Evolução de carreira, vigência de estágio e dados cadastrais' : 'Gestão individual, operação e vínculo hierárquico'}
+            </Text>
           </View>
-          {profile && (
-            <View style={styles.fichaHeaderMeta}>
-              <Text style={styles.fichaHeaderName}>{profile.nome_guerra}</Text>
-              <Text style={styles.fichaHeaderSubtitle}>{profile.name} · {profile.email}</Text>
-            </View>
-          )}
         </View>
+        {profile && (
+          <View style={styles.fichaHeaderMeta}>
+            <Text style={styles.fichaHeaderName}>{profile.nome_guerra}</Text>
+            <Text style={styles.fichaHeaderSubtitle}>{profile.name} · {profile.email}</Text>
+          </View>
+        )}
+      </View>
 
-        <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.fichaContent}>
-          {!!error && (
-            <View style={styles.errorBox}>
-              <Text style={styles.errorBoxText}>{error}</Text>
-            </View>
-          )}
+      <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.fichaContent}>
+        {!!error && (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorBoxText}>{error}</Text>
+          </View>
+        )}
 
-          {loading || !profile ? (
-            <View style={styles.loadingBox}>
-              <ActivityIndicator size="large" color={colors.coral600} />
-            </View>
-          ) : (
-            <>
-              <View style={styles.card}>
-                <Text style={styles.fichaName}>{profile.name}</Text>
-                <Text style={styles.fichaLine}>Nome de guerra: {profile.nome_guerra}</Text>
-                <Text style={styles.fichaLine}>E-mail: {profile.email}</Text>
-                <Text style={styles.fichaLine}>CRECI: {profile.creci || 'Não informado'}</Text>
-                <Text style={styles.fichaLine}>Gerente: {profile.manager_nome_guerra || 'Sem gerente'}</Text>
+        {loading || !profile ? (
+          <View style={styles.loadingBox}>
+            <ActivityIndicator size="large" color={colors.coral600} />
+          </View>
+        ) : (
+          <>
+            <View style={styles.card}>
+              <Text style={styles.fichaName}>{profile.name}</Text>
+              <Text style={styles.fichaLine}>Nome de guerra: {profile.nome_guerra}</Text>
+              <Text style={styles.fichaLine}>E-mail: {profile.email}</Text>
+              <Text style={styles.fichaLine}>CRECI: {profile.creci || 'Não informado'}</Text>
+              <Text style={styles.fichaLine}>Gerente: {profile.manager_nome_guerra || 'Sem gerente'}</Text>
 
-                {profile.broker_stage !== 'corretor_creci' && profile.stage_expires_at && (
-                  <Text style={styles.fichaLine}>
-                    📅 Vigência do Estágio: <Text style={styles.boldText}>{fmtDate(profile.stage_expires_at)}</Text>{' '}
-                    ({profile.days_until_stage_expiry !== null && profile.days_until_stage_expiry !== undefined ? (profile.days_until_stage_expiry > 0 ? `${profile.days_until_stage_expiry} dias restantes` : 'EXPIRADO') : '—'})
-                  </Text>
-                )}
-                {profile.broker_stage === 'corretor_creci' && (
-                  <Text style={styles.fichaLine}>
-                    ⏱️ Último Check-in: <Text style={styles.boldText}>{profile.last_checkin_at ? `${profile.days_since_last_checkin ?? 0} dias atrás (${fmtDate(profile.last_checkin_at)})` : 'Nenhum check-in registrado'}</Text>
-                  </Text>
-                )}
-                <Text style={styles.fichaLine}>Status: {profile.status}</Text>
+              {profile.broker_stage !== 'corretor_creci' && profile.stage_expires_at && (
+                <Text style={styles.fichaLine}>
+                  📅 Vigência do Estágio: <Text style={styles.boldText}>{fmtDate(profile.stage_expires_at)}</Text>{' '}
+                  ({profile.days_until_stage_expiry !== null && profile.days_until_stage_expiry !== undefined ? (profile.days_until_stage_expiry > 0 ? `${profile.days_until_stage_expiry} dias restantes` : 'EXPIRADO') : '—'})
+                </Text>
+              )}
+              {profile.broker_stage === 'corretor_creci' && (
+                <Text style={styles.fichaLine}>
+                  ⏱️ Último Check-in: <Text style={styles.boldText}>{profile.last_checkin_at ? `${profile.days_since_last_checkin ?? 0} dias atrás (${fmtDate(profile.last_checkin_at)})` : 'Nenhum check-in registrado'}</Text>
+                </Text>
+              )}
+              <Text style={styles.fichaLine}>Status: {profile.status}</Text>
 
-                {profile.is_suspended || profile.is_stage_expired || profile.is_inactive_90d ? (
-                  <View style={styles.suspensionBox}>
-                    <Text style={styles.suspensionTitle}>⚠️ CORRETOR SUSPENSO / BLOQUEADO</Text>
-                    <Text style={styles.suspensionText}>{profile.suspension_reason || 'Vigência de estágio expirada ou inatividade superior a 90 dias.'}</Text>
-                  </View>
-                ) : null}
+              {profile.is_suspended || profile.is_stage_expired || profile.is_inactive_90d ? (
+                <View style={styles.suspensionBox}>
+                  <Text style={styles.suspensionTitle}>⚠️ CORRETOR SUSPENSO / BLOQUEADO</Text>
+                  <Text style={styles.suspensionText}>{profile.suspension_reason || 'Vigência de estágio expirada ou inatividade superior a 90 dias.'}</Text>
+                </View>
+              ) : null}
 
+              {!isRh && (
                 <View style={styles.leadsStateRow}>
                   <Text style={[styles.leadsStateText, { color: profile.leads_paused ? colors.red700 : colors.green700 }]}>
                     {profile.leads_paused ? 'Leads pausados' : 'Elegível para leads, conforme presença'}
                   </Text>
                 </View>
-              </View>
+              )}
+            </View>
 
-              <View style={styles.card}>
-                <Text style={fonts.panelTitle}>Estágio profissional & vigência</Text>
-                <Text style={styles.cardSub}>Promova o corretor ou altere seu estágio profissional (real-time):</Text>
-                <View style={styles.boothList}>
-                  {(['treinamento', 'estagiario', 'corretor_creci'] as const).map((s) => {
-                    const active = selectedStage === s;
-                    return (
-                      <TouchableOpacity key={s} style={[styles.boothBtn, active && styles.boothBtnActive]} onPress={() => void updateStage(s)} disabled={saving}>
-                        <Text style={[styles.boothBtnText, active && { color: '#fff' }]}>{STAGE_LABEL[s]}</Text>
+            <View style={styles.card}>
+              <Text style={fonts.panelTitle}>Estágio profissional & vigência</Text>
+              <Text style={styles.cardSub}>Promova o corretor ou altere seu estágio profissional (real-time):</Text>
+              <View style={styles.boothList}>
+                {(['treinamento', 'estagiario', 'corretor_creci'] as const).map((s) => {
+                  const active = selectedStage === s;
+                  return (
+                    <TouchableOpacity key={s} style={[styles.boothBtn, active && styles.boothBtnActive]} onPress={() => void updateStage(s)} disabled={saving}>
+                      <Text style={[styles.boothBtnText, active && { color: '#fff' }]}>{STAGE_LABEL[s]}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {profile.broker_stage !== 'corretor_creci' && (
+                <>
+                  <Text style={styles.fieldLabel}>Renovar prazo de vigência (+dias)</Text>
+                  <View style={styles.boothList}>
+                    {[30, 60, 90, 180].map((days) => (
+                      <TouchableOpacity key={days} style={[styles.boothBtn, { borderColor: colors.navy800, backgroundColor: colors.navy900 }]} onPress={() => void extendStageDays(days)} disabled={saving}>
+                        <Text style={{ color: '#fff', fontFamily: font.body, fontWeight: '700', fontSize: 11 }}>+{days} Dias</Text>
                       </TouchableOpacity>
-                    );
-                  })}
-                </View>
-                {profile.broker_stage !== 'corretor_creci' && (
-                  <>
-                    <Text style={styles.fieldLabel}>Renovar prazo de vigência (+dias)</Text>
-                    <View style={styles.boothList}>
-                      {[30, 60, 90, 180].map((days) => (
-                        <TouchableOpacity key={days} style={[styles.boothBtn, { borderColor: colors.navy800, backgroundColor: colors.navy900 }]} onPress={() => void extendStageDays(days)} disabled={saving}>
-                          <Text style={{ color: '#fff', fontFamily: font.body, fontWeight: '700', fontSize: 11 }}>+{days} Dias</Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </>
-                )}
-              </View>
+                    ))}
+                  </View>
+                </>
+              )}
+            </View>
 
-              <View style={styles.card}>
-                <Text style={fonts.panelTitle}>Dados cadastrais</Text>
-                <Text style={styles.cardSub}>Será convertido para MAIÚSCULAS e deve ser único no tenant.</Text>
-                <Text style={styles.fieldLabel}>Nome de guerra</Text>
-                <TextInput style={styles.input} value={nomeGuerra} onChangeText={(v) => setNomeGuerra(v.toLocaleUpperCase('pt-BR'))} placeholderTextColor={colors.slate400} />
-                <Text style={styles.fieldLabel}>CRECI</Text>
-                <TextInput style={styles.input} value={creci} placeholder="Ex: 123456-F" placeholderTextColor={colors.slate400} onChangeText={(v) => setCreci(v.toUpperCase())} autoCapitalize="characters" />
-                <TouchableOpacity style={styles.primaryBtn} onPress={() => void updateProfile()} disabled={saving}>
-                  {saving ? <ActivityIndicator size="small" color="#fff" /> : <Save size={14} color="#fff" />}
-                  <Text style={styles.primaryBtnText}>Salvar dados cadastrais</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.card}>
+              <Text style={fonts.panelTitle}>Dados cadastrais</Text>
+              <Text style={styles.cardSub}>Será convertido para MAIÚSCULAS e deve ser único no tenant.</Text>
+              <Text style={styles.fieldLabel}>Nome de guerra</Text>
+              <TextInput style={styles.input} value={nomeGuerra} onChangeText={(v) => setNomeGuerra(v.toLocaleUpperCase('pt-BR'))} placeholderTextColor={colors.slate400} />
+              <Text style={styles.fieldLabel}>CRECI</Text>
+              <TextInput style={styles.input} value={creci} placeholder="Ex: 123456-F" placeholderTextColor={colors.slate400} onChangeText={(v) => setCreci(v.toUpperCase())} autoCapitalize="characters" />
+              <TouchableOpacity style={styles.primaryBtn} onPress={() => void updateProfile()} disabled={saving}>
+                {saving ? <ActivityIndicator size="small" color="#fff" /> : <Save size={14} color="#fff" />}
+                <Text style={styles.primaryBtnText}>Salvar dados cadastrais</Text>
+              </TouchableOpacity>
+            </View>
 
+            {!isRh && (
               <View style={styles.card}>
                 <Text style={fonts.panelTitle}>Operação de leads</Text>
                 <Text style={styles.fieldLabel}>Motivo da ação</Text>
@@ -1162,16 +1187,18 @@ function FichaCorretorModal({
                   </TouchableOpacity>
                 </View>
               </View>
+            )}
 
-              <View style={styles.card}>
-                <Text style={fonts.panelTitle}>Segurança da conta</Text>
-                <Text style={styles.cardSub}>Gera uma senha temporária de uso único. O corretor deverá criar nova senha no próximo acesso.</Text>
-                <TouchableOpacity style={styles.actionBtn} onPress={() => void resetPassword()} disabled={saving}>
-                  {saving ? <ActivityIndicator size="small" color={colors.coral600} /> : <KeyRound size={13} color={colors.coral600} />}
-                  <Text style={styles.actionBtnText}>Redefinir senha do Corretor</Text>
-                </TouchableOpacity>
-              </View>
+            <View style={styles.card}>
+              <Text style={fonts.panelTitle}>Segurança da conta</Text>
+              <Text style={styles.cardSub}>Gera uma senha temporária de uso único. O corretor deverá criar nova senha no próximo acesso.</Text>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => void resetPassword()} disabled={saving}>
+                {saving ? <ActivityIndicator size="small" color={colors.coral600} /> : <KeyRound size={13} color={colors.coral600} />}
+                <Text style={styles.actionBtnText}>Redefinir senha do Corretor</Text>
+              </TouchableOpacity>
+            </View>
 
+            {!isRh && (
               <View style={styles.card}>
                 <Text style={fonts.panelTitle}>Transferência hierárquica</Text>
                 <Text style={styles.cardSub}>Somente Gerentes ativos do mesmo tenant podem receber o corretor.</Text>
@@ -1190,41 +1217,58 @@ function FichaCorretorModal({
                   <Text style={styles.primaryBtnText}>Mover para Gerente selecionado</Text>
                 </TouchableOpacity>
               </View>
-            </>
-          )}
-        </ScrollView>
-
-        {!!tempPassword && (
-          <Modal visible transparent animationType="fade" onRequestClose={() => setTempPassword('')}>
-            <View style={styles.modalWrap}>
-              <View style={styles.modalBox}>
-                <View style={[styles.selPill, { alignSelf: 'flex-start', backgroundColor: colors.amber700 }]}>
-                  <Text style={styles.selPillText}>SENHA TEMPORÁRIA</Text>
-                </View>
-                <Text style={styles.modalTitle}>Senha temporária criada</Text>
-                <Text style={styles.modalDesc}>Ela expira em 30 minutos e exigirá troca no próximo acesso.</Text>
-                <View style={styles.tempPwBox}>
-                  <Text style={styles.tempPwText} selectable>{tempPassword}</Text>
-                </View>
-                <TouchableOpacity
-                  style={styles.copyBtn}
-                  onPress={async () => {
-                    if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                      await navigator.clipboard.writeText(tempPassword);
-                    }
-                  }}
-                >
-                  <Copy size={13} color={colors.blue700} />
-                  <Text style={styles.copyBtnText}>Copiar senha</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.primaryBtn} onPress={() => setTempPassword('')}>
-                  <Text style={styles.primaryBtnText}>OK</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
+            )}
+          </>
         )}
+      </ScrollView>
+
+      {!!tempPassword && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setTempPassword('')}>
+          <View style={styles.modalWrap}>
+            <View style={styles.modalBox}>
+              <View style={[styles.selPill, { alignSelf: 'flex-start', backgroundColor: colors.amber700 }]}>
+                <Text style={styles.selPillText}>SENHA TEMPORÁRIA</Text>
+              </View>
+              <Text style={styles.modalTitle}>Senha temporária criada</Text>
+              <Text style={styles.modalDesc}>Ela expira em 30 minutos e exigirá troca no próximo acesso.</Text>
+              <View style={styles.tempPwBox}>
+                <Text style={styles.tempPwText} selectable>{tempPassword}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.copyBtn}
+                onPress={async () => {
+                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    await navigator.clipboard.writeText(tempPassword);
+                  }
+                }}
+              >
+                <Copy size={13} color={colors.blue700} />
+                <Text style={styles.copyBtnText}>Copiar senha</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.primaryBtn} onPress={() => setTempPassword('')}>
+                <Text style={styles.primaryBtnText}>OK</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+      )}
+    </>
+  );
+
+  if (isDesktopSheet && !brokerId) return null;
+
+  if (isDesktopSheet) {
+    return (
+      <View style={[styles.sheetRoot, { left: sidebarOffset, top: topOffset, right: 0, bottom: 0 }]} pointerEvents="box-none">
+        <TouchableOpacity style={styles.sheetBackdrop} onPress={onClose} activeOpacity={1} />
+        <View style={styles.sheetPanel}>{renderBody()}</View>
       </View>
+    );
+  }
+
+  return (
+    <Modal visible={!!brokerId} animationType="slide" onRequestClose={onClose}>
+      <View style={{ flex: 1, backgroundColor: semantic.background }}>{renderBody()}</View>
     </Modal>
   );
 }
@@ -1510,4 +1554,23 @@ const styles = StyleSheet.create({
   selPillText: { color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 8.5, letterSpacing: 0.5 },
   tempPwBox: { backgroundColor: colors.amber100, borderWidth: 1, borderColor: colors.amber700, borderRadius: radius.md, padding: 12, alignItems: 'center' },
   tempPwText: { color: colors.amber900, fontFamily: font.display, fontWeight: '800', fontSize: 18, letterSpacing: 2 },
+  sheetRoot: { position: 'fixed' as any, zIndex: 60 },
+  sheetBackdrop: { position: 'absolute' as any, left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,32,0.35)' },
+  sheetPanel: {
+    position: 'absolute' as any,
+    top: 0,
+    right: 0,
+    bottom: 0,
+    width: 620,
+    maxWidth: '92%',
+    backgroundColor: semantic.background,
+    borderTopLeftRadius: radius.lg,
+    borderBottomLeftRadius: radius.lg,
+    shadowColor: '#000',
+    shadowOpacity: 0.18,
+    shadowOffset: { width: -8, height: 0 },
+    shadowRadius: 24,
+    elevation: 16,
+    overflow: 'hidden',
+  },
 });
