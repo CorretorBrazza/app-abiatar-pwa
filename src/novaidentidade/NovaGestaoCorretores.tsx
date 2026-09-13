@@ -247,8 +247,14 @@ export default function NovaGestaoCorretores({
     );
   }, [allBrokers, globalSearch]);
 
-  const totalActive = useMemo(() => allBrokers.filter((b) => b.status === 'active').length, [allBrokers]);
-  const totalGrace = useMemo(() => allBrokers.filter((b) => b.status === 'grace_period').length, [allBrokers]);
+  const totalByStage = useMemo(
+    () => ({
+      creci: allBrokers.filter((b) => b.broker_stage === 'corretor_creci').length,
+      estagiario: allBrokers.filter((b) => b.broker_stage === 'estagiario').length,
+      treinamento: allBrokers.filter((b) => b.broker_stage === 'treinamento').length,
+    }),
+    [allBrokers],
+  );
 
   const toggleManagerAccordion = (mId: string) =>
     setExpandedManagers((prev) => ({ ...prev, [mId]: !prev[mId] }));
@@ -378,7 +384,9 @@ export default function NovaGestaoCorretores({
       <View style={styles.kpiCard}>
         <Text style={styles.kpiValue}>{allBrokers.length}</Text>
         <Text style={styles.kpiLabel}>Total Corretores</Text>
-        <Text style={styles.kpiSub}>{totalActive} ativos · {totalGrace} em carência</Text>
+        <Text style={styles.kpiSub}>
+          {totalByStage.creci} CRECI · {totalByStage.estagiario} Estagiário · {totalByStage.treinamento} Treinamento
+        </Text>
       </View>
       <View style={styles.kpiCard}>
         <Text style={styles.kpiValue}>{managers.length}</Text>
