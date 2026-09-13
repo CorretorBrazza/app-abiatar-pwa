@@ -4,6 +4,7 @@
 
 import React, { useEffect, useState } from 'react';
 import {
+  Image,
   ScrollView,
   StyleSheet,
   Text,
@@ -30,6 +31,7 @@ import {
   Smartphone,
   UserCheck,
 } from 'lucide-react-native';
+const FAVICON = require('../../assets/favicon.png');
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import Inbox from '../screens/Inbox';
@@ -67,40 +69,8 @@ function isDemoContext(): boolean {
 }
 
 function LogoMark({ size = 25 }: { size?: number }) {
-  return (
-    <View style={[logoMark.circle, { width: size, height: size }]}>
-      <View style={[logoMark.line, { width: 4, height: size * 0.72 }]} />
-      <View style={[logoMark.line, logoMark.line2, { width: 4, height: size * 0.48 }]} />
-      <View style={[logoMark.line, logoMark.line3, { width: size * 0.52, height: 3 }]} />
-    </View>
-  );
+  return <Image source={FAVICON} style={{ width: size, height: size, borderRadius: 8 }} resizeMode="contain" />;
 }
-
-const logoMark = StyleSheet.create({
-  circle: {
-    borderRadius: 8,
-    borderWidth: 2,
-    borderColor: colors.coral500,
-    overflow: 'hidden',
-    backgroundColor: 'rgba(217,87,69,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  line: {
-    position: 'absolute' as const,
-    backgroundColor: colors.coral500,
-    borderRadius: 99,
-    transform: [{ rotate: '45deg' }],
-  },
-  line2: {
-    transform: [{ rotate: '-45deg' }],
-    opacity: 0.7,
-  },
-  line3: {
-    transform: [{ rotate: '0deg' }],
-    opacity: 0.6,
-  },
-});
 
 function StatusBadge({
   children,
