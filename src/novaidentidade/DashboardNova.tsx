@@ -716,7 +716,7 @@ export default function DashboardNova() {
             {!collapsed && (
               <View style={{ flex: 1, marginLeft: 10 }}>
                 <Text style={shell.brand}>abiatar</Text>
-                <Text style={shell.brandSub}>real estate ops</Text>
+                <Text style={shell.brandSub}>construtora e incorporadora</Text>
               </View>
             )}
             <TouchableOpacity style={shell.sidebarIconBtn} onPress={() => setCollapsed(!collapsed)} accessibilityLabel="Alternar menu">
