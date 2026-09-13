@@ -428,7 +428,7 @@ export default function NovaGestaoCorretores({
                 </Text>
                 <Text style={styles.brokerMeta}>Enviado em: {fmtDateTime(candidate.created_at)}</Text>
               </View>
-              <View style={styles.actionRow}>
+              <View style={[styles.actionRow, isMobile && styles.actionRowMobile]}>
                 <TouchableOpacity
                   style={styles.primaryBtn}
                   onPress={() => void handleApprove(candidate, 0)}
@@ -1343,6 +1343,7 @@ const styles = StyleSheet.create({
   },
   stageBadgeText: { fontFamily: font.body, fontWeight: '800', fontSize: 9.5 },
   actionRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, alignItems: 'center' },
+  actionRowMobile: { flexBasis: '100%', flexShrink: 0 },
   primaryBtn: {
     flexDirection: 'row',
     alignItems: 'center',
