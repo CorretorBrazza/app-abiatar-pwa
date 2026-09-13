@@ -34,16 +34,16 @@ import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import Inbox from '../screens/Inbox';
 import ManagerPanel from '../screens/ManagerPanel';
-import StatisticsPanel from '../screens/StatisticsPanel';
-import BoothRulesPanel from '../screens/BoothRulesPanel';
-import DirectorMessagingPanel from '../screens/DirectorMessagingPanel';
-import UserManagementPanel from '../screens/UserManagementPanel';
 import CheckIn from '../screens/CheckIn';
 import NovaReception from './NovaReception';
 import NovaCommandCenter from './NovaCommandCenter';
 import NovaMinhaEquipe from './NovaMinhaEquipe';
 import NovaVisaoRh from './NovaVisaoRh';
 import NovaPerfisRh from './NovaPerfisRh';
+import NovaOperacao from './NovaOperacao';
+import NovaPessoas from './NovaPessoas';
+import NovaPerformance from './NovaPerformance';
+import NovaMensagens from './NovaMensagens';
 import { colors, font, fonts, radius, semantic, shadow, statusTone } from './tokens';
 import { useNovaFonts } from './fonts';
 import {
@@ -713,21 +713,19 @@ export default function DashboardNova() {
     }
 
     // Diretoria / Gerência / RH
-    const primaryColor = tenant?.primary_color || '#e53924';
-
     if (profile === 'diretoria' && view === 'command') {
       return <NovaCommandCenter isMobile={isMobile} />;
     }
 
     switch (view) {
       case 'operation':
-        return <BoothRulesPanel onBack={onBack} primaryColor={primaryColor} />;
+        return <NovaOperacao isMobile={isMobile} />;
       case 'people':
-        return <UserManagementPanel primaryColor={primaryColor} onBack={onBack} />;
+        return <NovaPessoas isMobile={isMobile} />;
       case 'performance':
-        return <StatisticsPanel onBack={onBack} />;
+        return <NovaPerformance isMobile={isMobile} />;
       case 'messaging':
-        return <DirectorMessagingPanel primaryColor={primaryColor} isManager={profile === 'gerencia'} onBack={onBack} />;
+        return <NovaMensagens isMobile={isMobile} isManager={profile === 'gerencia'} />;
       case 'team':
         if (profile === 'gerencia') return <NovaMinhaEquipe isMobile={isMobile} managerId={user?.id} />;
         return <ManagerPanel onBack={onBack} />;
@@ -740,7 +738,7 @@ export default function DashboardNova() {
           return <NovaVisaoRh isMobile={isMobile} />;
         }
         if (profile === 'gerencia') return <NovaMinhaEquipe isMobile={isMobile} managerId={user?.id} />;
-        return <StatisticsPanel onBack={onBack} />;
+        return <NovaPerformance isMobile={isMobile} />;
     }
   }
 
