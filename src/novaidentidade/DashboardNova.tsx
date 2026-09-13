@@ -23,7 +23,6 @@ import {
   Clock3,
   LogOut,
   MapPin,
-  Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Settings2,
@@ -636,11 +635,9 @@ export default function DashboardNova() {
   const [view, setView] = useState<NovaView>(() => firstView(profileFromRole));
 
   const [collapsed, setCollapsed] = useState(false);
-  const [displayMode, setDisplayMode] = useState<'desktop' | 'mobile'>('desktop');
   const [profileMenu, setProfileMenu] = useState(false);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const isMobile = width < 768 || displayMode === 'mobile';
+  const isMobile = width < 768;
   const sidebarOffset = isMobile ? 0 : collapsed ? 76 : 256;
   const topOffset = isMobile ? 0 : 72;
 
@@ -719,23 +716,8 @@ export default function DashboardNova() {
 
   const sidebarVisible = !isMobile;
   const today = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'short' });
-  const frameRequested = displayMode === 'mobile';
-
-  if (demo && frameRequested && !isMobile) {
-    return renderDemoMobileFrame();
-  }
 
   return renderDesktopShell();
-
-  function renderDemoMobileFrame() {
-    return (
-      <View style={{ flex: 1, backgroundColor: colors.slate200, alignItems: 'center', justifyContent: 'center', paddingVertical: 28 }}>
-        <View style={{ width: 430, maxWidth: '94%', minHeight: 860, overflow: 'hidden', borderRadius: 28, backgroundColor: semantic.background, borderWidth: 1, borderColor: colors.slate300, shadowColor: '#101C2A', shadowOpacity: 0.22, shadowRadius: 70, shadowOffset: { width: 0, height: 25 }, elevation: 20 }}>
-          {renderMobileShell()}
-        </View>
-      </View>
-    );
-  }
 
   function renderDesktopShell() {
     return (
@@ -841,11 +823,6 @@ export default function DashboardNova() {
         <View style={shell.topbar}>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             {isMobile && (
-              <TouchableOpacity style={shell.topIconBtn} onPress={() => setMobileMenuOpen(!mobileMenuOpen)} accessibilityLabel="Abrir menu">
-                <Menu size={20} color={colors.slate600} />
-              </TouchableOpacity>
-            )}
-            {isMobile && (
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                 <LogoMark size={21} />
                 <Text style={{ color: colors.navy900, fontFamily: font.display, fontWeight: '800', fontSize: 15 }}>abiatar</Text>
@@ -861,22 +838,15 @@ export default function DashboardNova() {
               </View>
             )}
           </View>
-          <View style={shell.topActions}>
-            <TouchableOpacity style={shell.periodSelector}>
-              <CalendarDays size={14} color={colors.slate600} />
-              {!isMobile && <Text style={shell.periodText}>{today}</Text>}
-              <ChevronDown size={13} color={colors.slate500} />
-            </TouchableOpacity>
-            <TouchableOpacity style={shell.topIconBtn}>
-              <Bell size={18} color={colors.slate600} />
-              <View style={shell.notificationDot} />
-            </TouchableOpacity>
-            {!isMobile && (
-              <View style={[shell.switchAvatar, shell.avatarSmall, { backgroundColor: statusTone[meta.accent].fg }]}>
-                <Text style={{ color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 9 }}>{meta.initials}</Text>
-              </View>
-            )}
-          </View>
+          {!isMobile && (
+            <View style={shell.topActions}>
+              <TouchableOpacity style={shell.periodSelector}>
+                <CalendarDays size={14} color={colors.slate600} />
+                <Text style={shell.periodText}>{today}</Text>
+                <ChevronDown size={13} color={colors.slate500} />
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={shell.content}>{renderContent()}</View>
@@ -891,49 +861,7 @@ export default function DashboardNova() {
             ))}
           </View>
         )}
-      </View>
-    </View>
-    );
-  }
-
-  function renderMobileShell() {
-    return (
-      <View style={{ flex: 1, backgroundColor: semantic.background }}>
-        <View style={[shell.topbar, shell.topbarMobileFrame]}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity style={shell.topIconBtn} onPress={() => setMobileMenuOpen(!mobileMenuOpen)} accessibilityLabel="Abrir menu">
-              <Menu size={20} color={colors.slate600} />
-            </TouchableOpacity>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-              <LogoMark size={21} />
-              <Text style={{ color: colors.navy900, fontFamily: font.display, fontWeight: '800', fontSize: 15 }}>abiatar</Text>
-            </View>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity style={shell.topIconBtn}>
-              <Bell size={18} color={colors.slate600} />
-              <View style={shell.notificationDot} />
-            </TouchableOpacity>
-            <View style={[shell.switchAvatar, shell.avatarSmall, { backgroundColor: statusTone[meta.accent].fg }]}>
-              <Text style={{ color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 9 }}>{meta.initials}</Text>
-            </View>
-          </View>
-        </View>
-        <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
-          <View style={shell.mobileRolePill}>
-            <Text style={{ color: colors.navy800, fontFamily: font.body, fontWeight: '800', fontSize: 10 }}>{meta.label}</Text>
-            <ChevronDown size={13} color={colors.navy800} />
-          </View>
-        </View>
-        <View style={shell.content}>{renderContent()}</View>
-        <View style={shell.bottomNav}>
-          {nav.slice(0, 4).map(({ view: v, label, icon: Icon }) => (
-            <TouchableOpacity key={v} style={[shell.bottomItem, view === v && shell.bottomItemActive]} onPress={() => setView(v)}>
-              <Icon size={18} color={view === v ? colors.coral600 : colors.slate500} strokeWidth={2} />
-              <Text style={[shell.bottomItemText, view === v && { color: colors.coral600 }]}>{label.split(' ')[0]}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+</View>
       </View>
     );
   }
@@ -1039,20 +967,15 @@ const shell = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: semantic.border,
   },
-  topbarMobileFrame: { height: 64, paddingHorizontal: 17 },
   breadcrumb: { flexDirection: 'row' as const, alignItems: 'center', gap: 10, flex: 1 },
   breadcrumbMuted: { color: colors.slate500, fontFamily: font.body, fontWeight: '400', fontSize: 12 },
   breadcrumbRole: { color: colors.slate800, fontFamily: font.body, fontWeight: '700', fontSize: 12 },
   breadcrumbCurrent: { color: colors.slate500, fontFamily: font.body, fontWeight: '400', fontSize: 12 },
   breadcrumbSep: { color: colors.slate300 },
   topActions: { flexDirection: 'row' as const, alignItems: 'center', gap: 14 },
-  topIconBtn: { position: 'relative' as const, width: 36, height: 36, borderRadius: radius.md, alignItems: 'center', justifyContent: 'center' },
-  notificationDot: { position: 'absolute' as const, top: 7, right: 7, width: 6, height: 6, borderRadius: 3, borderWidth: 1.5, borderColor: '#fff', backgroundColor: colors.coral600 },
   periodSelector: { height: 34, paddingHorizontal: 11, flexDirection: 'row' as const, alignItems: 'center', gap: 8, borderWidth: 1, borderColor: semantic.border, borderRadius: radius.md, backgroundColor: '#fff' },
   periodText: { color: colors.slate700, fontFamily: font.body, fontWeight: '600', fontSize: 11 },
-  avatarSmall: { width: 29, height: 29, borderRadius: 9 },
   content: { flex: 1 },
-  mobileRolePill: { alignSelf: 'flex-start', flexDirection: 'row' as const, alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.md, backgroundColor: colors.coral050 },
   bottomNav: {
     height: 67,
     flexDirection: 'row' as const,
