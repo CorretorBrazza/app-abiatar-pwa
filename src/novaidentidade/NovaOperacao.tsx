@@ -65,6 +65,7 @@ type RuleSet = {
   closing_time?: string | null;
   checkin_tolerance_minutes?: number;
   checkout_tolerance_minutes?: number;
+  allowed_broker_stages?: string[];
 };
 
 type Holiday = {
@@ -90,6 +91,12 @@ type SpecialSchedule = {
 };
 
 const DAY_NAMES = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+
+const STAGE_OPTIONS: Array<{ key: string; label: string; hint: string }> = [
+  { key: 'treinamento', label: 'Treinamento', hint: 'Fase inicial (em aprendizado)' },
+  { key: 'estagiario', label: 'Estagiário', hint: 'Estágio (pré-CRECI)' },
+  { key: 'corretor_creci', label: 'Creci', hint: 'Corretor com CRECI ativo' },
+];
 
 const LIFECYCLE_TONE: Record<string, 'positive' | 'attention' | 'neutral' | 'danger'> = {
   published: 'positive',
@@ -154,6 +161,7 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
   const [savingBooth, setSavingBooth] = useState(false);
   const [reason, setReason] = useState('');
   const [roleta3Enabled, setRoleta3Enabled] = useState(false);
+  const [allowedStages, setAllowedStages] = useState<string[]>(['treinamento', 'estagiario', 'corretor_creci']);
 
   const [specialSchedules, setSpecialSchedules] = useState<SpecialSchedule[]>([]);
   const [loadingSpecialSchedules, setLoadingSpecialSchedules] = useState(false);
@@ -204,6 +212,11 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
         checkin_early_minutes: response.data.checkin_early_minutes ?? 30,
         pos_barra_minutes: response.data.pos_barra_minutes ?? 30,
       });
+      setAllowedStages(
+        Array.isArray(response.data.allowed_broker_stages)
+          ? response.data.allowed_broker_stages
+          : ['treinamento', 'estagiario', 'corretor_creci'],
+      );
       setReason('');
     } catch {
       alert('Não foi possível carregar as regras deste plantão.');
@@ -256,6 +269,12 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
 
   const updateBoothField = (key: keyof Booth, value: string) => {
     setSelectedBooth((current) => (current ? { ...current, [key]: value } : current));
+  };
+
+  const toggleStage = (stage: string) => {
+    setAllowedStages((current) =>
+      current.includes(stage) ? current.filter((s) => s !== stage) : [...current, stage],
+    );
   };
 
   const startNewBooth = () => {
@@ -349,6 +368,7 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
         pingResponseDeadlineMinutes: Number(rules.ping_response_deadline_minutes ?? 5),
         minimumBrokersRequired: Number(rules.minimum_brokers_required ?? 2),
         periodWeight: Number(rules.period_weight ?? 1),
+        allowedBrokerStages: allowedStages,
         reason: reason.trim() || 'Atualização das regras da Roleta pela Diretoria',
       };
       const response = await api.patch(`/booths/${selectedBoothId}/rules`, payload);
@@ -610,6 +630,29 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                             <View style={[styles.versionBadge]}>
                               <Text style={styles.versionText}>v{rules.version}</Text>
                             </View>
+                          </View>
+
+                          <Text style={styles.sectionSub}>Corretores Permitidos Neste Plantão</Text>
+                          <Text style={styles.sectionDesc}>
+                            Somente os corretores das fases liberadas abaixo poderão fazer check-in neste plantão. Desligue todas para pausar temporariamente a liberação.
+                          </Text>
+                          <View style={styles.listBlock}>
+                            {STAGE_OPTIONS.map((stage) => {
+                              const on = allowedStages.includes(stage.key);
+                              return (
+                                <TouchableOpacity
+                                  key={stage.key}
+                                  style={[styles.toggle, { backgroundColor: on ? colors.green100 : colors.red100 }]}
+                                  onPress={() => toggleStage(stage.key)}
+                                >
+                                  <Circle size={13} color={on ? colors.green700 : colors.red700} />
+                                  <Text style={[styles.toggleText, { color: on ? colors.green700 : colors.red700 }]}>
+                                    {stage.label} · {on ? 'LIBERADO' : 'BLOQUEADO'}
+                                  </Text>
+                                  <Text style={[styles.toggleHint, { color: on ? colors.green700 : colors.red700 }]}>{stage.hint}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
                           </View>
 
                           <View style={styles.pairRow}>
@@ -967,6 +1010,7 @@ const styles = StyleSheet.create({
     padding: 12, borderRadius: radius.md, borderWidth: 1, borderColor: semantic.border,
   },
   toggleText: { fontFamily: font.body, fontWeight: '800', fontSize: 11.5 },
+  toggleHint: { fontFamily: font.body, fontWeight: '600', fontSize: 10.5, marginLeft: 'auto' },
   primaryBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
     backgroundColor: colors.coral600, borderRadius: radius.md, paddingVertical: 12,
