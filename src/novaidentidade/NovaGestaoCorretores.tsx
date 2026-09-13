@@ -1259,10 +1259,12 @@ export function FichaCorretorModal({
 
   if (isDesktopSheet) {
     return (
-      <View style={[styles.sheetRoot, { left: sidebarOffset, top: topOffset, right: 0, bottom: 0 }]} pointerEvents="box-none">
-        <TouchableOpacity style={styles.sheetBackdrop} onPress={onClose} activeOpacity={1} />
-        <View style={styles.sheetPanel}>{renderBody()}</View>
-      </View>
+      <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+        <View style={styles.sheetWrap}>
+          <TouchableOpacity style={[styles.sheetBackdrop, { left: sidebarOffset, top: topOffset }]} onPress={onClose} activeOpacity={1} />
+          <View style={[styles.sheetPanel, { top: topOffset }]}>{renderBody()}</View>
+        </View>
+      </Modal>
     );
   }
 
@@ -1554,10 +1556,16 @@ const styles = StyleSheet.create({
   selPillText: { color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 8.5, letterSpacing: 0.5 },
   tempPwBox: { backgroundColor: colors.amber100, borderWidth: 1, borderColor: colors.amber700, borderRadius: radius.md, padding: 12, alignItems: 'center' },
   tempPwText: { color: colors.amber900, fontFamily: font.display, fontWeight: '800', fontSize: 18, letterSpacing: 2 },
-  sheetRoot: { position: 'fixed' as any, zIndex: 60 },
-  sheetBackdrop: { position: 'absolute' as any, left: 0, top: 0, right: 0, bottom: 0, backgroundColor: 'rgba(10,20,32,0.35)' },
+  sheetWrap: { flex: 1, position: 'relative', backgroundColor: 'transparent' },
+  sheetBackdrop: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(10,20,32,0.35)',
+  },
   sheetPanel: {
-    position: 'absolute' as any,
+    position: 'absolute',
     top: 0,
     right: 0,
     bottom: 0,
