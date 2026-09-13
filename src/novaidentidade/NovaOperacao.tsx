@@ -162,6 +162,9 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
   const [reason, setReason] = useState('');
   const [roleta3Enabled, setRoleta3Enabled] = useState(false);
   const [allowedStages, setAllowedStages] = useState<string[]>(['treinamento', 'estagiario', 'corretor_creci']);
+  const [dirtyBooth, setDirtyBooth] = useState(false);
+  const [dirtyRules, setDirtyRules] = useState(false);
+  const [savingAll, setSavingAll] = useState(false);
 
   const [specialSchedules, setSpecialSchedules] = useState<SpecialSchedule[]>([]);
   const [loadingSpecialSchedules, setLoadingSpecialSchedules] = useState(false);
@@ -198,6 +201,7 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
 
   const loadRules = useCallback(async (boothId: string) => {
     setLoading(true);
+    setDirtyRules(false);
     try {
       const response = await api.get(`/booths/${boothId}/rules`);
       const r3 = response.data.roleta_3_time;
@@ -265,19 +269,25 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
 
   const updateField = (key: keyof RuleSet, value: string) => {
     setRules((current) => (current ? { ...current, [key]: value } : current));
+    setDirtyRules(true);
   };
 
   const updateBoothField = (key: keyof Booth, value: string) => {
     setSelectedBooth((current) => (current ? { ...current, [key]: value } : current));
+    setDirtyBooth(true);
   };
 
   const toggleStage = (stage: string) => {
     setAllowedStages((current) =>
       current.includes(stage) ? current.filter((s) => s !== stage) : [...current, stage],
     );
+    setDirtyRules(true);
   };
 
   const startNewBooth = () => {
+    if ((dirtyBooth || dirtyRules) && !confirmDelete('Há alterações não salvas neste plantão. Descartar e iniciar um novo plantão?')) {
+      return;
+    }
     const fresh: Booth = {
       id: '',
       name: 'Novo Plantão de Vendas',
@@ -292,10 +302,22 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
     setSelectedBooth(fresh);
     setSelectedBoothId('');
     setRules(null);
+    setDirtyBooth(false);
+    setDirtyRules(false);
   };
 
-  const saveBooth = async () => {
-    if (!selectedBooth) return;
+  const selectBooth = (id: string) => {
+    if (id === selectedBoothId) return;
+    if ((dirtyBooth || dirtyRules) && !confirmDelete('Há alterações não salvas neste plantão. Descartar e trocar de plantão?')) {
+      return;
+    }
+    setDirtyBooth(false);
+    setDirtyRules(false);
+    setSelectedBoothId(id);
+  };
+
+  const saveBooth = async (): Promise<{ ok: boolean; id?: string; message?: string }> => {
+    if (!selectedBooth) return { ok: false, message: 'Nenhum plantão selecionado.' };
     setSavingBooth(true);
     try {
       const base = {
@@ -327,9 +349,10 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
           ? current.map((b) => (b.id === response.data.id ? response.data : b))
           : [...current, response.data],
       );
-      alert(selectedBoothId ? 'Cadastro-base do plantão atualizado e auditado.' : 'Plantão criado como rascunho. Configure as regras e publique quando estiver validado.');
+      setDirtyBooth(false);
+      return { ok: true, id: response.data.id, message: selectedBoothId ? 'Cadastro-base do plantão atualizado e auditado.' : 'Plantão criado como rascunho. Configure as regras e publique quando estiver validado.' };
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Não foi possível salvar o cadastro do plantão.');
+      return { ok: false, message: error?.response?.data?.message || 'Não foi possível salvar o cadastro do plantão.' };
     } finally {
       setSavingBooth(false);
     }
@@ -347,8 +370,8 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
     }
   };
 
-  const saveRules = async () => {
-    if (!rules || !selectedBoothId) return;
+  const saveRules = async (boothId: string): Promise<{ ok: boolean; message?: string }> => {
+    if (!rules) return { ok: false, message: 'Regras indisponíveis.' };
     setSaving(true);
     try {
       const payload: Record<string, unknown> = {
@@ -371,15 +394,47 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
         allowedBrokerStages: allowedStages,
         reason: reason.trim() || 'Atualização das regras da Roleta pela Diretoria',
       };
-      const response = await api.patch(`/booths/${selectedBoothId}/rules`, payload);
+      const response = await api.patch(`/booths/${boothId}/rules`, payload);
       setRules(response.data);
       setReason('');
-      alert('Regras da Roleta salvas com sucesso. Nova versão registrada na auditoria.');
+      setDirtyRules(false);
+      return { ok: true, message: 'Regras da Roleta salvas. Nova versão registrada na auditoria.' };
     } catch (error: any) {
-      alert(error?.response?.data?.message || 'Não foi possível salvar as regras.');
+      return { ok: false, message: error?.response?.data?.message || 'Não foi possível salvar as regras.' };
     } finally {
       setSaving(false);
     }
+  };
+
+  const saveAll = async () => {
+    if (!dirtyBooth && !dirtyRules) return;
+    setSavingAll(true);
+    const saved: string[] = [];
+    const failed: string[] = [];
+    let boothId = selectedBoothId;
+    try {
+      if (dirtyBooth && selectedBooth) {
+        const result = await saveBooth();
+        if (result.ok) {
+          boothId = result.id || boothId;
+          saved.push('Dados do plantão');
+        } else {
+          failed.push(`Cadastro: ${result.message}`);
+        }
+      }
+      if (dirtyRules && rules && boothId) {
+        const result = await saveRules(boothId);
+        if (result.ok) saved.push('Regras da roleta');
+        else failed.push(`Regras: ${result.message}`);
+      }
+    } finally {
+      setSavingAll(false);
+    }
+    const summary = [
+      saved.length ? `Salvos: ${saved.join(' e ')}.` : 'Nada foi salvo.',
+      failed.length ? `Falhas: ${failed.join('; ')}` : '',
+    ].filter(Boolean);
+    alert(summary.join('\n'));
   };
 
   const handleCreateSpecialSchedule = async () => {
@@ -547,7 +602,7 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
             {booths.length > 0 && (
               <View style={styles.boothRow}>
                 {booths.map((booth) => (
-                  <TouchableOpacity key={booth.id} style={[styles.boothBtn, selectedBoothId === booth.id && styles.boothBtnActive]} onPress={() => setSelectedBoothId(booth.id)}>
+                  <TouchableOpacity key={booth.id} style={[styles.boothBtn, selectedBoothId === booth.id && styles.boothBtnActive]} onPress={() => selectBooth(booth.id)}>
                     <Text style={[styles.boothText, selectedBoothId === booth.id && styles.boothTextActive]}>{booth.name}</Text>
                   </TouchableOpacity>
                 ))}
@@ -571,8 +626,15 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                     <View style={styles.card}>
                       <View style={styles.cardTitleRow}>
                         <Text style={styles.cardTitle}>1. Cadastro-Base do Plantão</Text>
-                        <View style={[styles.lifecycleBadge, { backgroundColor: statusTone[tone].bg }]}>
-                          <Text style={[styles.lifecycleText, { color: statusTone[tone].fg }]}>{lifecycle === 'draft' ? 'Rascunho' : lifecycle}</Text>
+                        <View style={styles.titleBadges}>
+                          {dirtyBooth && (
+                            <View style={styles.dirtyBadge}>
+                              <Text style={styles.dirtyBadgeText}>ALTERAÇÕES NÃO SALVAS</Text>
+                            </View>
+                          )}
+                          <View style={[styles.lifecycleBadge, { backgroundColor: statusTone[tone].bg }]}>
+                            <Text style={[styles.lifecycleText, { color: statusTone[tone].fg }]}>{lifecycle === 'draft' ? 'Rascunho' : lifecycle}</Text>
+                          </View>
                         </View>
                       </View>
 
@@ -587,22 +649,18 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                       <Text style={styles.fieldLabel}>Redes Wi-Fi Autorizadas (uma por linha)</Text>
                       <TextInput
                         value={(selectedBooth.wifis || []).map((w) => w.ssid).join('\n')}
-                        onChangeText={(value) =>
+                        onChangeText={(value) => {
                           setSelectedBooth({
                             ...selectedBooth,
                             wifis: value.split('\n').map((ssid) => ({ ssid: ssid.trim() })).filter((w) => w.ssid),
-                          })
-                        }
+                          });
+                          setDirtyBooth(true);
+                        }}
                         style={[styles.input, styles.multiline]}
                         multiline
                         placeholder="Ex: Wi-Fi_Plantao_01"
                         placeholderTextColor={colors.slate400}
                       />
-
-                      <TouchableOpacity style={styles.primaryBtn} onPress={() => void saveBooth()} disabled={savingBooth}>
-                        {savingBooth ? <ActivityIndicator size="small" color="#fff" /> : <Save size={14} color="#fff" />}
-                        <Text style={styles.primaryBtnText}>{selectedBoothId ? 'Salvar Dados do Plantão' : 'Criar Plantão como Rascunho'}</Text>
-                      </TouchableOpacity>
 
                       {selectedBoothId && (
                         <View style={styles.lifecycleRow}>
@@ -627,8 +685,15 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                         <View style={styles.card}>
                           <View style={styles.cardTitleRow}>
                             <Text style={styles.cardTitle}>2. Grade de Horários das Roletas</Text>
-                            <View style={[styles.versionBadge]}>
-                              <Text style={styles.versionText}>v{rules.version}</Text>
+                            <View style={styles.titleBadges}>
+                              {dirtyRules && (
+                                <View style={styles.dirtyBadge}>
+                                  <Text style={styles.dirtyBadgeText}>ALTERAÇÕES NÃO SALVAS</Text>
+                                </View>
+                              )}
+                              <View style={[styles.versionBadge]}>
+                                <Text style={styles.versionText}>v{rules.version}</Text>
+                              </View>
                             </View>
                           </View>
 
@@ -669,6 +734,7 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                                   onPress={() => {
                                     const next = !roleta3Enabled;
                                     setRoleta3Enabled(next);
+                                    setDirtyRules(true);
                                     if (!next) updateField('roleta_3_time', '');
                                     else if (!rules.roleta_3_time) updateField('roleta_3_time', '18:00');
                                   }}
@@ -708,7 +774,7 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                             <View style={styles.flex1}>{pair('Roletas para Domingo (Seg a Sex)', String(rules.sunday_required_periods ?? 6), (v) => updateField('sunday_required_periods', v), '6', true)}</View>
                           </View>
 
-                          <TouchableOpacity style={[styles.toggle, { backgroundColor: rules.weekend_enabled ? colors.green100 : colors.red100 }]} onPress={() => setRules({ ...rules, weekend_enabled: !rules.weekend_enabled })}>
+                          <TouchableOpacity style={[styles.toggle, { backgroundColor: rules.weekend_enabled ? colors.green100 : colors.red100 }]} onPress={() => { setRules({ ...rules, weekend_enabled: !rules.weekend_enabled }); setDirtyRules(true); }}>
                             <Circle size={13} color={rules.weekend_enabled ? colors.green700 : colors.red700} />
                             <Text style={[styles.toggleText, { color: rules.weekend_enabled ? colors.green700 : colors.red700 }]}>
                               Habilitar Roletas em Fins de Semana: {rules.weekend_enabled ? 'SIM (Ativo)' : 'NÃO (Bloqueado)'}
@@ -734,11 +800,6 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
                             placeholder="Informe o motivo para a trilha de auditoria"
                             placeholderTextColor={colors.slate400}
                           />
-
-                          <TouchableOpacity style={styles.primaryBtn} onPress={() => void saveRules()} disabled={saving}>
-                            {saving ? <ActivityIndicator size="small" color="#fff" /> : <Save size={14} color="#fff" />}
-                            <Text style={styles.primaryBtnText}>Salvar Regras da Roleta</Text>
-                          </TouchableOpacity>
                         </View>
 
                         <View style={styles.card}>
@@ -939,12 +1000,27 @@ export default function NovaOperacao({ isMobile }: { isMobile?: boolean }) {
           </>
         )}
       </ScrollView>
+
+      {activeTab === 'booths' && (dirtyBooth || dirtyRules) && (
+        <View style={styles.saveBar}>
+          <View style={styles.saveBarInfo}>
+            <Text style={styles.saveBarTitle}>Alterações não salvas</Text>
+            <Text style={styles.saveBarText}>
+              {(dirtyBooth ? 1 : 0) + (dirtyRules ? 1 : 0)} seção(ões) pendente(s)
+            </Text>
+          </View>
+          <TouchableOpacity style={styles.saveBarBtn} onPress={() => void saveAll()} disabled={savingAll}>
+            {savingAll ? <ActivityIndicator size="small" color="#fff" /> : <Save size={14} color="#fff" />}
+            <Text style={styles.saveBarBtnText}>Salvar Alterações</Text>
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  content: { padding: 24, paddingBottom: 48, gap: 16, maxWidth: 860, width: '100%', alignSelf: 'center' },
+  content: { padding: 24, paddingBottom: 128, gap: 16, maxWidth: 860, width: '100%', alignSelf: 'center' },
   hero: { borderRadius: radius.lg, padding: 20, backgroundColor: colors.navy900, ...shadow.card },
   heroBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -987,6 +1063,9 @@ const styles = StyleSheet.create({
   cardTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' },
   cardTitle: { color: semantic.textPrimary, fontFamily: font.display, fontWeight: '800', fontSize: 14.5, letterSpacing: -0.2 },
   cardSub: { color: semantic.textMuted, fontFamily: font.body, fontSize: 11, lineHeight: 16 },
+  titleBadges: { flexDirection: 'row', alignItems: 'center', gap: 6, flexWrap: 'wrap' },
+  dirtyBadge: { backgroundColor: colors.amber800, borderRadius: radius.full, paddingVertical: 3, paddingHorizontal: 9 },
+  dirtyBadgeText: { color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 8.5, letterSpacing: 0.5 },
   lifecycleBadge: { paddingVertical: 4, paddingHorizontal: 10, borderRadius: radius.full },
   lifecycleText: { fontFamily: font.body, fontWeight: '800', fontSize: 9.5, textTransform: 'uppercase', letterSpacing: 0.4 },
   versionBadge: { backgroundColor: colors.slate100, borderWidth: 1, borderColor: semantic.border, borderRadius: radius.full, paddingVertical: 3, paddingHorizontal: 9 },
@@ -1016,6 +1095,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.coral600, borderRadius: radius.md, paddingVertical: 12,
   },
   primaryBtnText: { color: '#fff', fontFamily: font.body, fontWeight: '700', fontSize: 12 },
+  saveBar: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12,
+    paddingHorizontal: 24, paddingVertical: 12,
+    backgroundColor: colors.navy900, borderTopWidth: 1, borderTopColor: colors.navy700,
+    maxWidth: 860, width: '100%', alignSelf: 'center', zIndex: 20,
+    ...shadow.card,
+  },
+  saveBarInfo: { flex: 1 },
+  saveBarTitle: { color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 12.5 },
+  saveBarText: { color: '#9EB0C1', fontFamily: font.body, fontSize: 11, marginTop: 2 },
+  saveBarBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 7,
+    backgroundColor: colors.coral600, borderRadius: radius.md, paddingVertical: 11, paddingHorizontal: 16,
+  },
+  saveBarBtnText: { color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 12 },
   lifecycleRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   lifecycleBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
