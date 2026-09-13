@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import {
-  Building2,
   CheckCircle2,
   Mail,
   Pencil,
@@ -29,7 +28,6 @@ export default function NovaVisaoRh({ isMobile }: { isMobile?: boolean }) {
   const { user } = useAuth();
   const [brokers, setBrokers] = useState<any[]>([]);
   const [managers, setManagers] = useState<any[]>([]);
-  const [boothsCount, setBoothsCount] = useState(0);
   const [pending, setPending] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
@@ -53,16 +51,14 @@ export default function NovaVisaoRh({ isMobile }: { isMobile?: boolean }) {
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [managersRes, brokersRes, boothsRes, hrReviewRes] = await Promise.all([
+      const [managersRes, brokersRes, hrReviewRes] = await Promise.all([
         api.get('/users/managers/active'),
         api.get('/users/active-brokers', { params: { pageSize: 500 } }),
-        api.get('/booths'),
         api.get('/users/pending-hr-review').catch(() => ({ data: [] })),
       ]);
       setManagers(Array.isArray(managersRes.data) ? managersRes.data : []);
       const brokersData = Array.isArray(brokersRes.data) ? brokersRes.data : brokersRes.data?.data || [];
       setBrokers(brokersData);
-      setBoothsCount(Array.isArray(boothsRes.data) ? boothsRes.data.length : 0);
       setPending(Array.isArray(hrReviewRes.data) ? hrReviewRes.data : []);
       setOnline(true);
       setError(false);
@@ -198,8 +194,6 @@ export default function NovaVisaoRh({ isMobile }: { isMobile?: boolean }) {
     { label: 'Ativos', value: activeCount, tone: 'positive' as const, icon: UserCheck },
     { label: 'Em carência', value: graceCount, tone: 'attention' as const, icon: ShieldCheck },
     { label: 'Com estágio vencido', value: expiredCount, tone: 'danger' as const, icon: ShieldCheck },
-    { label: 'Gerências ativas', value: managers.length, tone: 'action' as const, icon: Users },
-    { label: 'Plantões cadastrados', value: boothsCount, tone: 'neutral' as const, icon: Building2 },
   ];
 
   return (

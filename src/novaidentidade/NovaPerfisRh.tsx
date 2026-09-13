@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { BadgeCheck, ChevronRight, Clock3, Users } from 'lucide-react-native';
+import { BadgeCheck, ChevronDown, ChevronRight, ChevronUp, Clock3, Users } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { FichaCorretorModal } from './NovaGestaoCorretores';
@@ -48,6 +48,11 @@ export default function NovaPerfisRh({
   const [error, setError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
   const [fichaBrokerId, setFichaBrokerId] = useState<string | null>(null);
+  const [expandedStages, setExpandedStages] = useState<Record<StageKey, boolean>>({
+    corretor_creci: false,
+    estagiario: false,
+    treinamento: false,
+  });
 
   const isCareers = view === 'rh_careers';
 
@@ -120,7 +125,6 @@ export default function NovaPerfisRh({
           { label: 'Estagiários', value: countByStage('estagiario'), tone: 'attention' as const, icon: Users },
           { label: 'Em treinamento', value: countByStage('treinamento'), tone: 'info' as const, icon: Users },
           { label: 'Ativos', value: active, tone: 'action' as const, icon: Users },
-          { label: 'Gerências ativas', value: managers.length, tone: 'neutral' as const, icon: Users },
         ];
 
   const grouped = STAGE_ORDER.map((s) => ({
@@ -173,37 +177,52 @@ export default function NovaPerfisRh({
           ) : (
             grouped.map((g) => {
               const st = statusTone[stageTone(g.stage)];
+              const open = !!expandedStages[g.stage];
               return (
                 <View key={g.stage}>
-                  <View style={styles.groupHead}>
+                  <TouchableOpacity
+                    style={styles.groupHead}
+                    onPress={() => setExpandedStages((prev) => ({ ...prev, [g.stage]: !prev[g.stage] }))}
+                  >
                     <View style={[styles.groupBullet, { backgroundColor: st.bg }]} />
                     <Text style={styles.groupTitle}>{STAGE_LABEL[g.stage]}</Text>
                     <Text style={styles.groupCount}>{g.brokers.length}</Text>
-                  </View>
-                  <View style={styles.list}>
-                    {g.brokers.map((broker, idx) => {
-                      const suspended = broker.is_suspended || broker.is_stage_expired || broker.is_inactive_90d;
-                      const tone = statusTone[suspended ? 'danger' : stageTone(g.stage)];
-                      return (
-                        <TouchableOpacity key={broker.id} style={styles.row} onPress={() => setFichaBrokerId(broker.id)}>
-                          <View style={[styles.avatar, { backgroundColor: NAVY_AVATAR_PALETTE[idx % NAVY_AVATAR_PALETTE.length] }]}>
-                            <Text style={styles.avatarText}>{(broker.nome_guerra || '?').charAt(0)}</Text>
-                          </View>
-                          <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
-                            <Text style={styles.rowName}>{broker.nome_guerra}</Text>
-                            <Text style={styles.rowMeta}>
-                              CRECI: {broker.creci || '—'} · Carência: {broker.carencia_ends_at ? formatDate(broker.carencia_ends_at) : '—'}
-                            </Text>
-                          </View>
-                          <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                            <Text style={[styles.badgeText, { color: tone.fg, backgroundColor: tone.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm, overflow: 'hidden' }]}>
-                              {suspended ? 'Suspenso' : g.stage === 'corretor_creci' ? 'CRECI' : 'Estágio'}
-                            </Text>
-                          </View>
-                        </TouchableOpacity>
-                      );
-                    })}
-                  </View>
+                    <View style={styles.chevronBox}>
+                      {open ? <ChevronUp size={14} color={colors.slate500} /> : <ChevronDown size={14} color={colors.slate500} />}
+                    </View>
+                  </TouchableOpacity>
+                  {open && (
+                    <View style={styles.list}>
+                      {g.brokers.map((broker, idx) => {
+                        const suspended = broker.is_suspended || broker.is_stage_expired || broker.is_inactive_90d;
+                        const tone = statusTone[suspended ? 'danger' : stageTone(g.stage)];
+                        return (
+                          <TouchableOpacity key={broker.id} style={styles.row} onPress={() => setFichaBrokerId(broker.id)}>
+                            <View style={[styles.avatar, { backgroundColor: NAVY_AVATAR_PALETTE[idx % NAVY_AVATAR_PALETTE.length] }]}>
+                              <Text style={styles.avatarText}>{(broker.nome_guerra || '?').charAt(0)}</Text>
+                            </View>
+                            <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                              <Text style={styles.rowName}>{broker.nome_guerra}</Text>
+                              <Text style={styles.rowMeta}>
+                                CRECI: {broker.creci || '—'} · Carência: {broker.carencia_ends_at ? formatDate(broker.carencia_ends_at) : '—'}
+                              </Text>
+                            </View>
+                            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                              <Text style={[styles.badgeText, { color: tone.fg, backgroundColor: tone.bg, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.sm, overflow: 'hidden' }]}>
+                                {suspended
+                                  ? 'Suspenso'
+                                  : g.stage === 'corretor_creci'
+                                    ? 'CRECI'
+                                    : g.stage === 'treinamento'
+                                      ? 'Treinamento'
+                                      : 'Estágio'}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  )}
                 </View>
               );
             })
@@ -295,10 +314,15 @@ const styles = StyleSheet.create({
   },
   cardTitle: { color: semantic.textPrimary, fontFamily: font.display, fontWeight: '800', fontSize: 14 },
   emptyText: { color: semantic.textMuted, fontFamily: font.body, fontSize: 12, fontStyle: 'italic' },
-  groupHead: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
+  groupHead: {
+    flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8,
+    backgroundColor: semantic.card, borderRadius: radius.md, borderWidth: 1, borderColor: semantic.border,
+    paddingVertical: 10, paddingHorizontal: 12, ...shadow.card,
+  },
   groupBullet: { width: 10, height: 10, borderRadius: 4 },
-  groupTitle: { color: semantic.textPrimary, fontFamily: font.display, fontWeight: '800', fontSize: 14 },
+  groupTitle: { color: semantic.textPrimary, fontFamily: font.display, fontWeight: '800', fontSize: 14, flex: 1 },
   groupCount: { color: colors.slate500, fontFamily: font.body, fontWeight: '700', fontSize: 12 },
+  chevronBox: { width: 26, height: 26, borderRadius: 8, backgroundColor: colors.slate100, alignItems: 'center', justifyContent: 'center' },
   list: { gap: 8, marginBottom: 8 },
   row: {
     flexDirection: 'row', alignItems: 'center', gap: 11,
