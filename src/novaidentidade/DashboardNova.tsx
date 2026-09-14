@@ -330,7 +330,7 @@ function NovaBrokerHome({
           <QuickAction icon={CalendarDays} label="Meus plantões" tone="info" onPress={() => onOpen('my_shifts')} />
         </View>
         <View style={[homeGrid.col, { gap: 9 }]}>
-          <QuickAction icon={Building2} label="Materiais de atendimento" tone="positive" onPress={() => onOpen('my_shifts')} />
+          <QuickAction icon={History} label="Meu histórico" tone="positive" onPress={() => onOpen('my_history')} />
           <QuickAction icon={Bell} label="Mensagens / Inbox" tone="attention" onPress={() => onOpen('inbox')} />
         </View>
       </View>
@@ -695,6 +695,13 @@ export default function DashboardNova() {
         return (
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={contentPad}>
             <NovaMyShifts />
+          </ScrollView>
+        );
+      }
+      if (view === 'my_history') {
+        return (
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={contentPad}>
+            <NovaHistoricoCorretor isMobile={isMobile} />
           </ScrollView>
         );
       }

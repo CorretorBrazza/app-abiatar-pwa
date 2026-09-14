@@ -35,6 +35,14 @@ const STATUS_META: Record<string, { label: string; tone: keyof typeof statusTone
   online: { label: 'Em andamento', tone: 'action' },
   paused: { label: 'Pausado', tone: 'attention' },
   absent: { label: 'Ausente', tone: 'danger' },
+  attended: { label: 'Atendimento', tone: 'action' },
+};
+
+const ATT_TIPO_META: Record<string, { label: string; tone: keyof typeof statusTone }> = {
+  vez: { label: 'Vez', tone: 'info' },
+  agendamento: { label: 'Agendamento', tone: 'positive' },
+  retorno: { label: 'Retorno', tone: 'attention' },
+  simples: { label: 'Simples', tone: 'neutral' },
 };
 
 const PERIOD_PRESETS: { key: PeriodKey; label: string }[] = [
@@ -197,6 +205,8 @@ export function HistoricoContent({
   const broker = data?.broker;
   const summary = data?.summary;
   const days: any[] = Array.isArray(data?.days) ? data.days : [];
+  const attendances: any[] = Array.isArray(data?.attendances) ? data.attendances : [];
+  const attendanceSummary = data?.attendanceSummary;
 
   return (
     <View style={{ flex: 1 }}>
@@ -300,6 +310,70 @@ export function HistoricoContent({
             <Text style={fonts.metricValueMobile}>{summary.validationRate}%</Text>
             <Text style={styles.kpiLabel}>Aproveitamento</Text>
           </View>
+        </View>
+      )}
+
+      {/* Atendimentos registrados (vez / agendamento / retorno) */}
+      {attendanceSummary && (
+        <View>
+          <Text style={styles.sectionTitle}>Atendimentos registrados</Text>
+          <View style={styles.kpiGrid}>
+            <View style={[styles.kpiCard, { width: isMobile ? '48%' : undefined, flex: isMobile ? undefined : 1 }]}>
+              <View style={[styles.kpiIcon, { backgroundColor: colors.blue100 }]}>
+                <UserCheck size={15} color={colors.blue700} />
+              </View>
+              <Text style={fonts.metricValueMobile}>{attendanceSummary.vezCount ?? 0}</Text>
+              <Text style={styles.kpiLabel}>Vez</Text>
+            </View>
+            <View style={[styles.kpiCard, { width: isMobile ? '48%' : undefined, flex: isMobile ? undefined : 1 }]}>
+              <View style={[styles.kpiIcon, { backgroundColor: colors.green100 }]}>
+                <Clock3 size={15} color={colors.green700} />
+              </View>
+              <Text style={fonts.metricValueMobile}>{attendanceSummary.agendamentoCount ?? 0}</Text>
+              <Text style={styles.kpiLabel}>Agendamento</Text>
+            </View>
+            <View style={[styles.kpiCard, { width: isMobile ? '48%' : undefined, flex: isMobile ? undefined : 1 }]}>
+              <View style={[styles.kpiIcon, { backgroundColor: colors.amber100 }]}>
+                <ShieldCheck size={15} color={colors.amber700} />
+              </View>
+              <Text style={fonts.metricValueMobile}>{attendanceSummary.retornoCount ?? 0}</Text>
+              <Text style={styles.kpiLabel}>Retorno</Text>
+            </View>
+            <View style={[styles.kpiCard, { width: isMobile ? '48%' : undefined, flex: isMobile ? undefined : 1 }]}>
+              <View style={[styles.kpiIcon, { backgroundColor: colors.navy800 }]}>
+                <BadgeCheck size={15} color="#fff" />
+              </View>
+              <Text style={fonts.metricValueMobile}>{attendanceSummary.total ?? 0}</Text>
+              <Text style={styles.kpiLabel}>Total</Text>
+            </View>
+          </View>
+
+          {attendances.length === 0 ? (
+            <View style={styles.card}>
+              <Text style={styles.emptyText}>Nenhum atendimento registrado no período selecionado.</Text>
+            </View>
+          ) : (
+            <View style={{ gap: 8 }}>
+              {attendances.map((a: any) => {
+                const meta = ATT_TIPO_META[a.tipo] || { label: a.tipo, tone: 'neutral' as const };
+                const t = statusTone[meta.tone];
+                return (
+                  <View key={a.id} style={styles.attRow}>
+                    <View style={[styles.attBadge, { backgroundColor: t.bg }]}>
+                      <Text style={[styles.attBadgeText, { color: t.fg }]}>{meta.label}</Text>
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
+                      <Text style={styles.entryName}>{a.boothName || 'Plantão'}</Text>
+                      <Text style={styles.entryMeta}>
+                        {formatDateShort(a.attendedAt)} · {formatTime(a.attendedAt)}
+                        {a.inSequence ? ` · #${a.inSequence}` : ''}
+                      </Text>
+                    </View>
+                  </View>
+                );
+              })}
+            </View>
+          )}
         </View>
       )}
 
@@ -618,6 +692,12 @@ const styles = StyleSheet.create({
   },
   roletaBadge: { width: 36, height: 24, borderRadius: 7, alignItems: 'center', justifyContent: 'center' },
   roletaNum: { color: '#fff', fontFamily: font.display, fontWeight: '800', fontSize: 10.5 },
+  attRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.slate050, borderRadius: radius.md, padding: 10,
+  },
+  attBadge: { paddingVertical: 4, paddingHorizontal: 9, borderRadius: radius.full },
+  attBadgeText: { fontFamily: font.body, fontWeight: '800', fontSize: 9, letterSpacing: 0.2 },
   entryName: { color: semantic.textPrimary, fontFamily: font.body, fontWeight: '700', fontSize: 12 },
   entryMeta: { color: semantic.textMuted, fontFamily: font.body, fontSize: 10, lineHeight: 15 },
   statusBadge: { paddingVertical: 3, paddingHorizontal: 8, borderRadius: radius.full },
