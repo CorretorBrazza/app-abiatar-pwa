@@ -1,16 +1,17 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import {
-  BellRing,
   ChevronRight,
   Clock3,
   Crosshair,
   LayoutDashboard,
+  LogOut,
   MapPin,
   MessageSquare,
   Target,
   UserCheck,
   Users,
+  X,
 } from 'lucide-react-native';
 import { useAuth } from '../contexts/AuthContext';
 import api, { apiBaseUrl } from '../services/api';
@@ -56,6 +57,14 @@ export default function NovaReception({
   const [actionBusy, setActionBusy] = useState<string | null>(null);
   const [checkInOpenBooth, setCheckInOpenBooth] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [attendTarget, setAttendTarget] = useState<{
+    presenceId: string;
+    nomeGuerra: string;
+    isNext: boolean;
+    tipo: 'vez' | 'agendamento' | 'retorno';
+  } | null>(null);
+  const [cliente, setCliente] = useState({ nome: '', telefone: '', email: '' });
+  const [confirming, setConfirming] = useState(false);
 
   const loadOperationalData = async () => {
     try {
@@ -118,6 +127,7 @@ export default function NovaReception({
               const event = JSON.parse(dataLine.replace(/^data:\s*/, ''));
               if (
                 event.eventType?.startsWith('presence.') ||
+                event.eventType?.startsWith('roleta.') ||
                 event.eventType?.includes('created') ||
                 event.eventType?.includes('updated') ||
                 event.eventType?.startsWith('message.')
@@ -176,9 +186,51 @@ export default function NovaReception({
     }
   };
 
-  const handleAttend = (presenceId: string, nomeGuerra: string) => {
-    if (typeof window !== 'undefined' && !window.confirm(`Confirmar atendimento de '${nomeGuerra}'? O próximo da fila será convocado.`)) return;
-    void runAction(api.post(`/presences/attend/${presenceId}`), presenceId);
+const openAttend = (item: any, isNext: boolean) => {
+    setCliente({ nome: '', telefone: '', email: '' });
+    setAttendTarget({
+      presenceId: item.presenceId,
+      nomeGuerra: item.nomeGuerra,
+      isNext,
+      tipo: isNext ? 'vez' : 'agendamento',
+    });
+  };
+
+  const confirmAttend = async () => {
+    if (!attendTarget) return;
+    setConfirming(true);
+    try {
+      const payload: Record<string, unknown> = {};
+      if (attendTarget.tipo !== 'vez') payload.tipo = attendTarget.tipo;
+      const c = {
+        nome: cliente.nome.trim() || undefined,
+        telefone: cliente.telefone.trim() || undefined,
+        email: cliente.email.trim() || undefined,
+      };
+      if (c.nome || c.telefone || c.email) payload.cliente = c;
+      const url = attendTarget.isNext
+        ? `/presences/attend-vez/${attendTarget.presenceId}`
+        : `/presences/attend/${attendTarget.presenceId}`;
+      const response = await api.post(url, payload);
+      alert(response.data.message || 'Atendimento registrado.');
+      setAttendTarget(null);
+      void loadOperationalData();
+    } catch (error: any) {
+      alert(error.response?.data?.message || error.message || 'Não foi possível concluir o atendimento.');
+    } finally {
+      setConfirming(false);
+    }
+  };
+
+  const handleReceptionCheckout = (presenceId: string, nomeGuerra: string) => {
+    if (
+      typeof window !== 'undefined' &&
+      !window.confirm(
+        `Confirmar que '${nomeGuerra}' SAÍU do plantão? A recepção é soberana: a presença será encerrada e ele sai da sequência de atendimento.`,
+      )
+    )
+      return;
+    void runAction(api.post(`/presences/reception-checkout/${presenceId}`), presenceId);
   };
 
   const handleRevalidate = (presenceId: string, nomeGuerra: string) => {
@@ -223,7 +275,8 @@ export default function NovaReception({
 
   if (view === 'operation') {
     return (
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
+      <>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {!online && <StateOffline updatedAt={lastUpdated || undefined} onRetry={() => setRefreshKey((k) => k + 1)} />}
         <View style={styles.rowSpace}>
           <View>
@@ -272,6 +325,9 @@ export default function NovaReception({
                       {boothQueue.currentRoleta.phase === 'aguardando_sorteio' && (
                         <Text style={[styles.roletaWait, { color: colors.amber700 }]}>aguardando sorteio</Text>
                       )}
+                      {boothQueue.currentRoleta.phase === 'apos_sorteio' && (
+                        <Text style={[styles.roletaWait, { color: colors.green700 }]}>sorteio realizado · sequência da roleta</Text>
+                      )}
                     </View>
                   </View>
 
@@ -279,45 +335,73 @@ export default function NovaReception({
                     <Text style={styles.queueEmpty}>Fila vazia na roleta atual.</Text>
                   ) : (
                     <View style={{ marginTop: 12, gap: 8 }}>
-                      {boothQueue.queue.map((item: any) => {
-                        const isNext = item.effectivePosition === 1;
+                      {boothQueue.queue.map((item: any, index: number) => {
+                        const isNext = item.isFirst === true;
                         const busy = actionBusy === item.presenceId;
                         return (
-                          <View key={item.presenceId} style={[styles.queueItem, isNext && styles.queueItemNext]}>
-                            <View style={styles.queueBadge}>
-                              <Text style={[styles.queuePos, { color: statusTone[isNext ? 'positive' : 'neutral'].fg }]}>
-                                #{item.effectivePosition}
-                              </Text>
-                            </View>
-                            <View style={{ flex: 1, minWidth: 0 }}>
-                              <Text style={styles.queueName}>{item.nomeGuerra}</Text>
-                              <View style={styles.queueInline}>
-                                <View style={[styles.entryBadge, { backgroundColor: item.roletaEntryType === 'pos_barra' ? colors.amber700 : colors.green700 }]}>
-                                  <Text style={styles.entryBadgeText}>
-                                    {item.roletaEntryType === 'pos_barra' ? 'PÓS-BARRA' : 'PONTUAL'}
+                          <View key={item.presenceId}>
+                            <View style={[styles.queueItem, isNext && styles.queueItemNext]}>
+                              <View style={styles.queueBadge}>
+                                <Text style={[styles.queuePos, { color: statusTone[isNext ? 'positive' : 'neutral'].fg }]}>
+                                  #{index + 1}
+                                </Text>
+                              </View>
+                              <View style={{ flex: 1, minWidth: 0 }}>
+                                <View style={styles.nameRow}>
+                                  <Text style={styles.queueName}>{item.nomeGuerra}</Text>
+                                  {isNext && (
+                                    <View style={styles.nextChip}>
+                                      <Text style={styles.nextChipText}>PRÓXIMO</Text>
+                                    </View>
+                                  )}
+                                </View>
+                                <View style={styles.queueInline}>
+                                  <View style={[styles.entryBadge, { backgroundColor: item.roletaEntryType === 'pos_barra' ? colors.amber700 : colors.green700 }]}>
+                                    <Text style={styles.entryBadgeText}>
+                                      {item.roletaEntryType === 'pos_barra' ? 'PÓS-BARRA' : 'PONTUAL'}
+                                    </Text>
+                                  </View>
+                                  <Text style={styles.queueMeta}>
+                                    Entrada {spTime(item.checkInAt)} · {item.minutesActive} min ativo
                                   </Text>
                                 </View>
                                 <Text style={styles.queueMeta}>
-                                  {spTime(item.checkInAt)} · {item.minutesActive} min ativo
+                                  {item.roletaEntryType === 'pos_barra' ? `Posição ${item.roletaPosition}º` : `Sorteado ${item.roletaPosition}º`}
                                 </Text>
                               </View>
-                              <Text style={styles.queueMeta}>
-                                {item.roletaEntryType === 'pos_barra' ? `Posição ${item.roletaPosition}º` : `Sorteado ${item.roletaPosition}º`}
-                              </Text>
+                              {isNext ? (
+                                <View style={styles.actionsCol}>
+                                  <TouchableOpacity
+                                    style={[styles.vezBtn, busy && styles.btnBusy]}
+                                    disabled={busy}
+                                    onPress={() => openAttend(item, true)}
+                                  >
+                                    <Text style={styles.attendBtnText}>{busy ? '...' : 'Atender vez'}</Text>
+                                  </TouchableOpacity>
+                                  <TouchableOpacity
+                                    style={[styles.attendBtn, busy && styles.btnBusy]}
+                                    disabled={busy}
+                                    onPress={() => openAttend(item, false)}
+                                  >
+                                    <Text style={styles.attendBtnText}>{busy ? '...' : 'Atender'}</Text>
+                                  </TouchableOpacity>
+                                </View>
+                              ) : (
+                                <TouchableOpacity
+                                  style={[styles.attendBtn, busy && styles.btnBusy]}
+                                  disabled={busy}
+                                  onPress={() => openAttend(item, false)}
+                                >
+                                  <Text style={styles.attendBtnText}>{busy ? '...' : 'Atender'}</Text>
+                                </TouchableOpacity>
+                              )}
                             </View>
                             <TouchableOpacity
-                              style={[styles.attendBtn, isNext && styles.attendBtnNext, busy && styles.btnBusy]}
-                              disabled={busy}
-                              onPress={() => handleAttend(item.presenceId, item.nomeGuerra)}
+                              style={styles.checkOutLink}
+                              onPress={() => handleReceptionCheckout(item.presenceId, item.nomeGuerra)}
                             >
-                              {busy ? (
-                                <Text style={styles.attendBtnText}>...</Text>
-                              ) : (
-                                <View style={styles.attendBtnInner}>
-                                  {isNext && <BellRing size={13} color="#fff" strokeWidth={2.4} />}
-                                  <Text style={styles.attendBtnText}>{isNext ? 'Atender agora' : 'Atender'}</Text>
-                                </View>
-                              )}
+                              <LogOut size={11} color={colors.slate500} />
+                              <Text style={styles.checkOutLinkText}>Saiu do plantão (check-out soberano)</Text>
                             </TouchableOpacity>
                           </View>
                         );
@@ -342,6 +426,29 @@ export default function NovaReception({
                             onPress={() => handleRevalidate(item.presenceId, item.nomeGuerra)}
                           >
                             <Text style={styles.attendBtnText}>{actionBusy === item.presenceId ? '...' : 'Revalidar'}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </View>
+                  )}
+
+                  {boothQueue.outOfWindow?.length > 0 && (
+                    <View style={styles.absentBlock}>
+                      <Text style={styles.outWindowTitle}>Fora da janela da roleta · período não será validado</Text>
+                      {boothQueue.outOfWindow.map((item: any) => (
+                        <View key={item.presenceId} style={[styles.queueItem, styles.revalItem]}>
+                          <View style={{ flex: 1, minWidth: 0 }}>
+                            <Text style={styles.queueName}>{item.nomeGuerra}</Text>
+                            <Text style={styles.queueMeta}>
+                              Entrada {spTime(item.checkInAt)} · {item.minutesActive} min ativo · sem posição e sem validação
+                            </Text>
+                          </View>
+                          <TouchableOpacity
+                            style={[styles.attendBtn, actionBusy === item.presenceId && styles.btnBusy]}
+                            disabled={actionBusy === item.presenceId}
+                            onPress={() => openAttend(item, false)}
+                          >
+                            <Text style={styles.attendBtnText}>{actionBusy === item.presenceId ? '...' : 'Atender'}</Text>
                           </TouchableOpacity>
                         </View>
                       ))}
@@ -403,6 +510,107 @@ export default function NovaReception({
 
         <Text style={styles.footNote}>Atualização em tempo real; consulta de segurança a cada 15 segundos.</Text>
       </ScrollView>
+
+      {attendTarget && (
+        <Modal visible transparent animationType="fade" onRequestClose={() => setAttendTarget(null)}>
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalCard}>
+              <View style={styles.modalHead}>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.modalTitle}>Atendimento · {attendTarget.nomeGuerra}</Text>
+                  <Text style={styles.modalSub}>
+                    {attendTarget.isNext
+                      ? 'Da vez da roleta — após atender, ele volta para o final da fila.'
+                      : 'Atendimento de corretor específico — ele sai da sequência de atendimento.'}
+                  </Text>
+                </View>
+                <TouchableOpacity style={styles.modalClose} onPress={() => setAttendTarget(null)}>
+                  <X size={16} color={colors.slate600} />
+                </TouchableOpacity>
+              </View>
+
+              {!attendTarget.isNext && (
+                <>
+                  <Text style={styles.modalLabel}>Tipo de atendimento</Text>
+                  <View style={styles.tipoRow}>
+                    {(['agendamento', 'retorno'] as const).map((t) => {
+                      const selected = attendTarget.tipo === t;
+                      return (
+                        <TouchableOpacity
+                          key={t}
+                          style={[styles.tipoOption, selected && styles.tipoSelected]}
+                          activeOpacity={0.85}
+                          onPress={() => setAttendTarget((cur) => (cur ? { ...cur, tipo: t } : cur))}
+                        >
+                          <Text style={[styles.tipoOptionText, selected && styles.tipoSelectedText]}>
+                            {t === 'agendamento' ? 'Agendamento' : 'Retorno'}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+                </>
+              )}
+
+              <Text style={styles.modalLabel}>
+                {attendTarget.isNext
+                  ? 'Dados do cliente (opcional — enviados ao CRM)'
+                  : 'Dados do cliente (opcional — enviados ao CRM)'}
+              </Text>
+              <View style={styles.modalInputs}>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Nome do cliente"
+                  placeholderTextColor={colors.slate400}
+                  value={cliente.nome}
+                  onChangeText={(v) => setCliente((c) => ({ ...c, nome: v }))}
+                />
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Telefone"
+                  placeholderTextColor={colors.slate400}
+                  value={cliente.telefone}
+                  onChangeText={(v) => setCliente((c) => ({ ...c, telefone: v }))}
+                  keyboardType="phone-pad"
+                />
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Email"
+                  placeholderTextColor={colors.slate400}
+                  value={cliente.email}
+                  onChangeText={(v) => setCliente((c) => ({ ...c, email: v }))}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                />
+              </View>
+
+              <View style={styles.modalButtons}>
+                <TouchableOpacity
+                  style={[styles.tipoOption, { flex: 1, borderColor: colors.slate200 }]}
+                  onPress={() => setAttendTarget(null)}
+                  disabled={confirming}
+                >
+                  <Text style={styles.tipoOptionText}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.attendBtn, { flex: 2, backgroundColor: attendTarget.tipo === 'vez' ? colors.green700 : colors.navy800 }, confirming && styles.btnBusy]}
+                  disabled={confirming}
+                  onPress={confirmAttend}
+                >
+                  <Text style={styles.attendBtnText}>
+                    {confirming
+                      ? 'Registrando...'
+                      : attendTarget.tipo === 'vez'
+                        ? 'Confirmar atendimento da vez'
+                        : `Confirmar ${attendTarget.tipo === 'agendamento' ? 'Agendamento' : 'Retorno'}`}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </View>
+        </Modal>
+      )}
+      </>
     );
   }
 
@@ -585,16 +793,23 @@ const styles = StyleSheet.create({
   entryBadge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 5 },
   entryBadgeText: { color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 8.5, letterSpacing: 0.5 },
   queueMeta: { color: semantic.textMuted, fontFamily: font.body, fontWeight: '400', fontSize: 10.5, marginTop: 2 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  nextChip: {
+    backgroundColor: colors.green100, borderWidth: 1, borderColor: colors.green700, borderRadius: radius.sm,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  nextChipText: { color: colors.green700, fontFamily: font.body, fontWeight: '800', fontSize: 8.5, letterSpacing: 0.5 },
   attendBtn: {
     backgroundColor: colors.navy800, borderRadius: radius.md,
     paddingHorizontal: 13, paddingVertical: 9, minHeight: 36, justifyContent: 'center',
   },
-  attendBtnNext: { backgroundColor: colors.green700 },
-  attendBtnInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  actionsCol: { gap: 6 },
+  vezBtn: { backgroundColor: colors.green700, borderRadius: radius.md, paddingHorizontal: 13, paddingVertical: 9, justifyContent: 'center' },
   attendBtnText: { color: '#fff', fontFamily: font.body, fontWeight: '700', fontSize: 11 },
   btnBusy: { opacity: 0.5 },
   absentBlock: { borderTopWidth: 1, borderTopColor: semantic.divider, paddingTop: 12, gap: 8 },
   absentTitle: { color: colors.amber700, fontFamily: font.body, fontWeight: '700', fontSize: 11 },
+  outWindowTitle: { color: colors.slate700, fontFamily: font.body, fontWeight: '700', fontSize: 11 },
   revalItem: { backgroundColor: semantic.card },
   revalBtn: { backgroundColor: colors.amber700, borderRadius: radius.md, paddingHorizontal: 13, paddingVertical: 9 },
   noRoleta: { color: semantic.textMuted, fontFamily: font.body, fontSize: 11.5 },
@@ -607,4 +822,38 @@ const styles = StyleSheet.create({
   checkInToggleText: { color: colors.coral600, fontFamily: font.body, fontWeight: '700', fontSize: 11.5 },
   checkInBlock: { gap: 8 },
   footNote: { color: semantic.textFaint, fontFamily: font.body, fontSize: 10, textAlign: 'center', marginTop: 4 },
+  checkOutLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 5, paddingTop: 6, paddingHorizontal: 4 },
+  checkOutLinkText: { color: colors.slate500, fontFamily: font.body, fontWeight: '600', fontSize: 10 },
+  modalOverlay: {
+    flex: 1, backgroundColor: 'rgba(10,16,24,0.55)',
+    alignItems: 'center', justifyContent: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    width: '100%', maxWidth: 460,
+    backgroundColor: semantic.card, borderRadius: radius.lg, borderWidth: 1, borderColor: semantic.border,
+    padding: 20, gap: 14, ...shadow.card,
+  },
+  modalHead: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  modalTitle: { color: semantic.textPrimary, fontFamily: font.display, fontWeight: '800', fontSize: 15 },
+  modalSub: { color: semantic.textMuted, fontFamily: font.body, fontSize: 10.5, lineHeight: 16, marginTop: 3 },
+  modalClose: { width: 30, height: 30, borderRadius: 10, backgroundColor: colors.slate100, alignItems: 'center', justifyContent: 'center' },
+  modalLabel: { color: colors.slate600, fontFamily: font.body, fontWeight: '700', fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase' },
+  tipoRow: { flexDirection: 'row', gap: 8 },
+  tipoOption: {
+    borderWidth: 1, borderColor: colors.slate200, borderRadius: radius.md,
+    paddingHorizontal: 13, paddingVertical: 9, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.slate050,
+  },
+  tipoSelected: { borderColor: colors.green700, backgroundColor: colors.green100 },
+  tipoOptionText: { color: colors.slate600, fontFamily: font.body, fontWeight: '700', fontSize: 11.5 },
+  tipoSelectedText: { color: colors.green700 },
+  modalInputs: { gap: 8 },
+  modalInput: {
+    borderWidth: 1, borderColor: colors.slate200, borderRadius: radius.md,
+    backgroundColor: colors.slate050,
+    paddingHorizontal: 12, paddingVertical: 10,
+    color: semantic.textPrimary, fontFamily: font.body, fontSize: 12.5,
+  },
+  modalButtons: { flexDirection: 'row', gap: 10, marginTop: 2 },
 });

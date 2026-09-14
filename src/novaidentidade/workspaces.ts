@@ -107,7 +107,7 @@ export const PROFILES: ProfileMeta[] = [
     nav: [
       { view: 'command', label: 'Cockpit do plantão', icon: LayoutDashboard },
       { view: 'operation', label: 'Fila de atendimento', icon: Target },
-      { view: 'my_history', label: 'Meu histórico', icon: Clock3 },
+      { view: 'my_history', label: 'Relatório', icon: CalendarDays },
       { view: 'inbox', label: 'Mensagens', icon: MessageSquare },
     ],
   },

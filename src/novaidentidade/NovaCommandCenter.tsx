@@ -27,6 +27,14 @@ const spTime = (iso?: string) =>
       })
     : '';
 
+const dateInTz = (d: Date, tz = 'America/Sao_Paulo'): string =>
+  new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
+
 function stageBadge(stage?: string): { label: string; tone: StateTone } {
   if (stage === 'corretor_creci') return { label: 'CRECI', tone: 'positive' };
   if (stage === 'estagiario') return { label: 'Estagiário', tone: 'attention' };
@@ -49,6 +57,8 @@ export default function NovaCommandCenter({
 }) {
   const { user, tenant } = useAuth();
   const [data, setData] = useState<any>(null);
+  const [attSummary, setAttSummary] = useState<any>(null);
+  const [attendancesCopying, setAttendancesCopying] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [online, setOnline] = useState(true);
@@ -59,8 +69,18 @@ export default function NovaCommandCenter({
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const res = await api.get('/presences/reports/realtime');
+      const today = dateInTz(new Date());
+      const [res, attRes] = await Promise.all([
+        api.get('/presences/reports/realtime'),
+        api
+          .get('/presences/reports/attendance-summary', {
+            params: { startDate: today, endDate: today },
+          })
+          .then((r) => r.data)
+          .catch(() => null),
+      ]);
       setData(res.data);
+      setAttSummary(attRes);
       setOnline(true);
       setError(false);
       setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
@@ -111,6 +131,30 @@ export default function NovaCommandCenter({
       alert('Resumo executivo copiado para a área de transferência! Pronto para colar no WhatsApp.');
     } else {
       alert('Resumo executivo gerado com sucesso.');
+    }
+  };
+
+  const handleCopyAttendances = async () => {
+    if (!attSummary) return;
+    setAttendancesCopying(true);
+    try {
+      const perBooth: any[] = attSummary.perBooth || [];
+      const totals = attSummary.totals || { vez: 0, agendamento: 0, retorno: 0, total: 0 };
+      let text = `🗂 *ATENDIMENTOS DE HOJE* — ${tenant?.name || 'ABIATAR'}\n`;
+      text += `📅 ${dateInTz(new Date())}\n\n`;
+      if (perBooth.length === 0) text += `• Nenhum atendimento registrado hoje.\n`;
+      perBooth.forEach((b) => {
+        text += `• ${b.boothName}: Vez ${b.vez} · Agendamento ${b.agendamento} · Retorno ${b.retorno} (total ${b.total})\n`;
+      });
+      text += `\n*Totais:* Vez ${totals.vez} · Agendamento ${totals.agendamento} · Retorno ${totals.retorno} · Geral ${totals.total}\n`;
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+        alert('Atendimentos de hoje copiados! Pronto para colar no WhatsApp.');
+      } else {
+        alert('Resumo de atendimentos gerado com sucesso.');
+      }
+    } finally {
+      setAttendancesCopying(false);
     }
   };
 
@@ -328,6 +372,56 @@ export default function NovaCommandCenter({
           })}
         </View>
 
+        <View style={styles.attSection}>
+          <View style={styles.sectionHead}>
+            <View>
+              <Text style={fonts.panelTitle}>Atendimentos de hoje</Text>
+              <Text style={styles.sectionSub}>Vez · Agendamento · Retorno por plantão.</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.copyBtn}
+              onPress={() => void handleCopyAttendances()}
+              disabled={attendancesCopying}
+              accessibilityLabel="Copiar atendimentos de hoje"
+            >
+              <Copy size={13} color={attendancesCopying ? colors.slate400 : colors.slate600} />
+              <Text style={styles.copyBtnText}>{attendancesCopying ? 'Copiando...' : 'Copiar'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          {attSummary?.perBooth?.length ? (
+            <View style={styles.attGrid}>
+              {attSummary.perBooth.map((b: any) => (
+                <View key={b.boothId} style={styles.attCard}>
+                  <Text style={styles.attBooth} numberOfLines={1}>{b.boothName}</Text>
+                  <View style={styles.attCells}>
+                    <View style={[styles.attCell, { backgroundColor: statusTone.positive.bg }]}>
+                      <Text style={[styles.attVal, { color: colors.green700 }]}>{b.vez}</Text>
+                      <Text style={styles.attLabel}>Vez</Text>
+                    </View>
+                    <View style={[styles.attCell, { backgroundColor: statusTone.info.bg }]}>
+                      <Text style={[styles.attVal, { color: colors.navy800 }]}>{b.agendamento}</Text>
+                      <Text style={styles.attLabel}>Agend.</Text>
+                    </View>
+                    <View style={[styles.attCell, { backgroundColor: statusTone.attention.bg }]}>
+                      <Text style={[styles.attVal, { color: colors.amber700 }]}>{b.retorno}</Text>
+                      <Text style={styles.attLabel}>Retorno</Text>
+                    </View>
+                    <View style={styles.attCell}>
+                      <Text style={[styles.attVal, { color: semantic.textPrimary }]}>{b.total}</Text>
+                      <Text style={styles.attLabel}>Total</Text>
+                    </View>
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.noAttBox}>
+              <Text style={styles.noAttText}>Nenhum atendimento registrado hoje até o momento.</Text>
+            </View>
+          )}
+        </View>
+
         <View style={styles.footerRow}>
           {lastUpdated && <StaleBanner updatedAt={lastUpdated} />}
           <Text style={styles.footNote}>Atualização em tempo real; consulta de segurança a cada 15 segundos.</Text>
@@ -424,4 +518,21 @@ const styles = StyleSheet.create({
   invalidatedTitle: { color: colors.amber700, fontFamily: font.body, fontWeight: '700', fontSize: 11 },
   footerRow: { alignItems: 'center', gap: 8, marginTop: 2 },
   footNote: { color: semantic.textFaint, fontFamily: font.body, fontSize: 10, textAlign: 'center' },
+  attSection: { gap: 12 },
+  attGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  attCard: {
+    flex: 1, minWidth: 200,
+    borderWidth: 1, borderColor: semantic.border, borderRadius: radius.md,
+    backgroundColor: colors.slate050, padding: 12, gap: 8,
+  },
+  attBooth: { color: semantic.textPrimary, fontFamily: font.body, fontWeight: '800', fontSize: 12.5 },
+  attCells: { flexDirection: 'row', gap: 6 },
+  attCell: {
+    flex: 1, alignItems: 'center', gap: 1,
+    borderRadius: radius.sm, paddingVertical: 6,
+  },
+  attVal: { fontFamily: font.display, fontWeight: '800', fontSize: 15 },
+  attLabel: { color: semantic.textMuted, fontFamily: font.body, fontWeight: '600', fontSize: 8.5 },
+  noAttBox: { borderWidth: 1, borderColor: semantic.border, borderRadius: radius.md, padding: 14 },
+  noAttText: { color: semantic.textMuted, fontFamily: font.body, fontSize: 11.5, fontStyle: 'italic' },
 });

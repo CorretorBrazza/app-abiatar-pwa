@@ -43,6 +43,7 @@ import NovaConvidarCorretores from './NovaConvidarCorretores';
 import NovaPerformance from './NovaPerformance';
 import NovaMensagens from './NovaMensagens';
 import NovaHistoricoCorretor from './NovaHistoricoCorretor';
+import NovaRelatorioRecepcao from './NovaRelatorioRecepcao';
 import { colors, font, fonts, radius, semantic, shadow, statusTone } from './tokens';
 import { useNovaFonts } from './fonts';
 import {
@@ -705,7 +706,7 @@ export default function DashboardNova() {
       if (view === 'my_history') {
         return (
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={contentPad}>
-            <NovaHistoricoCorretor isMobile={isMobile} />
+            <NovaRelatorioRecepcao isMobile={isMobile} />
           </ScrollView>
         );
       }
