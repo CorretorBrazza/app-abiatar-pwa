@@ -386,29 +386,31 @@ const openAttend = (item: any, isNext: boolean) => {
                     <Text style={styles.queueErrorRetryText}>Tentar novamente</Text>
                   </TouchableOpacity>
                 </View>
-              ) : boothQueue?.currentRoleta ? (
+              ) : boothQueue ? (
                 <View style={styles.roletaWrap}>
-                  <View style={styles.roletaHead}>
-                    <View>
-                      <Text style={styles.roletaLabel}>Roleta do momento</Text>
-                      <Text style={styles.roletaName}>{boothQueue.currentRoleta.name}</Text>
+                  {boothQueue.currentRoleta ? (
+                    <View style={styles.roletaHead}>
+                      <View>
+                        <Text style={styles.roletaLabel}>Roleta do momento</Text>
+                        <Text style={styles.roletaName}>{boothQueue.currentRoleta.name}</Text>
+                      </View>
+                      <View style={styles.roletaSide}>
+                        <Text style={styles.roletaTime}>
+                          <Clock3 size={11} color={colors.slate500} /> sorteio {boothQueue.currentRoleta.drawTimeFormatted}
+                        </Text>
+                        {boothQueue.currentRoleta.phase === 'aguardando_sorteio' && (
+                          <Text style={[styles.roletaWait, { color: colors.amber700 }]}>aguardando sorteio</Text>
+                        )}
+                        {boothQueue.currentRoleta.phase === 'apos_sorteio' && (
+                          <Text style={[styles.roletaWait, { color: colors.green700 }]}>sorteio realizado · sequência da roleta</Text>
+                        )}
+                      </View>
                     </View>
-                    <View style={styles.roletaSide}>
-                      <Text style={styles.roletaTime}>
-                        <Clock3 size={11} color={colors.slate500} /> sorteio {boothQueue.currentRoleta.drawTimeFormatted}
-                      </Text>
-                      {boothQueue.currentRoleta.phase === 'aguardando_sorteio' && (
-                        <Text style={[styles.roletaWait, { color: colors.amber700 }]}>aguardando sorteio</Text>
-                      )}
-                      {boothQueue.currentRoleta.phase === 'apos_sorteio' && (
-                        <Text style={[styles.roletaWait, { color: colors.green700 }]}>sorteio realizado · sequência da roleta</Text>
-                      )}
-                    </View>
-                  </View>
-
-                  {boothQueue.queue.length === 0 ? (
-                    <Text style={styles.queueEmpty}>Fila vazia na roleta atual.</Text>
                   ) : (
+                    <Text style={styles.noRoleta}>Nenhuma roleta em andamento neste momento. Fora da janela, os corretores online aparecem abaixo para atendimento.</Text>
+                  )}
+
+                  {boothQueue.queue.length > 0 && (
                     <View style={{ marginTop: 12, gap: 8 }}>
                       {boothQueue.queue.map((item: any, index: number) => {
                         const isNext = item.isFirst === true;
