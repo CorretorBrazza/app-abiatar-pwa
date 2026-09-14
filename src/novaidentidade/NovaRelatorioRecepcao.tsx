@@ -238,6 +238,17 @@ export default function NovaRelatorioRecepcao({ isMobile }: { isMobile?: boolean
           />
         )}
 
+        {error && lastUpdated && (
+          <View style={styles.staleErrorBanner}>
+            <Text style={styles.staleErrorText}>
+              Falha ao atualizar. Dados podem estar desatualizados (última atualização: {lastUpdated}).
+            </Text>
+            <TouchableOpacity style={styles.staleErrorRetry} onPress={() => { setLoading(true); setRefreshKey((k) => k + 1); }}>
+              <Text style={styles.staleErrorRetryText}>Tentar novamente</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.hero}>
           <View style={styles.heroBadge}>
             <CalendarRange size={12} color="#fff" />
@@ -597,4 +608,14 @@ const styles = StyleSheet.create({
   dayList: { gap: 2 },
   dayName: { color: semantic.textPrimary, fontFamily: font.body, fontWeight: '600', fontSize: 11.5 },
   footNote: { color: semantic.textFaint, fontFamily: font.body, fontSize: 10, textAlign: 'center', marginTop: 4 },
+  staleErrorBanner: {
+    borderWidth: 1, borderColor: colors.amber700, borderRadius: radius.md,
+    backgroundColor: colors.amber100, padding: 12, gap: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  staleErrorText: { color: colors.amber700, fontFamily: font.body, fontWeight: '700', fontSize: 11, flexShrink: 1 },
+  staleErrorRetry: {
+    borderWidth: 1, borderColor: colors.amber700, borderRadius: radius.sm,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  staleErrorRetryText: { color: colors.amber700, fontFamily: font.body, fontWeight: '700', fontSize: 10.5 },
 });

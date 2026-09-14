@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import {
+  Bell,
   ChevronRight,
   Clock3,
   Crosshair,
@@ -48,6 +49,7 @@ export default function NovaReception({
   const { user } = useAuth();
   const [booths, setBooths] = useState<any[]>([]);
   const [queues, setQueues] = useState<Record<string, any>>({});
+  const [queueErrors, setQueueErrors] = useState<Record<string, boolean>>({});
   const [operationalTargets, setOperationalTargets] = useState<any[]>([]);
   const [brokers, setBrokers] = useState<any[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -65,6 +67,10 @@ export default function NovaReception({
   } | null>(null);
   const [cliente, setCliente] = useState({ nome: '', telefone: '', email: '' });
   const [confirming, setConfirming] = useState(false);
+  const [pushTarget, setPushTarget] = useState<any | null>(null);
+  const [pushTitle, setPushTitle] = useState('Cliente chegou');
+  const [pushBody, setPushBody] = useState('Um cliente chegou ao plantão. Por favor, dirija-se ao atendimento.');
+  const [pushSending, setPushSending] = useState(false);
 
   const loadOperationalData = async () => {
     try {
@@ -94,6 +100,7 @@ export default function NovaReception({
       }
 
       const queueByBooth: Record<string, any> = {};
+      const errorsByBooth: Record<string, boolean> = {};
       await Promise.all(
         assignedBooths.map(async (booth: any) => {
           if (booth?.id) {
@@ -101,6 +108,7 @@ export default function NovaReception({
               const queueResponse = await api.get(`/presences/booths/${booth.id}/queue`);
               if (queueResponse.data) queueByBooth[booth.id] = queueResponse.data;
             } catch (error) {
+              errorsByBooth[booth.id] = true;
               console.warn(`[NOVARECEPTION] Falha ao carregar a fila do plantão ${booth.id}:`, error);
             }
           }
@@ -109,6 +117,7 @@ export default function NovaReception({
 
       setBooths(assignedBooths);
       setQueues(queueByBooth);
+      setQueueErrors(errorsByBooth);
       setOperationalTargets(operationalTargetsData);
       setBrokers(brokersData);
       setOnline(boothsResult.status === 'fulfilled');
@@ -209,6 +218,7 @@ export default function NovaReception({
       void loadOperationalData();
     } catch (error: any) {
       alert(error.response?.data?.message || error.message || 'Não foi possível concluir a ação.');
+      void loadOperationalData();
     } finally {
       setActionBusy(null);
     }
@@ -245,8 +255,29 @@ const openAttend = (item: any, isNext: boolean) => {
       void loadOperationalData();
     } catch (error: any) {
       alert(error.response?.data?.message || error.message || 'Não foi possível concluir o atendimento.');
+      void loadOperationalData();
     } finally {
       setConfirming(false);
+    }
+  };
+
+  const sendPush = async () => {
+    if (!pushTarget || !pushTitle.trim() || !pushBody.trim()) return;
+    setPushSending(true);
+    try {
+      const response = await api.post('/notifications/operational', {
+        recipientId: pushTarget.recipientId,
+        boothId: pushTarget.boothId,
+        title: pushTitle.trim(),
+        body: pushBody.trim(),
+      });
+      alert(response.data?.message || `Push Operacional enviado para ${pushTarget.nomeGuerra}.`);
+      setPushTarget(null);
+      void loadOperationalData();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Não foi possível enviar o Push Operacional.');
+    } finally {
+      setPushSending(false);
     }
   };
 
@@ -339,7 +370,23 @@ const openAttend = (item: any, isNext: boolean) => {
                 </View>
               </View>
 
-              {boothQueue?.currentRoleta ? (
+              {onlineTargets.length > 0 && (
+                <View style={styles.onlineRow}>
+                  <Users size={11} color={colors.green700} />
+                  <Text style={styles.onlineRowText} numberOfLines={2}>
+                    Online: {onlineTargets.map((t: any) => t.nomeGuerra).join(', ')}
+                  </Text>
+                </View>
+              )}
+
+              {queueErrors[booth.id] ? (
+                <View style={styles.queueErrorBlock}>
+                  <Text style={styles.queueErrorText}>Não foi possível carregar a fila deste plantão.</Text>
+                  <TouchableOpacity style={styles.queueErrorRetry} onPress={() => setRefreshKey((k) => k + 1)}>
+                    <Text style={styles.queueErrorRetryText}>Tentar novamente</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : boothQueue?.currentRoleta ? (
                 <View style={styles.roletaWrap}>
                   <View style={styles.roletaHead}>
                     <View>
@@ -536,6 +583,53 @@ const openAttend = (item: any, isNext: boolean) => {
           );
         })}
 
+        <View style={styles.pushCard}>
+          <View style={styles.pushHead}>
+            <Bell size={14} color={colors.coral600} />
+            <Text style={styles.pushTitle}>Push Operacional</Text>
+          </View>
+          <Text style={styles.pushSub}>Aviso imediato ao corretor online do plantão. Use somente para ocorrências urgentes.</Text>
+          {operationalTargets.length === 0 ? (
+            <Text style={styles.queueMeta}>Nenhum corretor online disponível neste escopo.</Text>
+          ) : (
+            <>
+              <Text style={styles.pushLabel}>Escolha o corretor</Text>
+              <View style={{ gap: 8 }}>
+                {operationalTargets.map((target: any) => {
+                  const active = pushTarget?.presenceId === target.presenceId;
+                  return (
+                    <TouchableOpacity
+                      key={target.presenceId}
+                      style={[styles.pushTarget, active && styles.pushTargetActive]}
+                      onPress={() => setPushTarget(active ? null : target)}
+                    >
+                      <Text style={styles.pushTargetName}>{target.nomeGuerra}</Text>
+                      <Text style={styles.pushTargetBooth}>{target.boothName}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+              {pushTarget && (
+                <>
+                  <Text style={styles.pushLabel}>Título do alerta</Text>
+                  <TextInput style={styles.pushInput} value={pushTitle} onChangeText={setPushTitle} maxLength={120} placeholderTextColor={colors.slate400} />
+                  <Text style={styles.pushLabel}>Aviso</Text>
+                  <TextInput style={[styles.pushInput, styles.pushInputMultiline]} value={pushBody} onChangeText={setPushBody} multiline maxLength={1000} placeholderTextColor={colors.slate400} />
+                  <TouchableOpacity
+                    style={[styles.pushSend, (pushSending || !pushTitle.trim() || !pushBody.trim()) && styles.btnBusy]}
+                    disabled={pushSending || !pushTitle.trim() || !pushBody.trim()}
+                    onPress={() => void sendPush()}
+                  >
+                    <Text style={styles.pushSendText}>
+                      {pushSending ? 'Enviando...' : `Enviar push para ${pushTarget.nomeGuerra}`}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              )}
+            </>
+          )}
+        </View>
+
         <Text style={styles.footNote}>Atualização em tempo real; consulta de segurança a cada 15 segundos.</Text>
       </ScrollView>
 
@@ -639,10 +733,12 @@ const openAttend = (item: any, isNext: boolean) => {
   }
 
   const totalOnline = operationalTargets.length;
-  const totalQueue = Object.values(queues).reduce(
-    (sum, q: any) => sum + (q?.currentRoleta ? (Array.isArray(q.queue) ? q.queue.length : 0) : 0),
-    0,
-  );
+  const totalQueue = Object.values(queues).reduce((sum, q: any) => {
+    const inRoleta = q?.currentRoleta && Array.isArray(q.queue) ? q.queue.length : 0;
+    const revalidacao = Array.isArray(q?.awaitingRevalidation) ? q.awaitingRevalidation.length : 0;
+    const foraJanela = Array.isArray(q?.outOfWindow) ? q.outOfWindow.length : 0;
+    return sum + inRoleta + revalidacao + foraJanela;
+  }, 0);
   const kpiValues: Record<string, string | number> = {
     booths: booths.length,
     online: totalOnline,
@@ -719,9 +815,18 @@ const openAttend = (item: any, isNext: boolean) => {
                       </Text>
                     </View>
                     <Text style={styles.boothQueueCount}>
-                      {boothQueue?.currentRoleta ? `${qLen} na fila` : 'sem roleta'}
+                      {queueErrors[booth.id]
+                        ? 'falha ao carregar a fila'
+                        : boothQueue?.currentRoleta
+                          ? `${qLen} na fila`
+                          : 'sem roleta'}
                     </Text>
                   </View>
+                  {isOnline && (
+                    <Text style={styles.boothOnlineNames} numberOfLines={1}>
+                      Online: {onlineTargets.map((t: any) => t.nomeGuerra).join(', ')}
+                    </Text>
+                  )}
                 </View>
                 <View style={styles.boothArrow}>
                   <ChevronRight size={17} color={colors.slate500} />
@@ -787,6 +892,46 @@ const styles = StyleSheet.create({
   cardMeta: { color: semantic.textMuted, fontFamily: font.body, fontSize: 11, flexShrink: 1 },
   boothStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 2 },
   boothQueueCount: { color: semantic.textMuted, fontFamily: font.body, fontWeight: '600', fontSize: 10.5 },
+  boothOnlineNames: { color: colors.green700, fontFamily: font.body, fontWeight: '600', fontSize: 10.5, marginTop: 3 },
+  onlineRow: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 2 },
+  onlineRowText: { color: colors.green700, fontFamily: font.body, fontWeight: '600', fontSize: 10.5, flexShrink: 1 },
+  queueErrorBlock: {
+    borderWidth: 1, borderColor: colors.red300, borderRadius: radius.md,
+    backgroundColor: colors.red100, padding: 12, gap: 10, alignItems: 'center',
+  },
+  queueErrorText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 11.5, textAlign: 'center' },
+  queueErrorRetry: {
+    borderWidth: 1, borderColor: colors.red700, borderRadius: radius.md,
+    paddingHorizontal: 14, paddingVertical: 8,
+  },
+  queueErrorRetryText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 11 },
+  pushCard: {
+    backgroundColor: semantic.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.coral300,
+    padding: 16, gap: 12, ...shadow.card,
+  },
+  pushHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  pushTitle: { color: semantic.textPrimary, fontFamily: font.display, fontWeight: '800', fontSize: 13.5 },
+  pushSub: { color: semantic.textMuted, fontFamily: font.body, fontSize: 11, lineHeight: 16 },
+  pushLabel: { color: colors.slate600, fontFamily: font.body, fontWeight: '700', fontSize: 9.5, letterSpacing: 1, textTransform: 'uppercase' },
+  pushTarget: {
+    borderWidth: 1, borderColor: colors.slate200, borderRadius: radius.md,
+    paddingHorizontal: 12, paddingVertical: 10, backgroundColor: colors.slate050,
+  },
+  pushTargetActive: { borderColor: colors.coral600, backgroundColor: colors.coral050 },
+  pushTargetName: { color: semantic.textPrimary, fontFamily: font.body, fontWeight: '700', fontSize: 12.5 },
+  pushTargetBooth: { color: colors.coral600, fontFamily: font.body, fontWeight: '600', fontSize: 10.5, marginTop: 2 },
+  pushInput: {
+    borderWidth: 1, borderColor: colors.slate200, borderRadius: radius.md,
+    backgroundColor: colors.slate050,
+    paddingHorizontal: 12, paddingVertical: 10,
+    color: semantic.textPrimary, fontFamily: font.body, fontSize: 12.5,
+  },
+  pushInputMultiline: { minHeight: 72, textAlignVertical: 'top' },
+  pushSend: {
+    backgroundColor: colors.coral600, borderRadius: radius.md,
+    paddingVertical: 12, alignItems: 'center',
+  },
+  pushSendText: { color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 12 },
   boothArrow: { width: 30, height: 30, borderRadius: 10, backgroundColor: colors.slate050, alignItems: 'center', justifyContent: 'center' },
   chip: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 8, paddingVertical: 4, borderRadius: radius.full },
   chipDot: { width: 6, height: 6, borderRadius: 3 },
