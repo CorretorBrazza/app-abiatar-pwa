@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Linking,
@@ -82,6 +82,8 @@ export default function NovaPessoas({ isMobile, sidebarOffset = 0, topOffset = 0
   const [saving, setSaving] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [assigned, setAssigned] = useState<string[]>([]);
+  const [assignedErrors, setAssignedErrors] = useState<Record<string, boolean>>({});
+  const selectedIdRef = useRef<string | null>(null);
 
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
@@ -141,7 +143,10 @@ export default function NovaPessoas({ isMobile, sidebarOffset = 0, topOffset = 0
   }, [tab, page, search, status, pageSize]);
 
   useEffect(() => {
-    void load();
+    const t = setTimeout(() => {
+      void load();
+    }, 300);
+    return () => clearTimeout(t);
   }, [load]);
 
   useEffect(() => {
@@ -154,32 +159,37 @@ export default function NovaPessoas({ isMobile, sidebarOffset = 0, topOffset = 0
 
   const open = async (person: ManagedUser) => {
     if (selected?.id === person.id) {
+      selectedIdRef.current = null;
       setSelected(null);
       setAssigned([]);
+      setAssignedErrors({});
       return;
     }
+    selectedIdRef.current = person.id;
     setSelected(person);
     setName(person.name);
     setNomeGuerra(person.nome_guerra);
     setAssigned([]);
+    setAssignedErrors({});
     if (person.role === 'recepcao_level_3' && booths.length > 0) {
-      try {
-        const results = await Promise.all(
-          booths.map((b) => api.get(`/booths/${b.id}/receptionists`).catch(() => ({ data: [] }))),
-        );
-        const list = results.flatMap((r) => (Array.isArray(r.data) ? r.data : []));
-        setAssigned(
-          booths
-            .filter((b, i) => {
-              const items = results[i]?.data;
-              return Array.isArray(items) && items.some((item: any) => item.receptionist_id === person.id || item.receptionist?.id === person.id);
-            })
-            .map((b) => b.id),
-        );
-        void list;
-      } catch {
-        setAssigned([]);
-      }
+      const errors: Record<string, boolean> = {};
+      const assignedIds: string[] = [];
+      await Promise.all(
+        booths.map(async (b) => {
+          try {
+            const res = await api.get(`/booths/${b.id}/receptionists`);
+            const items = Array.isArray(res.data) ? res.data : [];
+            if (items.some((item: any) => item.receptionist_id === person.id || item.receptionist?.id === person.id)) {
+              assignedIds.push(b.id);
+            }
+          } catch {
+            errors[b.id] = true;
+          }
+        }),
+      );
+      if (selectedIdRef.current !== person.id) return;
+      setAssigned(assignedIds);
+      setAssignedErrors(errors);
     }
   };
 
@@ -195,6 +205,7 @@ export default function NovaPessoas({ isMobile, sidebarOffset = 0, topOffset = 0
       void load();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Erro ao salvar alterações.');
+      void load();
     } finally {
       setSaving(false);
     }
@@ -228,9 +239,11 @@ export default function NovaPessoas({ isMobile, sidebarOffset = 0, topOffset = 0
       alert('Usuário removido da operação. O histórico foi preservado.');
       setSelected(null);
       setAssigned([]);
+      setAssignedErrors({});
       void load();
     } catch (err: any) {
       alert(err.response?.data?.message || 'Erro ao excluir usuário.');
+      void load();
     } finally {
       setRemoving(false);
     }
@@ -311,15 +324,26 @@ export default function NovaPessoas({ isMobile, sidebarOffset = 0, topOffset = 0
       });
       const receptionistId = response.data?.user?.id;
       if (receptionistId && newAssigned.length > 0) {
+        const failures: string[] = [];
         await Promise.all(
-          newAssigned.map((boothId) =>
-            api.post(`/booths/${boothId}/receptionists/${receptionistId}`).catch((e) => {
-              console.error('Falha ao atribuir recepção ao plantão:', e);
-            }),
-          ),
+          newAssigned.map(async (boothId) => {
+            try {
+              await api.post(`/booths/${boothId}/receptionists/${receptionistId}`);
+            } catch {
+              failures.push(boothId);
+            }
+          }),
         );
+        if (failures.length > 0) {
+          alert(
+            `Recepção cadastrada, mas ${failures.length} ${failures.length === 1 ? 'plantão não recebeu' : 'plantões não receberam'} a atribuição. Revise em "Plantões autorizados".`,
+          );
+        } else {
+          alert('Recepção cadastrada com sucesso!');
+        }
+      } else {
+        alert('Recepção cadastrada com sucesso!');
       }
-      alert('Recepção cadastrada com sucesso!');
       clearForm();
       setShowCreate(false);
       setTab('recepcao_level_3');
@@ -660,6 +684,22 @@ export default function NovaPessoas({ isMobile, sidebarOffset = 0, topOffset = 0
               <>
                 <View style={styles.divider} />
                 <Text style={styles.fieldLabel}>Plantões autorizados</Text>
+                {Object.keys(assignedErrors).length > 0 && (
+                  <View style={styles.errorBanner}>
+                    <Text style={styles.errorBannerText}>
+                      {Object.keys(assignedErrors).length}{' '}
+                      {Object.keys(assignedErrors).length === 1 ? 'plantão teve' : 'plantões tiveram'} falha ao consultar as recepções. Pode haver divergência na listagem abaixo.
+                    </Text>
+                    <TouchableOpacity
+                      style={styles.errorBannerBtn}
+                      onPress={() => {
+                        if (selected) void open(selected);
+                      }}
+                    >
+                      <Text style={styles.errorBannerBtnText}>Tentar novamente</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
                 {booths.length === 0 ? (
                   <Text style={styles.emptyText}>Nenhum plantão disponível.</Text>
                 ) : (
@@ -698,37 +738,7 @@ export default function NovaPessoas({ isMobile, sidebarOffset = 0, topOffset = 0
         </>
         )}
 
-        {tempPassword ? (
-          <View style={styles.card}>
-            <View style={[styles.selPill, { alignSelf: 'flex-start', backgroundColor: colors.amber700 }]}>
-              <Text style={styles.selPillText}>SENHA TEMPORÁRIA</Text>
-            </View>
-            <Text style={fonts.panelTitle}>Senha temporária criada</Text>
-            <Text style={styles.cardSub}>Ela expira em 30 minutos e exigirá troca no próximo acesso.</Text>
-            <View style={styles.tempPwBox}>
-              <Text style={styles.tempPwText} selectable>{tempPassword}</Text>
-            </View>
-            <View style={styles.editActions}>
-              <TouchableOpacity
-                style={styles.copyBtn}
-                onPress={async () => {
-                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
-                    await navigator.clipboard.writeText(tempPassword);
-                  }
-                  setCopiedPw(true);
-                  setTimeout(() => setCopiedPw(false), 2000);
-                }}
-              >
-                <Copy size={13} color={colors.blue700} />
-                <Text style={styles.copyBtnText}>{copiedPw ? '✔ Senha copiada!' : 'Copiar senha'}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.primaryBtn} onPress={() => setTempPassword('')}>
-                <Text style={styles.primaryBtnText}>OK</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : null}
-      </ScrollView>
+        </ScrollView>
 
       <Modal visible={!!tempPassword} transparent animationType="fade" onRequestClose={() => setTempPassword('')}>
         <View style={styles.modalWrap}>
@@ -873,4 +883,12 @@ const styles = StyleSheet.create({
   modalBox: { backgroundColor: semantic.card, borderRadius: radius.lg, padding: 20, width: '100%', maxWidth: 440, gap: 10 },
   modalTitle: { color: semantic.textPrimary, fontFamily: font.display, fontWeight: '800', fontSize: 16 },
   modalDesc: { color: colors.amber800, fontFamily: font.body, fontSize: 11.5, lineHeight: 17 },
+  errorBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.red100, borderWidth: 1, borderColor: colors.red300,
+    borderRadius: radius.md, padding: 12,
+  },
+  errorBannerText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 11.5, flexShrink: 1 },
+  errorBannerBtn: { borderWidth: 1, borderColor: colors.red700, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 6 },
+  errorBannerBtnText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 10.5 },
 });

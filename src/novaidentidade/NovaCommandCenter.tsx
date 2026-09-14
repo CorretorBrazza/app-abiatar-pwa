@@ -64,29 +64,32 @@ export default function NovaCommandCenter({
   const [online, setOnline] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [error, setError] = useState(false);
+  const [attError, setAttError] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
       const today = dateInTz(new Date());
-      const [res, attRes] = await Promise.all([
-        api.get('/presences/reports/realtime'),
-        api
-          .get('/presences/reports/attendance-summary', {
-            params: { startDate: today, endDate: today },
-          })
-          .then((r) => r.data)
-          .catch(() => null),
-      ]);
+      const res = await api.get('/presences/reports/realtime');
+      let attRes: any = null;
+      try {
+        attRes = await api.get('/presences/reports/attendance-summary', {
+          params: { startDate: today, endDate: today },
+        });
+        setAttError(false);
+      } catch {
+        setAttError(true);
+      }
       setData(res.data);
-      setAttSummary(attRes);
+      setAttSummary(attRes?.data ?? null);
       setOnline(true);
       setError(false);
       setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
     } catch (error) {
       console.error('[COMMAND] Falha ao atualizar comando operacional:', error);
       setOnline(false);
+      setError(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -135,7 +138,7 @@ export default function NovaCommandCenter({
   };
 
   const handleCopyAttendances = async () => {
-    if (!attSummary) return;
+    if (!attSummary || attError) return;
     setAttendancesCopying(true);
     try {
       const perBooth: any[] = attSummary.perBooth || [];
@@ -381,15 +384,25 @@ export default function NovaCommandCenter({
             <TouchableOpacity
               style={styles.copyBtn}
               onPress={() => void handleCopyAttendances()}
-              disabled={attendancesCopying}
+              disabled={attendancesCopying || !attSummary || attError}
               accessibilityLabel="Copiar atendimentos de hoje"
             >
-              <Copy size={13} color={attendancesCopying ? colors.slate400 : colors.slate600} />
+              <Copy size={13} color={attendancesCopying || !attSummary || attError ? colors.slate300 : colors.slate600} />
               <Text style={styles.copyBtnText}>{attendancesCopying ? 'Copiando...' : 'Copiar'}</Text>
             </TouchableOpacity>
           </View>
 
-          {attSummary?.perBooth?.length ? (
+          {attError ? (
+            <View style={styles.attErrorBox}>
+              <AlertTriangle size={15} color={colors.red700} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.attErrorText}>Não foi possível carregar os atendimentos de hoje.</Text>
+              </View>
+              <TouchableOpacity style={styles.attErrorRetry} onPress={() => { setLoading(true); setRefreshKey((k) => k + 1); }}>
+                <Text style={styles.attErrorRetryText}>Tentar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          ) : attSummary?.perBooth?.length ? (
             <View style={styles.attGrid}>
               {attSummary.perBooth.map((b: any) => (
                 <View key={b.boothId} style={styles.attCard}>
@@ -535,4 +548,12 @@ const styles = StyleSheet.create({
   attLabel: { color: semantic.textMuted, fontFamily: font.body, fontWeight: '600', fontSize: 8.5 },
   noAttBox: { borderWidth: 1, borderColor: semantic.border, borderRadius: radius.md, padding: 14 },
   noAttText: { color: semantic.textMuted, fontFamily: font.body, fontSize: 11.5, fontStyle: 'italic' },
+  attErrorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderWidth: 1, borderColor: colors.red300, backgroundColor: colors.red100,
+    borderRadius: radius.md, padding: 12,
+  },
+  attErrorText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 11.5, flexShrink: 1 },
+  attErrorRetry: { borderWidth: 1, borderColor: colors.red700, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 6 },
+  attErrorRetryText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 10.5 },
 });

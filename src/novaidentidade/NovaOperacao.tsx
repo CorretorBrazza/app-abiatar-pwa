@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   ScrollView,
@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import {
   Archive,
+  AlertTriangle,
+  Bell,
   Building2,
   CalendarDays,
   CalendarRange,
@@ -183,28 +185,39 @@ export default function NovaOperacao({ isMobile, canManage }: { isMobile?: boole
   const [holidayScope, setHolidayScope] = useState<'all' | 'specific'>('all');
   const [selectedHolidayBoothIds, setSelectedHolidayBoothIds] = useState<string[]>([]);
   const [creatingHoliday, setCreatingHoliday] = useState(false);
+  const [boothsError, setBoothsError] = useState(false);
+  const [holidaysError, setHolidaysError] = useState(false);
+  const [specialError, setSpecialError] = useState(false);
+  const rulesSeq = useRef(0);
+  const schedulesSeq = useRef(0);
+
+  const [operationalTargets, setOperationalTargets] = useState<any[]>([]);
+  const [pushTarget, setPushTarget] = useState<any | null>(null);
+  const [pushTitle, setPushTitle] = useState('Cliente chegou');
+  const [pushBody, setPushBody] = useState('Um cliente chegou ao plantão. Por favor, dirija-se ao atendimento.');
+  const [pushSending, setPushSending] = useState(false);
 
   const loadBooths = useCallback(async () => {
+    setBoothsError(false);
     try {
       const response = await api.get('/booths');
       const items = Array.isArray(response.data) ? response.data : [];
       setBooths(items);
-      if (items[0] && !selectedBoothId) {
-        setSelectedBoothId(items[0].id);
-        setSelectedBooth(items[0]);
-      }
+      setSelectedBoothId((current) => current || items[0]?.id || '');
     } catch {
-      alert('Não foi possível carregar os plantões deste tenant.');
+      setBoothsError(true);
     } finally {
       setLoading(false);
     }
-  }, [selectedBoothId]);
+  }, []);
 
   const loadRules = useCallback(async (boothId: string) => {
     setLoading(true);
     setDirtyRules(false);
+    const seq = ++rulesSeq.current;
     try {
       const response = await api.get(`/booths/${boothId}/rules`);
+      if (seq !== rulesSeq.current) return;
       const r3 = response.data.roleta_3_time;
       const isR3On = Boolean(r3 && String(r3).trim() !== '');
       setRoleta3Enabled(isR3On);
@@ -224,41 +237,91 @@ export default function NovaOperacao({ isMobile, canManage }: { isMobile?: boole
       );
       setReason('');
     } catch {
+      if (seq !== rulesSeq.current) return;
       alert('Não foi possível carregar as regras deste plantão.');
     } finally {
-      setLoading(false);
+      if (seq === rulesSeq.current) setLoading(false);
     }
   }, []);
 
   const loadSpecialSchedules = useCallback(async (boothId: string) => {
     if (!boothId) return;
     setLoadingSpecialSchedules(true);
+    setSpecialError(false);
+    const seq = ++schedulesSeq.current;
     try {
       const response = await api.get(`/booths/${boothId}/special-schedules`);
+      if (seq !== schedulesSeq.current) return;
       setSpecialSchedules(Array.isArray(response.data) ? response.data : []);
     } catch {
-      console.error('Erro ao carregar horários especiais:');
+      if (seq !== schedulesSeq.current) return;
+      setSpecialError(true);
     } finally {
-      setLoadingSpecialSchedules(false);
+      if (seq === schedulesSeq.current) setLoadingSpecialSchedules(false);
     }
   }, []);
 
   const loadHolidays = useCallback(async () => {
     setLoadingHolidays(true);
+    setHolidaysError(false);
     try {
       const response = await api.get('/booths/holidays');
       setHolidays(Array.isArray(response.data) ? response.data : []);
     } catch {
-      console.error('Erro ao carregar feriados:');
+      setHolidaysError(true);
     } finally {
       setLoadingHolidays(false);
     }
   }, []);
 
+  const loadOperationalTargets = useCallback(async () => {
+    try {
+      const response = await api.get('/notifications/operational/targets');
+      setOperationalTargets(Array.isArray(response.data) ? response.data : []);
+    } catch {
+      setOperationalTargets([]);
+    }
+  }, []);
+
+  const sendPush = useCallback(async () => {
+    if (!pushTarget || !pushTitle.trim() || !pushBody.trim()) return;
+    setPushSending(true);
+    try {
+      const response = await api.post('/notifications/operational', {
+        recipientId: pushTarget.recipientId,
+        boothId: pushTarget.boothId,
+        title: pushTitle.trim(),
+        body: pushBody.trim(),
+      });
+      alert(response.data?.message || `Push Operacional enviado para ${pushTarget.nomeGuerra}.`);
+      setPushTarget(null);
+      void loadOperationalTargets();
+    } catch (error: any) {
+      alert(error.response?.data?.message || 'Não foi possível enviar o Push Operacional.');
+    } finally {
+      setPushSending(false);
+    }
+  }, [pushTarget, pushTitle, pushBody, loadOperationalTargets]);
+
   useEffect(() => {
     void loadBooths();
     void loadHolidays();
   }, [loadBooths, loadHolidays]);
+
+  useEffect(() => {
+    void loadOperationalTargets();
+    const refresh = () => void loadOperationalTargets();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('abiatar:push', refresh);
+      window.addEventListener('abiatar:realtime', refresh);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('abiatar:push', refresh);
+        window.removeEventListener('abiatar:realtime', refresh);
+      }
+    };
+  }, [loadOperationalTargets]);
 
   useEffect(() => {
     if (selectedBoothId) {
@@ -624,9 +687,19 @@ export default function NovaOperacao({ isMobile, canManage }: { isMobile?: boole
             )}
 
             {!loading && !booths.length && !selectedBooth && (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>Nenhum plantão cadastrado neste tenant.</Text>
-              </View>
+              boothsError ? (
+                <View style={styles.errorBox}>
+                  <AlertTriangle size={14} color={colors.red700} />
+                  <Text style={styles.errorBoxText}>Não foi possível carregar os plantões deste tenant.</Text>
+                  <TouchableOpacity style={styles.errorRetryBtn} onPress={() => void loadBooths()}>
+                    <Text style={styles.errorRetryText}>Tentar novamente</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.emptyBox}>
+                  <Text style={styles.emptyText}>Nenhum plantão cadastrado neste tenant.</Text>
+                </View>
+              )
             )}
 
             {selectedBooth && (
@@ -882,6 +955,14 @@ export default function NovaOperacao({ isMobile, canManage }: { isMobile?: boole
                             </Text>
                             {loadingSpecialSchedules ? (
                               <ActivityIndicator size="small" color={colors.coral600} />
+                            ) : specialError ? (
+                              <View style={styles.errorBox}>
+                                <AlertTriangle size={14} color={colors.red700} />
+                                <Text style={styles.errorBoxText}>Não foi possível carregar os horários especiais deste plantão.</Text>
+                                <TouchableOpacity style={styles.errorRetryBtn} onPress={() => void loadSpecialSchedules(selectedBooth?.id)}>
+                                  <Text style={styles.errorRetryText}>Tentar novamente</Text>
+                                </TouchableOpacity>
+                              </View>
                             ) : specialSchedules.length === 0 ? (
                               <View style={styles.emptyBox}>
                                 <Text style={styles.emptyText}>Nenhum horário especial configurado para este estande. O plantão seguirá a grade regular padrão.</Text>
@@ -922,8 +1003,67 @@ export default function NovaOperacao({ isMobile, canManage }: { isMobile?: boole
               </>
             )}
             {!booths.length && !selectedBooth && !loading && (
-              <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>Nenhum plantão cadastrado neste tenant.</Text>
+              boothsError ? (
+                <View style={styles.errorBox}>
+                  <AlertTriangle size={14} color={colors.red700} />
+                  <Text style={styles.errorBoxText}>Não foi possível carregar os plantões deste tenant.</Text>
+                  <TouchableOpacity style={styles.errorRetryBtn} onPress={() => void loadBooths()}>
+                    <Text style={styles.errorRetryText}>Tentar novamente</Text>
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View style={styles.emptyBox}>
+                  <Text style={styles.emptyText}>Nenhum plantão cadastrado neste tenant.</Text>
+                </View>
+              )
+            )}
+
+            {!readOnly && (
+              <View style={styles.pushCard}>
+                <View style={styles.pushHead}>
+                  <Bell size={14} color={colors.coral600} />
+                  <Text style={styles.pushTitle}>Push Operacional</Text>
+                </View>
+                <Text style={styles.pushSub}>Aviso imediato ao corretor online do plantão. Use somente para ocorrências urgentes.</Text>
+                {operationalTargets.length === 0 ? (
+                  <Text style={styles.queueMeta}>Nenhum corretor online disponível neste escopo.</Text>
+                ) : (
+                  <>
+                    <Text style={styles.pushLabel}>Escolha o corretor</Text>
+                    <View style={{ gap: 8 }}>
+                      {operationalTargets.map((target: any) => {
+                        const active = pushTarget?.presenceId === target.presenceId;
+                        return (
+                          <TouchableOpacity
+                            key={target.presenceId}
+                            style={[styles.pushTarget, active && styles.pushTargetActive]}
+                            onPress={() => setPushTarget(active ? null : target)}
+                          >
+                            <Text style={styles.pushTargetName}>{target.nomeGuerra}</Text>
+                            <Text style={styles.pushTargetBooth}>{target.boothName}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                    {pushTarget && (
+                      <>
+                        <Text style={styles.pushLabel}>Título do alerta</Text>
+                        <TextInput style={styles.pushInput} value={pushTitle} onChangeText={setPushTitle} maxLength={120} placeholderTextColor={colors.slate400} />
+                        <Text style={styles.pushLabel}>Aviso</Text>
+                        <TextInput style={[styles.pushInput, styles.pushInputMultiline]} value={pushBody} onChangeText={setPushBody} multiline maxLength={1000} placeholderTextColor={colors.slate400} />
+                        <TouchableOpacity
+                          style={[styles.pushSend, (pushSending || !pushTitle.trim() || !pushBody.trim()) && styles.btnBusy]}
+                          disabled={pushSending || !pushTitle.trim() || !pushBody.trim()}
+                          onPress={() => void sendPush()}
+                        >
+                          <Text style={styles.pushSendText}>
+                            {pushSending ? 'Enviando...' : `Enviar push para ${pushTarget.nomeGuerra}`}
+                          </Text>
+                        </TouchableOpacity>
+                      </>
+                    )}
+                  </>
+                )}
               </View>
             )}
           </>
@@ -999,6 +1139,14 @@ export default function NovaOperacao({ isMobile, canManage }: { isMobile?: boole
               <Text style={styles.cardTitle}>Feriados Cadastrados no Sistema</Text>
               {loadingHolidays ? (
                 <ActivityIndicator color={colors.coral600} style={{ marginVertical: 16 }} />
+              ) : holidaysError ? (
+                <View style={styles.errorBox}>
+                  <AlertTriangle size={14} color={colors.red700} />
+                  <Text style={styles.errorBoxText}>Não foi possível carregar os feriados cadastrados.</Text>
+                  <TouchableOpacity style={styles.errorRetryBtn} onPress={() => void loadHolidays()}>
+                    <Text style={styles.errorRetryText}>Tentar novamente</Text>
+                  </TouchableOpacity>
+                </View>
               ) : holidays.length === 0 ? (
                 <View style={styles.emptyBox}>
                   <Text style={styles.emptyText}>
@@ -1214,4 +1362,40 @@ const styles = StyleSheet.create({
   holidayDetails: { color: semantic.textMuted, fontFamily: font.body, fontSize: 10.5, marginTop: 2 },
   specificBoothsBox: { gap: 8 },
   loadingBox: { padding: 40, alignItems: 'center' },
+  errorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: colors.red100, borderWidth: 1, borderColor: colors.red300,
+    borderRadius: radius.md, padding: 12,
+  },
+  errorBoxText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 11.5, flexShrink: 1 },
+  errorRetryBtn: { borderWidth: 1, borderColor: colors.red700, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 6 },
+  errorRetryText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 10.5 },
+  pushCard: {
+    backgroundColor: semantic.card, borderRadius: radius.lg, borderWidth: 1, borderColor: colors.coral300,
+    padding: 16, gap: 12, ...shadow.card,
+  },
+  pushHead: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  pushTitle: { color: semantic.textPrimary, fontFamily: font.display, fontWeight: '800', fontSize: 13.5 },
+  pushSub: { color: semantic.textMuted, fontFamily: font.body, fontSize: 11, lineHeight: 16 },
+  pushLabel: { color: semantic.textSecondary, fontFamily: font.body, fontWeight: '700', fontSize: 10.5, marginTop: 2 },
+  pushInput: {
+    borderWidth: 1, borderColor: semantic.border, borderRadius: radius.md,
+    backgroundColor: semantic.card, padding: 11, fontSize: 13, color: semantic.textPrimary, fontFamily: font.body,
+  },
+  pushInputMultiline: { minHeight: 72, textAlignVertical: 'top' },
+  pushTarget: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    borderWidth: 1, borderColor: semantic.border, borderRadius: radius.md,
+    paddingHorizontal: 12, paddingVertical: 10, backgroundColor: semantic.card,
+  },
+  pushTargetActive: { borderColor: colors.coral600, backgroundColor: colors.coral050 },
+  pushTargetName: { color: semantic.textPrimary, fontFamily: font.body, fontWeight: '700', fontSize: 12.5 },
+  pushTargetBooth: { color: colors.coral600, fontFamily: font.body, fontWeight: '600', fontSize: 10.5 },
+  pushSend: {
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: colors.coral600, borderRadius: radius.md, paddingVertical: 12,
+  },
+  pushSendText: { color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 12 },
+  btnBusy: { opacity: 0.5 },
+  queueMeta: { color: semantic.textMuted, fontFamily: font.body, fontSize: 10.5 },
 });

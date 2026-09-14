@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -25,6 +25,7 @@ import {
 import { useAuth } from '../contexts/AuthContext';
 import api from '../services/api';
 import { colors, font, fonts, radius, semantic, shadow, statusTone } from './tokens';
+import { StateError } from './components/States';
 import NovaHistoricoCorretor from './NovaHistoricoCorretor';
 
 type TabType = 'realtime' | 'brokers' | 'managers' | 'booths';
@@ -112,7 +113,11 @@ export default function NovaPerformance({
   const [managersReport, setManagersReport] = useState<any>(null);
   const [boothsReport, setBoothsReport] = useState<any>(null);
   const [boothsList, setBoothsList] = useState<any[]>([]);
+  const [boothsError, setBoothsError] = useState(false);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+  const [reportError, setReportError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const loadSeq = useRef(0);
 
   const tabs = canViewTeamReports
     ? TABS
@@ -154,13 +159,15 @@ export default function NovaPerformance({
 
   const loadData = useCallback(
     async (startOverride?: string, endOverride?: string, opts?: { silent?: boolean }) => {
+      const seq = ++loadSeq.current;
       if (!opts?.silent) setLoading(true);
       try {
         const effectiveStart = startOverride !== undefined ? startOverride : startDate;
         const effectiveEnd = endOverride !== undefined ? endOverride : endDate;
+        let fresh: any = null;
         if (activeTab === 'realtime') {
           const res = await api.get('/presences/reports/realtime');
-          setRealtimeData(res.data);
+          fresh = res.data;
         } else if (activeTab === 'brokers') {
           const res = await api.get('/presences/reports/brokers', {
             params: {
@@ -169,7 +176,7 @@ export default function NovaPerformance({
               boothId: selectedBoothFilter || undefined,
             },
           });
-          setBrokersReport(res.data);
+          fresh = res.data;
         } else if (activeTab === 'managers' && canViewTeamReports) {
           const res = await api.get('/presences/reports/managers', {
             params: {
@@ -177,7 +184,7 @@ export default function NovaPerformance({
               endDate: effectiveEnd || undefined,
             },
           });
-          setManagersReport(res.data);
+          fresh = res.data;
         } else if (activeTab === 'booths' && canViewTeamReports) {
           const res = await api.get('/presences/reports/booths', {
             params: {
@@ -185,25 +192,48 @@ export default function NovaPerformance({
               endDate: effectiveEnd || undefined,
             },
           });
-          setBoothsReport(res.data);
+          fresh = res.data;
         }
+        if (seq !== loadSeq.current) return;
+        if (activeTab === 'realtime') setRealtimeData(fresh);
+        else if (activeTab === 'brokers') setBrokersReport(fresh);
+        else if (activeTab === 'managers') setManagersReport(fresh);
+        else if (activeTab === 'booths') setBoothsReport(fresh);
         setLastSync(new Date());
+        setReportError(false);
+        setErrorMsg(null);
       } catch (error: any) {
-        console.error('Erro ao carregar relatório executivo:', error);
+        if (seq !== loadSeq.current) return;
+        setReportError(true);
+        setErrorMsg(
+          error?.response?.data?.message
+            ? (Array.isArray(error.response.data.message) ? error.response.data.message.join('. ') : error.response.data.message)
+            : 'Falha de conexão ao carregar o relatório. Tente novamente em instantes.'
+        );
       } finally {
-        setLoading(false);
-        setRefreshing(false);
+        if (seq === loadSeq.current) {
+          setLoading(false);
+          setRefreshing(false);
+        }
       }
     },
     [activeTab, startDate, endDate, selectedBoothFilter, canViewTeamReports],
   );
 
-  useEffect(() => {
-    void api
-      .get('/booths')
-      .then((res) => setBoothsList(Array.isArray(res.data) ? res.data : []))
-      .catch((e) => console.warn('Erro ao carregar lista de plantões:', e));
+  const loadBooths = useCallback(async () => {
+    setBoothsError(false);
+    try {
+      const res = await api.get('/booths');
+      setBoothsList(Array.isArray(res.data) ? res.data : []);
+    } catch {
+      setBoothsList([]);
+      setBoothsError(true);
+    }
   }, []);
+
+  useEffect(() => {
+    void loadBooths();
+  }, [loadBooths]);
 
   useEffect(() => {
     void loadData();
@@ -258,8 +288,12 @@ export default function NovaPerformance({
       });
     }
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      await navigator.clipboard.writeText(text);
-      alert('Resumo executivo copiado para a área de transferência! Pronto para colar no WhatsApp.');
+      try {
+        await navigator.clipboard.writeText(text);
+        alert('Resumo executivo copiado para a área de transferência! Pronto para colar no WhatsApp.');
+      } catch {
+        alert('Resumo executivo gerado com sucesso.');
+      }
     } else {
       alert('Resumo executivo gerado com sucesso.');
     }
@@ -268,11 +302,15 @@ export default function NovaPerformance({
   const filteredBrokers = (brokersReport?.brokers || []).filter((b: any) => {
     const q = searchBroker.toLowerCase().trim();
     if (!q) return true;
+    const name = b.name || '';
+    const nomeG = b.nomeGuerra || '';
+    const manager = b.managerName || '';
+    const creci = b.creci || '';
     return (
-      b.name.toLowerCase().includes(q) ||
-      b.nomeGuerra.toLowerCase().includes(q) ||
-      b.managerName.toLowerCase().includes(q) ||
-      (b.creci && b.creci.toLowerCase().includes(q))
+      name.toLowerCase().includes(q) ||
+      nomeG.toLowerCase().includes(q) ||
+      manager.toLowerCase().includes(q) ||
+      creci.toLowerCase().includes(q)
     );
   });
 
@@ -453,6 +491,14 @@ export default function NovaPerformance({
             ))}
           </View>
         )}
+        {boothsError && (
+          <View style={styles.filterErrorRow}>
+            <Text style={styles.filterErrorText}>Não foi possível carregar a lista de plantões para o filtro.</Text>
+            <TouchableOpacity style={styles.filterErrorRetry} onPress={() => void loadBooths()}>
+              <Text style={styles.filterErrorRetryText}>Tentar novamente</Text>
+            </TouchableOpacity>
+          </View>
+        )}
         <View style={styles.summaryBar}>
           <Text style={styles.summaryText}>
             Mostrando <Text style={{ fontWeight: '700' }}>{filteredBrokers.length}</Text> de {brokersReport.totalBrokers} corretores no período (
@@ -629,6 +675,12 @@ export default function NovaPerformance({
 
   const dateFilterVisible = activeTab !== 'realtime';
 
+  const activeReportMissing =
+    (activeTab === 'realtime' && !realtimeData) ||
+    (activeTab === 'brokers' && !brokersReport) ||
+    (activeTab === 'managers' && !managersReport) ||
+    (activeTab === 'booths' && !boothsReport);
+
   return (
     <View style={{ flex: 1 }}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
@@ -697,8 +749,23 @@ export default function NovaPerformance({
           <View style={styles.loadingBox}>
             <ActivityIndicator size="large" color={colors.coral600} />
           </View>
+        ) : reportError && activeReportMissing ? (
+          <StateError
+            title="Não foi possível carregar o relatório"
+            message={errorMsg || 'Falha de conexão. Tente novamente em instantes.'}
+            onRetry={() => void loadData()}
+          />
         ) : (
           <>
+            {reportError && (
+              <View style={styles.staleErrorRow}>
+                <Text style={styles.staleErrorText}>Falha ao atualizar os dados. Dados exibidos podem estar desatualizados.</Text>
+                <TouchableOpacity style={styles.staleErrorRetry} onPress={() => void loadData()}>
+                  <RefreshCw size={12} color={colors.red700} />
+                  <Text style={styles.staleErrorRetryText}>Tentar novamente</Text>
+                </TouchableOpacity>
+              </View>
+            )}
             {activeTab === 'realtime' && renderRealtime()}
             {activeTab === 'brokers' && renderBrokers()}
             {activeTab === 'managers' && renderManagers()}
@@ -932,4 +999,20 @@ const styles = StyleSheet.create({
   },
   topBrokerText: { color: colors.coral700, fontFamily: font.body, fontWeight: '700', fontSize: 10.5 },
   boothKpiGrid: { flexDirection: 'row', flexWrap: 'wrap' },
+  staleErrorRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    borderWidth: 1, borderColor: colors.red300, backgroundColor: colors.red100,
+    borderRadius: radius.md, padding: 11,
+  },
+  staleErrorText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 11, flexShrink: 1 },
+  staleErrorRetry: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 10, borderRadius: radius.sm, borderWidth: 1, borderColor: colors.red700 },
+  staleErrorRetryText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 10.5 },
+  filterErrorRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+    borderWidth: 1, borderColor: colors.red300, backgroundColor: colors.red100,
+    borderRadius: radius.md, padding: 10,
+  },
+  filterErrorText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 11, flexShrink: 1 },
+  filterErrorRetry: { borderWidth: 1, borderColor: colors.red700, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 6 },
+  filterErrorRetryText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 10.5 },
 });

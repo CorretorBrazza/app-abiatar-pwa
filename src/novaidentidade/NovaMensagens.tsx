@@ -17,7 +17,7 @@ interface Recipient {
   id: string;
   name: string;
   nome_guerra: string;
-  email: string;
+  email?: string;
   role: string;
   manager_id: string | null;
 }
@@ -65,6 +65,8 @@ export default function NovaMensagens({
   };
 
   const [recipients, setRecipients] = useState<Recipient[]>([]);
+  const [recipientsError, setRecipientsError] = useState(false);
+  const [recipientsRetryKey, setRecipientsRetryKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState('');
@@ -79,13 +81,14 @@ export default function NovaMensagens({
   useEffect(() => {
     let cancelled = false;
     const loadRecipients = async () => {
+      setRecipientsError(false);
       try {
         const response = await api.get('/messages/recipients');
         if (cancelled) return;
         const raw = Array.isArray(response.data) ? response.data : [];
         setRecipients(raw.filter((r: Recipient) => r.id !== user?.id));
       } catch (err: any) {
-        if (!cancelled) setRecipients([]);
+        if (!cancelled) setRecipientsError(true);
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -94,7 +97,7 @@ export default function NovaMensagens({
     return () => {
       cancelled = true;
     };
-  }, [user?.id]);
+  }, [user?.id, recipientsRetryKey]);
 
   const selectScope = (s: Scope) => {
     setScope(s);
@@ -202,6 +205,14 @@ export default function NovaMensagens({
         </View>
       ) : (
         <>
+          {recipientsError && (
+            <View style={[styles.banner, styles.bannerError]}>
+              <Text style={styles.bannerErrorText}>Não foi possível carregar a lista de destinatários. Os dados podem estar incompletos.</Text>
+              <TouchableOpacity style={styles.retryBannerBtn} onPress={() => setRecipientsRetryKey((k) => k + 1)}>
+                <Text style={styles.retryBannerBtnText}>Tentar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          )}
           <View style={styles.card}>
             <View style={styles.cardHead}>
               <View style={styles.cardIconWide}>
@@ -246,7 +257,7 @@ export default function NovaMensagens({
                         >
                           <Text style={[styles.personName, active && { color: '#fff' }]}>{personName(m)}</Text>
                           <Text style={[styles.personMeta, active && { color: 'rgba(255,255,255,0.75)' }]}>
-                            Equipe {m.email}
+                            {m.email ? `Equipe ${m.email}` : 'Equipe vinculada ao gerente'}
                           </Text>
                         </TouchableOpacity>
                       );
@@ -286,7 +297,7 @@ export default function NovaMensagens({
                           <View style={{ flex: 1 }}>
                             <Text style={[styles.personName, active && { color: '#fff' }]}>{personName(p)}</Text>
                             <Text style={[styles.personMeta, active && { color: 'rgba(255,255,255,0.75)' }]}>
-                              {roleLabel(p.role)} · {p.email}
+                              {roleLabel(p.role)}{p.email ? ` · ${p.email}` : ''}
                             </Text>
                           </View>
                         </TouchableOpacity>
@@ -428,4 +439,6 @@ const styles = StyleSheet.create({
   },
   sendBtnText: { color: '#fff', fontFamily: font.body, fontWeight: '700', fontSize: 12.5 },
   footerNote: { textAlign: 'center', color: semantic.textMuted, fontFamily: font.body, fontSize: 10.5, marginTop: 4 },
+  retryBannerBtn: { borderWidth: 1, borderColor: colors.red700, borderRadius: radius.sm, paddingHorizontal: 10, paddingVertical: 5 },
+  retryBannerBtnText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 10.5 },
 });
