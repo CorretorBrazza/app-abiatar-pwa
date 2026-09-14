@@ -26,6 +26,7 @@ import {
   MapPin,
   PanelLeftClose,
   PanelLeftOpen,
+  RefreshCw,
   UserCheck,
 } from 'lucide-react-native';
 const FAVICON = require('../../assets/favicon.png');
@@ -56,7 +57,7 @@ import {
   VIEW_TITLE,
   type NovaView,
 } from './workspaces';
-import { StaleBanner } from './components/States';
+
 
 const BROKER_WELCOME_BG = ['#23384A', '#42637A'] as const;
 const MATERIALS_URL = 'https://linktr.ee/Abiatarimoveisconstrutora?utm_source=linktree_admin_share';
@@ -526,21 +527,40 @@ const elig = StyleSheet.create({
 function NovaMyShifts() {
   const [summary, setSummary] = React.useState<any | null>(null);
   const [showHistory, setShowHistory] = React.useState(false);
+  const [loading, setLoading] = React.useState(true);
+  const [lastUpdated, setLastUpdated] = React.useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .get('/presences/dashboard-summary')
-      .then((res) => {
-        if (!cancelled) setSummary(res.data);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
+  const load = React.useCallback(async () => {
+    try {
+      const res = await api.get('/presences/dashboard-summary');
+      setSummary(res.data);
+      setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+    } catch {
+      // Mantém o último dado carregado em caso de falha de conexão.
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const shifts = Array.isArray(summary?.shifts) ? summary.shifts : Array.isArray(summary?.boothsEligibility) ? summary.boothsEligibility : [];
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  // Recarrega ao voltar do histórico interno (o componente continua montado na troca).
+  const firstRender = React.useRef(true);
+  useEffect(() => {
+    if (firstRender.current) {
+      firstRender.current = false;
+      return;
+    }
+    if (!showHistory) void load();
+  }, [showHistory, load]);
+
+  const allShifts = Array.isArray(summary?.shifts) ? summary.shifts : Array.isArray(summary?.boothsEligibility) ? summary.boothsEligibility : [];
+  const rows = allShifts.filter((shift: any) => {
+    const roletas = shift.validRoletasThisWeek ?? shift.validRoletas ?? shift.count ?? 0;
+    return Number(roletas) > 0;
+  });
 
   if (showHistory) {
     return (
@@ -571,7 +591,17 @@ function NovaMyShifts() {
             <Text style={panel.panelTitle}>Minhas roletas da semana</Text>
             <Text style={panel.panelDesc}>Contagem semanal (Segunda a Domingo)</Text>
           </View>
-          <StaleBanner updatedAt="agora" />
+          <View style={{ alignItems: 'flex-end', gap: 6 }}>
+            <TouchableOpacity
+              style={shifts.refreshBtn}
+              onPress={() => void load()}
+              disabled={loading}
+              accessibilityLabel="Atualizar dados"
+            >
+              <RefreshCw size={14} color={colors.slate600} />
+            </TouchableOpacity>
+            <Text style={shifts.updatedText}>{lastUpdated ? `Atualizado ${lastUpdated}` : ''}</Text>
+          </View>
         </View>
 
         <View style={shifts.summary}>
@@ -585,17 +615,17 @@ function NovaMyShifts() {
           </View>
         )}
 
-        {shifts.length === 0 && (
+        {rows.length === 0 && (
           <View style={{ paddingVertical: 18 }}>
             <Text style={{ color: colors.slate500, fontFamily: font.body, fontSize: 12 }}>
-              Nenhuma informação encontrada.
+              Nenhuma roleta cumprida esta semana.
             </Text>
           </View>
         )}
 
-        {shifts.length > 0 && (
+        {rows.length > 0 && (
           <View style={{ marginTop: 8, gap: 9 }}>
-            {shifts.map((shift: any) => {
+            {rows.map((shift: any) => {
               const name = shift.boothName || shift.booth?.name || shift.name || 'Plantão';
               const roletas = shift.validRoletasThisWeek ?? shift.validRoletas ?? shift.count ?? 0;
               return (
@@ -607,7 +637,7 @@ function NovaMyShifts() {
                     <Text style={shifts.rowName}>{name}</Text>
                     <Text style={shifts.rowDetail}>Roletas cumpridas: {roletas}</Text>
                   </View>
-                  <StatusBadge tone={(summary?.validPeriods ?? 0) > 0 ? 'positive' : 'neutral'}>Semana atual</StatusBadge>
+                  <StatusBadge tone={Number(roletas) > 0 ? 'positive' : 'neutral'}>Semana atual</StatusBadge>
                 </View>
               );
             })}
@@ -659,6 +689,15 @@ const shifts = StyleSheet.create({
     fontWeight: '700' as const,
     fontSize: 11.5,
   },
+  refreshBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: radius.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.slate100,
+  },
+  updatedText: { color: colors.slate500, fontFamily: font.body, fontWeight: '600', fontSize: 9.5 },
   row: {
     flexDirection: 'row' as const,
     alignItems: 'center',
