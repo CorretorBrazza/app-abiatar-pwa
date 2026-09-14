@@ -253,10 +253,12 @@ function NovaBrokerHome({
   nomeGuerra,
   tenantName,
   onOpen,
+  isMobile,
 }: {
   nomeGuerra?: string;
   tenantName?: string;
   onOpen: (v: NovaView) => void;
+  isMobile?: boolean;
 }) {
   const [activeSession, setActiveSession] = React.useState<any | null>(null);
   const [summary, setSummary] = React.useState<any | null>(null);
@@ -303,7 +305,7 @@ function NovaBrokerHome({
         title="Meu próximo plantão"
         description="Tudo o que você precisa para chegar, fazer check-in e iniciar o atendimento."
       />
-      <View style={[hero.row, { backgroundImage: `linear-gradient(115deg, ${BROKER_WELCOME_BG[0]}, ${BROKER_WELCOME_BG[1]})` } as any]}>
+      <View style={[hero.row, isMobile && hero.rowMobile, { backgroundImage: `linear-gradient(115deg, ${BROKER_WELCOME_BG[0]}, ${BROKER_WELCOME_BG[1]})` } as any]}>
         <View style={hero.copy}>
           <StatusBadge tone={isActive ? 'positive' : 'attention'}>
             {isActive ? 'Você está em plantão' : hoursOpen ? `Check-in abre às ${hoursOpen}` : 'Check-in disponível'}
@@ -323,19 +325,19 @@ function NovaBrokerHome({
             </View>
           </View>
         </View>
-        <View style={hero.actions}>
-          <TouchableOpacity style={hero.cta} onPress={() => onOpen('check_in')} activeOpacity={0.9}>
+        <View style={[hero.actions, isMobile && hero.actionsMobile]}>
+          <TouchableOpacity style={[hero.cta, isMobile && hero.ctaFull]} onPress={() => onOpen('check_in')} activeOpacity={0.9}>
             <UserCheck size={17} color={colors.navy900} strokeWidth={2.2} />
             <Text style={hero.ctaText}>Efetuar check-in</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={hero.ctaGhost} onPress={() => onOpen('my_shifts')} activeOpacity={0.9}>
+          <TouchableOpacity style={[hero.ctaGhost, isMobile && hero.ctaFull]} onPress={() => onOpen('my_shifts')} activeOpacity={0.9}>
             <CalendarDays size={17} color="#fff" strokeWidth={2} />
             <Text style={hero.ctaGhostText}>Ver meus plantões</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <View style={homeGrid.two}>
+      <View style={isMobile ? homeGrid.stack : homeGrid.two}>
         <View style={[homeGrid.col, { gap: 9 }]}>
           <QuickAction icon={CheckCircle2} label="Check-in do plantão" tone="action" onPress={() => onOpen('check_in')} />
           <QuickAction icon={CalendarDays} label="Meus plantões" tone="info" onPress={() => onOpen('my_shifts')} />
@@ -398,6 +400,11 @@ const hero = StyleSheet.create({
     shadowOffset: { width: 0, height: 12 },
     elevation: 6,
   },
+  rowMobile: {
+    flexDirection: 'column' as const,
+    alignItems: 'stretch' as const,
+    gap: 22,
+  },
   copy: { flex: 1, minWidth: 0 },
   title: {
     color: '#fff',
@@ -418,6 +425,7 @@ const hero = StyleSheet.create({
   metaItem: { flexDirection: 'row' as const, alignItems: 'center', gap: 6 },
   metaText: { color: 'rgba(255,255,255,0.85)', fontFamily: font.body, fontWeight: '500' as const, fontSize: 11.5 },
   actions: { gap: 9, zIndex: 2 },
+  actionsMobile: { width: '100%' as const },
   cta: {
     minWidth: 180,
     height: 44,
@@ -433,6 +441,10 @@ const hero = StyleSheet.create({
     shadowRadius: 20,
     shadowOffset: { width: 0, height: 6 },
     elevation: 4,
+  },
+  ctaFull: {
+    minWidth: 0,
+    width: '100%' as const,
   },
   ctaText: { color: colors.navy900, fontFamily: font.body, fontWeight: '800' as const, fontSize: 12.5 },
   ctaGhost: {
@@ -454,6 +466,11 @@ const homeGrid = StyleSheet.create({
   two: {
     flexDirection: 'row' as const,
     gap: 18,
+    marginBottom: 18,
+  },
+  stack: {
+    flexDirection: 'column' as const,
+    gap: 9,
     marginBottom: 18,
   },
   col: { flex: 1, minWidth: 0 },
@@ -716,28 +733,33 @@ export default function DashboardNova() {
 
   function renderContent() {
     const onBack = () => setView(firstView(profile));
+    const pad = isMobile ? contentPadMobile : contentPad;
 
     if (profile === 'corretor') {
       if (view === 'command') {
         return (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={contentPad}>
-            <NovaBrokerHome nomeGuerra={user?.nome_guerra} tenantName={tenant?.name} onOpen={setView} />
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={pad}>
+            <NovaBrokerHome nomeGuerra={user?.nome_guerra} tenantName={tenant?.name} onOpen={setView} isMobile={isMobile} />
           </ScrollView>
         );
       }
       if (view === 'check_in') {
-        return <CheckIn onCheckInSuccess={() => setView('command')} allowOutOfWindow />;
+        return (
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={pad}>
+            <CheckIn onCheckInSuccess={() => setView('command')} allowOutOfWindow />
+          </ScrollView>
+        );
       }
       if (view === 'my_shifts') {
         return (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={contentPad}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={pad}>
             <NovaMyShifts />
           </ScrollView>
         );
       }
       if (view === 'my_history') {
         return (
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={contentPad}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={pad}>
             <NovaHistoricoCorretor isMobile={isMobile} />
           </ScrollView>
         );
@@ -920,6 +942,8 @@ export default function DashboardNova() {
 }
 
 const contentPad = { padding: 38, paddingTop: 34, paddingBottom: 64, maxWidth: 1500, alignSelf: 'center' as const, width: '100%' as const };
+
+const contentPadMobile = { padding: 16, paddingTop: 14, paddingBottom: 88, maxWidth: 1500, alignSelf: 'center' as const, width: '100%' as const };
 
 const shell = StyleSheet.create({
   root: { flex: 1, flexDirection: 'row' as const, backgroundColor: semantic.background },
