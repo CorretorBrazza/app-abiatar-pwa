@@ -127,6 +127,7 @@ export const PROFILES: ProfileMeta[] = [
       { view: 'rh_careers', label: 'Carreiras e estágios', icon: Users },
       { view: 'rh_credentials', label: 'Vigências e CRECI', icon: ShieldCheck },
       { view: 'rh_history', label: 'Histórico', icon: History },
+      { view: 'inbox', label: 'Mensagens', icon: MessageSquare },
     ],
   },
   {

@@ -54,18 +54,20 @@ export default function NovaVisaoRh({ isMobile }: { isMobile?: boolean }) {
       const [managersRes, brokersRes, hrReviewRes] = await Promise.all([
         api.get('/users/managers/active'),
         api.get('/users/active-brokers', { params: { pageSize: 500 } }),
-        api.get('/users/pending-hr-review').catch(() => ({ data: [] })),
+        api.get('/users/pending-hr-review').catch(() => null),
       ]);
       setManagers(Array.isArray(managersRes.data) ? managersRes.data : []);
       const brokersData = Array.isArray(brokersRes.data) ? brokersRes.data : brokersRes.data?.data || [];
       setBrokers(brokersData);
-      setPending(Array.isArray(hrReviewRes.data) ? hrReviewRes.data : []);
+      if (hrReviewRes) setPending(Array.isArray(hrReviewRes.data) ? hrReviewRes.data : []);
       setOnline(true);
       setError(false);
       setErrMsg('');
       setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
     } catch (err: any) {
       console.error('[VISÃORH] Falha ao atualizar pessoas:', err);
+      setError(true);
+      setErrMsg(err.response?.data?.message || 'Não foi possível carregar a visão do RH.');
       setOnline(false);
     } finally {
       setLoading(false);
@@ -75,9 +77,18 @@ export default function NovaVisaoRh({ isMobile }: { isMobile?: boolean }) {
   useEffect(() => {
     let cancelled = false;
     void loadData();
+    const handleRealtime = () => { if (!cancelled) void loadData(true); };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('abiatar:realtime', handleRealtime);
+      window.addEventListener('abiatar:push', handleRealtime);
+    }
     const intervalId = setInterval(() => { if (!cancelled) void loadData(true); }, 30000);
     return () => {
       cancelled = true;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('abiatar:realtime', handleRealtime);
+        window.removeEventListener('abiatar:push', handleRealtime);
+      }
       clearInterval(intervalId);
     };
   }, [refreshKey]);

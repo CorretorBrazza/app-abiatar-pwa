@@ -71,6 +71,7 @@ export default function NovaPerfisRh({
       setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
     } catch (err) {
       console.error('[PERFISRH] Falha ao carregar perfis:', err);
+      setError(true);
       setOnline(false);
     } finally {
       setLoading(false);
@@ -80,9 +81,18 @@ export default function NovaPerfisRh({
   useEffect(() => {
     let cancelled = false;
     void loadData();
+    const handleRealtime = () => { if (!cancelled) void loadData(true); };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('abiatar:realtime', handleRealtime);
+      window.addEventListener('abiatar:push', handleRealtime);
+    }
     const intervalId = setInterval(() => { if (!cancelled) void loadData(true); }, 30000);
     return () => {
       cancelled = true;
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('abiatar:realtime', handleRealtime);
+        window.removeEventListener('abiatar:push', handleRealtime);
+      }
       clearInterval(intervalId);
     };
   }, [refreshKey]);

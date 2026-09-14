@@ -1197,14 +1197,16 @@ export function FichaCorretorModal({
               </View>
             )}
 
-            <View style={styles.card}>
-              <Text style={fonts.panelTitle}>Segurança da conta</Text>
-              <Text style={styles.cardSub}>Gera uma senha temporária de uso único. O corretor deverá criar nova senha no próximo acesso.</Text>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => void resetPassword()} disabled={saving}>
-                {saving ? <ActivityIndicator size="small" color={colors.coral600} /> : <KeyRound size={13} color={colors.coral600} />}
-                <Text style={styles.actionBtnText}>Redefinir senha do Corretor</Text>
-              </TouchableOpacity>
-            </View>
+            {!isRh && (
+              <View style={styles.card}>
+                <Text style={fonts.panelTitle}>Segurança da conta</Text>
+                <Text style={styles.cardSub}>Gera uma senha temporária de uso único. O corretor deverá criar nova senha no próximo acesso.</Text>
+                <TouchableOpacity style={styles.actionBtn} onPress={() => void resetPassword()} disabled={saving}>
+                  {saving ? <ActivityIndicator size="small" color={colors.coral600} /> : <KeyRound size={13} color={colors.coral600} />}
+                  <Text style={styles.actionBtnText}>Redefinir senha do Corretor</Text>
+                </TouchableOpacity>
+              </View>
+            )}
 
             {!isRh && (
               <View style={styles.card}>

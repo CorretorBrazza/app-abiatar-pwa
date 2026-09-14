@@ -147,6 +147,16 @@ export function HistoricoContent({
       setLoading(false);
       return;
     }
+    if (period === 'custom') {
+      const diffDays = Math.round(
+        (new Date(`${end}T12:00:00`).getTime() - new Date(`${start}T12:00:00`).getTime()) / 86400000,
+      );
+      if (diffDays > 93) {
+        setError(true);
+        setLoading(false);
+        return;
+      }
+    }
     setLoading(true);
     setError(false);
     try {
@@ -157,7 +167,7 @@ export function HistoricoContent({
       setOnline(true);
       setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
     } catch (err: any) {
-      if (err.response?.status === 400) {
+      if (err.response?.status) {
         setError(true);
         setOnline(true);
       } else {
@@ -457,6 +467,8 @@ export default function NovaHistoricoCorretor({
   const [search, setSearch] = useState('');
   const [candidates, setCandidates] = useState<any[]>([]);
   const [loadingList, setLoadingList] = useState(false);
+  const [listError, setListError] = useState(false);
+  const [listRefreshKey, setListRefreshKey] = useState(0);
   const [expandedStages, setExpandedStages] = useState<Record<StageKey, boolean>>({
     corretor_creci: false,
     estagiario: false,
@@ -473,6 +485,7 @@ export default function NovaHistoricoCorretor({
     if (!allowSelect) return;
     let cancelled = false;
     setLoadingList(true);
+    setListError(false);
     api
       .get('/users/active-brokers', { params: { pageSize: 500 } })
       .then((res) => {
@@ -480,14 +493,14 @@ export default function NovaHistoricoCorretor({
         const raw = Array.isArray(res.data) ? res.data : res.data?.data || [];
         setCandidates(raw);
       })
-      .catch(() => undefined)
+      .catch(() => { if (!cancelled) setListError(true); })
       .finally(() => {
         if (!cancelled) setLoadingList(false);
       });
     return () => {
       cancelled = true;
     };
-  }, [allowSelect]);
+  }, [allowSelect, listRefreshKey]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -540,6 +553,17 @@ export default function NovaHistoricoCorretor({
 
         {loadingList ? (
           <SkeletonBlock lines={2} height={140} />
+        ) : listError ? (
+          <View style={styles.card}>
+            <StateError
+              message="Não foi possível carregar a lista de corretores."
+              onRetry={() => {
+                setListError(false);
+                setCandidates([]);
+                setListRefreshKey((k) => k + 1);
+              }}
+            />
+          </View>
         ) : filtered.length === 0 ? (
           <View style={styles.card}>
             <Text style={styles.emptyText}>Nenhum corretor encontrado.</Text>
@@ -578,7 +602,7 @@ export default function NovaHistoricoCorretor({
                           <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
                             <Text style={styles.rowName}>{c.nome_guerra}</Text>
                             <Text style={styles.rowMeta}>
-                              CRECI: {c.creci || '—'} · {c.manager_nome_guerra ? `Ger.: ${c.manager_nome_guerra}` : 'Sem gerente'}
+                              CRECI: {c.creci || '—'} · {c.manager_nome_guerra || c.managerName ? `Ger.: ${c.manager_nome_guerra || c.managerName}` : 'Sem gerente'}
                             </Text>
                           </View>
                           <Text style={[styles.badgeText, { color: t.fg, backgroundColor: t.bg }]}>{STAGE_BADGE[g.stage]}</Text>

@@ -852,8 +852,8 @@ export default function DashboardNova() {
     };
   }, [user?.id]);
 
-  // Contador de não lidas compartilhado no nav (corretor, recepção, gerência)
-  const hasInbox = profile === 'corretor' || profile === 'recepcao' || profile === 'gerencia';
+  // Contador de não lidas compartilhado no nav (corretor, recepção, gerência, RH)
+  const hasInbox = profile === 'corretor' || profile === 'recepcao' || profile === 'gerencia' || profile === 'rh';
   useEffect(() => {
     if (!hasInbox) return;
     let cancelled = false;
@@ -972,7 +972,7 @@ export default function DashboardNova() {
         if (profile === 'gerencia') return <NovaMinhaEquipe isMobile={isMobile} managerId={user?.id} />;
         return <ManagerPanel onBack={onBack} />;
       case 'inbox':
-        return profile === 'gerencia' ? <Inbox onBack={onBack} /> : null;
+        return profile === 'gerencia' || profile === 'rh' ? <Inbox onBack={onBack} /> : null;
       case 'command':
       case 'rh_credentials':
       case 'rh_careers':
