@@ -1,6 +1,6 @@
 // Resolve qual camada de interface renderizar.
-// Prioridade: URL ?nova=… (demo/avaliação) > EXPO_PUBLIC_LAYOUT > features.nova_identidade (tenant) > clássica.
-// Bloco F aprovado — troca automática quando o flag for ligado.
+// Prioridade: URL ?nova=… (demo/avaliação) > EXPO_PUBLIC_LAYOUT > features.nova_identidade (tenant) > nova (padrão).
+// A nova identidade é o padrão; a flag pode ser desligada explicitamente (false) via DevDashboard.
 
 import { StyleSheet } from 'react-native';
 import { useAuth } from '../contexts/AuthContext';
@@ -24,13 +24,13 @@ function getEnvMode(): LayoutMode | null {
   return env === 'nova' || env === 'classica' ? env : null;
 }
 
-export function resolveLayoutMode(tenantFeature = false): LayoutMode {
+export function resolveLayoutMode(tenantFeature?: boolean): LayoutMode {
   const url = getUrlOverride();
   if (url) return url;
   const env = getEnvMode();
   if (env) return env;
-  if (tenantFeature) return 'nova';
-  return 'classica';
+  if (tenantFeature === false) return 'classica';
+  return 'nova';
 }
 
 export function useLayoutFlag(): { layout: LayoutMode; isNova: boolean } {
@@ -38,7 +38,7 @@ export function useLayoutFlag(): { layout: LayoutMode; isNova: boolean } {
   const feature =
     typeof tenant?.settings?.features?.nova_identidade === 'boolean'
       ? tenant.settings.features.nova_identidade
-      : false;
+      : undefined;
   const layout = resolveLayoutMode(feature);
   return { layout, isNova: layout === 'nova' };
 }

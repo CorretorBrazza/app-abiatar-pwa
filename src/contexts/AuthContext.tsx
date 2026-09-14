@@ -62,6 +62,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           setUser(JSON.parse(storagedUser));
           setTenant(JSON.parse(storagedTenant));
           void registerWebPushNotifications();
+          // Revalida user/tenant na nuvem para que flags (ex.: nova_identidade)
+          // vigorem mesmo em sessões abertas antes da mudança.
+          void refreshContext();
         }
       } catch (error) {
         console.error(
@@ -75,6 +78,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     loadStorageData();
   }, []);
+
+  // Revalida o contexto (user/tenant) junto ao backend sem exigir novo login.
+  const refreshContext = async () => {
+    try {
+      const response = await api.get('/auth/me');
+      const { user: freshUser, tenant: freshTenant } = response.data;
+      if (freshUser && freshTenant) {
+        setUser(freshUser);
+        setTenant(freshTenant);
+        await AsyncStorage.multiSet([
+          ['@abiatar:user', JSON.stringify(freshUser)],
+          ['@abiatar:tenant', JSON.stringify(freshTenant)],
+        ]);
+      }
+    } catch {
+      // Sem sessão ativa ou API momentaneamente indisponível: mantém o cache local.
+    }
+  };
 
   const changePassword = async (currentPassword: string, newPassword: string) => {
     try {
