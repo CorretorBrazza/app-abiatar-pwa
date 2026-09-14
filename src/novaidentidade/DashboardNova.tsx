@@ -755,6 +755,7 @@ export default function DashboardNova() {
   const [view, setView] = useState<NovaView>(() => firstView(profile));
 
   const [collapsed, setCollapsed] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   useEffect(() => {
     if (view === 'materials') {
@@ -796,6 +797,41 @@ export default function DashboardNova() {
       }
     };
   }, [profile]);
+
+  // Contador de não lidas compartilhado no nav (corretor, recepção, gerência)
+  const hasInbox = profile === 'corretor' || profile === 'recepcao' || profile === 'gerencia';
+  useEffect(() => {
+    if (!hasInbox) return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+
+    const loadUnread = async () => {
+      try {
+        const res = await api.get('/messages/my-inbox');
+        if (!cancelled) {
+          setUnreadCount(Array.isArray(res.data) ? res.data.filter((m: any) => !m.read_at).length : 0);
+        }
+      } catch {
+        /* silencioso */
+      }
+    };
+
+    loadUnread();
+    timer = setInterval(loadUnread, 15000);
+    const onRealtime = () => void loadUnread();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('abiatar:push', onRealtime);
+      window.addEventListener('abiatar:realtime', onRealtime);
+    }
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('abiatar:push', onRealtime);
+        window.removeEventListener('abiatar:realtime', onRealtime);
+      }
+    };
+  }, [hasInbox, view]);
 
   const isMobile = width < 768;
   const sidebarOffset = isMobile ? 0 : collapsed ? 76 : 256;
@@ -873,7 +909,7 @@ export default function DashboardNova() {
         if (profile === 'gerencia') return <NovaConvidarCorretores managerId={user?.id} />;
         return <NovaPessoas isMobile={isMobile} sidebarOffset={sidebarOffset} topOffset={topOffset} />;
       case 'performance':
-        return <NovaPerformance isMobile={isMobile} canDrillHistory={profile === 'diretoria'} sidebarOffset={sidebarOffset} topOffset={topOffset} />;
+        return <NovaPerformance isMobile={isMobile} canDrillHistory={profile === 'diretoria'} canViewTeamReports={profile === 'diretoria'} sidebarOffset={sidebarOffset} topOffset={topOffset} />;
       case 'rh_history':
         return <NovaHistoricoCorretor canSelect isMobile={isMobile} />;
       case 'messaging':
@@ -881,6 +917,8 @@ export default function DashboardNova() {
       case 'team':
         if (profile === 'gerencia') return <NovaMinhaEquipe isMobile={isMobile} managerId={user?.id} />;
         return <ManagerPanel onBack={onBack} />;
+      case 'inbox':
+        return profile === 'gerencia' ? <Inbox onBack={onBack} /> : null;
       case 'command':
       case 'rh_credentials':
       case 'rh_careers':
@@ -943,6 +981,11 @@ export default function DashboardNova() {
               <TouchableOpacity key={v} style={[shell.navItem, view === v && shell.navItemActive]} onPress={() => setView(v)} accessibilityRole="button">
                 <Icon size={18} color={view === v ? colors.coral500 : '#A6B7C7'} strokeWidth={2} />
                 {!collapsed && <Text style={shell.navItemText}>{label}</Text>}
+                {v === 'inbox' && unreadCount > 0 && (
+                  <View style={shell.navBadge}>
+                    <Text style={shell.navBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                  </View>
+                )}
                 {!collapsed && view === v && <View style={shell.navActiveLine} />}
               </TouchableOpacity>
             ))}
@@ -1008,12 +1051,25 @@ export default function DashboardNova() {
 
         {isMobile && (
           <View style={shell.bottomNav}>
-            {nav.slice(0, 4).map(({ view: v, label, icon: Icon }) => (
-              <TouchableOpacity key={v} style={[shell.bottomItem, view === v && shell.bottomItemActive]} onPress={() => setView(v)}>
-                <Icon size={18} color={view === v ? colors.coral600 : colors.slate500} strokeWidth={2} />
-                <Text style={[shell.bottomItemText, view === v && { color: colors.coral600 }]}>{label.split(' ')[0]}</Text>
-              </TouchableOpacity>
-            ))}
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ alignItems: 'center', gap: 4, paddingHorizontal: 8 }}>
+              {nav.map(({ view: v, label, icon: Icon }) => (
+                <TouchableOpacity
+                  key={v}
+                  style={[shell.bottomItem, { flex: undefined, minWidth: 74, paddingHorizontal: 8 }, view === v && shell.bottomItemActive]}
+                  onPress={() => setView(v)}
+                >
+                  <View>
+                    <Icon size={18} color={view === v ? colors.coral600 : colors.slate500} strokeWidth={2} />
+                    {v === 'inbox' && unreadCount > 0 && (
+                      <View style={shell.bottomBadge}>
+                        <Text style={shell.bottomBadgeText}>{unreadCount > 99 ? '99+' : unreadCount}</Text>
+                      </View>
+                    )}
+                  </View>
+                  <Text style={[shell.bottomItemText, view === v && { color: colors.coral600 }]}>{label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
         )}
 </View>
@@ -1141,4 +1197,30 @@ const shell = StyleSheet.create({
   bottomItem: { flex: 1, alignItems: 'center', gap: 3, paddingVertical: 9 },
   bottomItemActive: { backgroundColor: colors.coral050, borderRadius: radius.sm },
   bottomItemText: { color: colors.slate500, fontFamily: font.body, fontWeight: '700', fontSize: 9 },
+  navBadge: {
+    position: 'absolute',
+    right: 12,
+    top: 9,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 4,
+    borderRadius: 8,
+    backgroundColor: colors.coral600,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  navBadgeText: { color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 8.5, lineHeight: 10 },
+  bottomBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -10,
+    minWidth: 15,
+    height: 15,
+    paddingHorizontal: 3,
+    borderRadius: 8,
+    backgroundColor: colors.coral600,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  bottomBadgeText: { color: '#fff', fontFamily: font.body, fontWeight: '800', fontSize: 8, lineHeight: 9 },
 });

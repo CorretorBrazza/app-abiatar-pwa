@@ -97,6 +97,7 @@ export const PROFILES: ProfileMeta[] = [
       { view: 'team', label: 'Equipe', icon: Users },
       { view: 'operation', label: 'Operação', icon: Activity },
       { view: 'messaging', label: 'Comunicação', icon: MessageSquare },
+      { view: 'inbox', label: 'Mensagens', icon: MessageSquare },
       { view: 'people', label: 'Pessoas e equipes', icon: Building2 },
       { view: 'performance', label: 'Performance', icon: TrendingUp },
       { view: 'materials', label: 'Materiais de atendimento', icon: FileText },

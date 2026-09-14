@@ -87,11 +87,13 @@ const TABS: { key: TabType; label: string; icon: React.ComponentType<any> }[] = 
 export default function NovaPerformance({
   isMobile,
   canDrillHistory,
+  canViewTeamReports = true,
   sidebarOffset = 0,
   topOffset = 0,
 }: {
   isMobile?: boolean;
   canDrillHistory?: boolean;
+  canViewTeamReports?: boolean;
   sidebarOffset?: number;
   topOffset?: number;
 }) {
@@ -111,6 +113,10 @@ export default function NovaPerformance({
   const [boothsReport, setBoothsReport] = useState<any>(null);
   const [boothsList, setBoothsList] = useState<any[]>([]);
   const [lastSync, setLastSync] = useState<Date | null>(null);
+
+  const tabs = canViewTeamReports
+    ? TABS
+    : TABS.filter((t) => t.key === 'realtime' || t.key === 'brokers');
 
   const applyPeriodPreset = useCallback(
     (preset: PeriodPreset) => {
@@ -164,7 +170,7 @@ export default function NovaPerformance({
             },
           });
           setBrokersReport(res.data);
-        } else if (activeTab === 'managers') {
+        } else if (activeTab === 'managers' && canViewTeamReports) {
           const res = await api.get('/presences/reports/managers', {
             params: {
               startDate: effectiveStart || undefined,
@@ -172,7 +178,7 @@ export default function NovaPerformance({
             },
           });
           setManagersReport(res.data);
-        } else if (activeTab === 'booths') {
+        } else if (activeTab === 'booths' && canViewTeamReports) {
           const res = await api.get('/presences/reports/booths', {
             params: {
               startDate: effectiveStart || undefined,
@@ -189,7 +195,7 @@ export default function NovaPerformance({
         setRefreshing(false);
       }
     },
-    [activeTab, startDate, endDate, selectedBoothFilter],
+    [activeTab, startDate, endDate, selectedBoothFilter, canViewTeamReports],
   );
 
   useEffect(() => {
@@ -644,7 +650,7 @@ export default function NovaPerformance({
         </View>
 
         <View style={styles.tabs}>
-          {TABS.map(({ key, label, icon: Icon }) => (
+          {tabs.map(({ key, label, icon: Icon }) => (
             <TouchableOpacity key={key} style={[styles.tab, activeTab === key && styles.tabActive]} onPress={() => setActiveTab(key)}>
               <Icon size={13} color={activeTab === key ? '#fff' : colors.slate500} />
               <Text style={[styles.tabText, activeTab === key && styles.tabTextActive]}>{label}</Text>

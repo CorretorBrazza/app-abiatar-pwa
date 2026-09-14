@@ -63,6 +63,26 @@ export default function Inbox({ onBack }: InboxProps) {
     loadMessages();
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = () => {
+      if (!cancelled) void loadMessages();
+    };
+    const timer = setInterval(refresh, 20000);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('abiatar:push', refresh);
+      window.addEventListener('abiatar:realtime', refresh);
+    }
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('abiatar:push', refresh);
+        window.removeEventListener('abiatar:realtime', refresh);
+      }
+    };
+  }, []);
+
   // 2. Método para Confirmar a Leitura da Mensagem
   const handleMarkAsRead = async (msg: MessageRecipient) => {
     const targetMsgId = msg.message?.id || msg.message_id;

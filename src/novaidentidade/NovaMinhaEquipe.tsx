@@ -75,6 +75,7 @@ export default function NovaMinhaEquipe({
     } catch (error) {
       console.error('[MINHAEQUIPE] Falha ao atualizar equipe:', error);
       setOnline(false);
+      setError(true);
     } finally {
       setLoading(false);
     }
