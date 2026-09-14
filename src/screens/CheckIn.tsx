@@ -35,9 +35,12 @@ interface Booth {
 
 interface CheckInProps {
   onCheckInSuccess: (presence: any) => void;
+  // Nova identidade: permite check-in fora da janela da roleta (registra atendimento
+  // pela Recepção, mas o período NÃO é validado nem entra na sequência da roleta).
+  allowOutOfWindow?: boolean;
 }
 
-export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
+export default function CheckIn({ onCheckInSuccess, allowOutOfWindow }: CheckInProps) {
   const { tenant } = useAuth();
   const [booths, setBooths] = useState<Booth[]>([]);
   const [loading, setLoading] = useState(true);
@@ -153,6 +156,7 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
           const isCheckInOpen = roleta?.isOpen ?? true;
           const isPontual = roleta?.status === 'open_pontual';
           const isPosBarra = roleta?.status === 'open_pos_barra';
+          const canOutOfWindow = allowOutOfWindow && !isCheckInOpen;
 
           return (
             <View key={item.id} style={styles.boothCard}>
@@ -172,7 +176,14 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
                     </Text>
                   </View>
                 )}
-                {!isCheckInOpen && (
+                {canOutOfWindow && (
+                  <View style={styles.badgeOutOfWindow}>
+                    <Text style={styles.badgeOutOfWindowText}>
+                      🔓 FORA DA JANELA DA ROLETA · registra atendimento, período NÃO validado
+                    </Text>
+                  </View>
+                )}
+                {!isCheckInOpen && !canOutOfWindow && (
                   <View style={styles.badgeClosed}>
                     <Text style={styles.badgeClosedText}>
                       🔒 CHECK-IN FECHADO
@@ -195,17 +206,23 @@ export default function CheckIn({ onCheckInSuccess }: CheckInProps) {
                   </Text>
                 )}
 
+                {canOutOfWindow && (
+                  <Text style={styles.outOfWindowHelp}>
+                    Você será registrado para a Recepção atendê-lo, mas este período não será validado nem entrará na sequência da roleta.
+                  </Text>
+                )}
+
                 {showTestDiagnostics && <Text style={styles.boothRadius}>[Raio permitido: {item.gps_radius}m]</Text>}
               </View>
 
               <IconButton
                 imageSource={APP_ICONS.checkIn}
-                label={isPontual ? 'Fazer Check-in' : isPosBarra ? 'Entrar Pós-Barra' : 'Check-in Fechado'}
+                label={isPontual ? 'Fazer Check-in' : isPosBarra ? 'Entrar Pós-Barra' : canOutOfWindow ? 'Check-in Fora da Janela' : 'Check-in Fechado'}
                 size="medium"
                 borderColor={primaryColor}
                 onPress={() => handleCheckIn(item)}
                 loading={checkingIn === item.id}
-                disabled={checkingIn !== null || !isCheckInOpen}
+                disabled={checkingIn !== null || (!isCheckInOpen && !allowOutOfWindow)}
               />
             </View>
           );
@@ -309,6 +326,21 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     marginBottom: 6,
   },
+  badgeOutOfWindow: {
+    backgroundColor: '#eef2ff',
+    borderColor: '#c7d2fe',
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 6,
+  },
+  badgeOutOfWindowText: {
+    color: '#4338ca',
+    fontSize: 10.5,
+    fontWeight: '800',
+  },
   badgeClosedText: {
     color: '#c13a28',
     fontSize: 11,
@@ -324,6 +356,13 @@ const styles = StyleSheet.create({
   posBarraHelp: {
     fontSize: 12,
     color: '#b45309',
+    fontWeight: '600',
+    marginTop: 2,
+    marginBottom: 4,
+  },
+  outOfWindowHelp: {
+    fontSize: 12,
+    color: '#4338ca',
     fontWeight: '600',
     marginTop: 2,
     marginBottom: 4,

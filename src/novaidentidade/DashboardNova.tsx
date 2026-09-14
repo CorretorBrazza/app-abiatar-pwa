@@ -726,7 +726,7 @@ export default function DashboardNova() {
         );
       }
       if (view === 'check_in') {
-        return <CheckIn onCheckInSuccess={() => setView('command')} />;
+        return <CheckIn onCheckInSuccess={() => setView('command')} allowOutOfWindow />;
       }
       if (view === 'my_shifts') {
         return (
