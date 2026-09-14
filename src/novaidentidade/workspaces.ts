@@ -6,6 +6,7 @@ import {
   Building2,
   CalendarDays,
   Clock3,
+  FileText,
   History,
   LayoutDashboard,
   MessageSquare,
@@ -32,7 +33,8 @@ export type NovaView =
   | 'rh_careers'
   | 'rh_credentials'
   | 'rh_history'
-  | 'my_history';
+  | 'my_history'
+  | 'materials';
 
 export type NovaProfile = 'diretoria' | 'gerencia' | 'recepcao' | 'rh' | 'corretor';
 
@@ -135,6 +137,7 @@ export const PROFILES: ProfileMeta[] = [
       { view: 'my_shifts', label: 'Meus plantões', icon: Clock3 },
       { view: 'check_in', label: 'Check-in do plantão', icon: UserCheck },
       { view: 'inbox', label: 'Mensagens', icon: MessageSquare },
+      { view: 'materials', label: 'Materiais', icon: FileText },
     ],
   },
 ];

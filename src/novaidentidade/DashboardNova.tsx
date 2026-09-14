@@ -5,6 +5,8 @@
 import React, { useEffect, useState } from 'react';
 import {
   Image,
+  Linking,
+  Platform,
   ScrollView,
   StyleSheet,
   Text,
@@ -14,11 +16,11 @@ import {
 } from 'react-native';
 import {
   Bell,
-  Building2,
   CalendarDays,
   CheckCircle2,
   ChevronDown,
   Clock3,
+  FileText,
   History,
   LogOut,
   MapPin,
@@ -57,6 +59,7 @@ import {
 import { StaleBanner } from './components/States';
 
 const BROKER_WELCOME_BG = ['#23384A', '#42637A'] as const;
+const MATERIALS_URL = 'https://linktr.ee/Abiatarimoveisconstrutora?utm_source=linktree_admin_share';
 
 function isDemoContext(): boolean {
   if (typeof window === 'undefined') return false;
@@ -238,6 +241,14 @@ const quickAction = StyleSheet.create({
   },
 });
 
+function handleOpenMaterials() {
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    window.open(MATERIALS_URL, '_blank', 'noopener,noreferrer');
+    return;
+  }
+  void Linking.openURL(MATERIALS_URL);
+}
+
 function NovaBrokerHome({
   nomeGuerra,
   tenantName,
@@ -328,6 +339,7 @@ function NovaBrokerHome({
         <View style={[homeGrid.col, { gap: 9 }]}>
           <QuickAction icon={CheckCircle2} label="Check-in do plantão" tone="action" onPress={() => onOpen('check_in')} />
           <QuickAction icon={CalendarDays} label="Meus plantões" tone="info" onPress={() => onOpen('my_shifts')} />
+          <QuickAction icon={FileText} label="Materiais de atendimento" tone="positive" onPress={handleOpenMaterials} />
         </View>
         <View style={[homeGrid.col, { gap: 9 }]}>
           <QuickAction icon={History} label="Meu histórico" tone="positive" onPress={() => onOpen('my_history')} />
@@ -590,6 +602,11 @@ function NovaMyShifts() {
         <History size={15} color="#fff" />
         <Text style={shifts.historyBtnText}>Ver meu histórico</Text>
       </TouchableOpacity>
+
+      <TouchableOpacity style={shifts.materialsBtn} onPress={handleOpenMaterials} accessibilityRole="button">
+        <FileText size={15} color={colors.coral600} />
+        <Text style={shifts.materialsBtnText}>Materiais de atendimento</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -652,6 +669,19 @@ const shifts = StyleSheet.create({
     backgroundColor: colors.coral600,
   },
   historyBtnText: { color: '#fff', fontFamily: font.body, fontWeight: '700' as const, fontSize: 12 },
+  materialsBtn: {
+    flexDirection: 'row' as const,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10,
+    paddingVertical: 12,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.coral300,
+    backgroundColor: 'transparent',
+  },
+  materialsBtnText: { color: colors.coral600, fontFamily: font.body, fontWeight: '700' as const, fontSize: 12 },
   backBtn: { alignSelf: 'flex-start', paddingVertical: 7, paddingHorizontal: 10, borderRadius: radius.md, backgroundColor: colors.slate100, marginBottom: 10 },
   backBtnText: { color: colors.slate700, fontFamily: font.body, fontWeight: '700' as const, fontSize: 11.5 },
   rowName: { color: semantic.textBody, fontFamily: font.body, fontWeight: '700' as const, fontSize: 12 },
@@ -668,6 +698,13 @@ export default function DashboardNova() {
   const [view, setView] = useState<NovaView>(() => firstView(profile));
 
   const [collapsed, setCollapsed] = useState(false);
+
+  useEffect(() => {
+    if (view === 'materials') {
+      handleOpenMaterials();
+      setView(firstView(profile));
+    }
+  }, [view, profile]);
 
   const isMobile = width < 768;
   const sidebarOffset = isMobile ? 0 : collapsed ? 76 : 256;
@@ -706,6 +743,7 @@ export default function DashboardNova() {
         );
       }
       if (view === 'inbox') return <Inbox onBack={onBack} />;
+      if (view === 'materials') return null;
     }
 
     if (profile === 'recepcao') {
