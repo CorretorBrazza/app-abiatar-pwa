@@ -61,14 +61,12 @@ export default function NovaMinhaEquipe({
   const loadData = async (silent = false) => {
     if (!silent) setLoading(true);
     try {
-      const [teamRes, queueRes, eligibilityRes] = await Promise.all([
+      const [teamRes, queueRes] = await Promise.all([
         api.get(`/users/team/${id}`, { params: { pageSize: 200 } }),
         api.get('/users/leads-queue'),
-        api.get('/presences/team-eligibility').catch(() => ({ data: null })),
       ]);
       setTeam(Array.isArray(teamRes.data) ? teamRes.data : teamRes.data?.data || []);
       setLeadsQueue(queueRes.data?.queue || []);
-      if (eligibilityRes.data) setEligibility(eligibilityRes.data);
       setOnline(true);
       setError(false);
       setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
@@ -81,15 +79,26 @@ export default function NovaMinhaEquipe({
     }
   };
 
+  const loadEligibility = async () => {
+    try {
+      const res = await api.get('/presences/team-eligibility');
+      if (res.data) setEligibility(res.data);
+    } catch {
+      /* silencioso — elegibilidade é consulta pesada, tolerante a falhas */
+    }
+  };
+
   useEffect(() => {
     let cancelled = false;
     void loadData();
-    const handleRealtime = () => { if (!cancelled) void loadData(true); };
+    void loadEligibility();
+    const handleRealtime = () => { if (!cancelled) { void loadData(true); void loadEligibility(); } };
     if (typeof window !== 'undefined') {
       window.addEventListener('abiatar:realtime', handleRealtime);
       window.addEventListener('abiatar:booth_update', handleRealtime);
     }
     const intervalId = setInterval(() => void loadData(true), 15000);
+    const eligibilityInterval = setInterval(() => void loadEligibility(), 60000);
     return () => {
       cancelled = true;
       if (typeof window !== 'undefined') {
@@ -97,6 +106,7 @@ export default function NovaMinhaEquipe({
         window.removeEventListener('abiatar:booth_update', handleRealtime);
       }
       clearInterval(intervalId);
+      clearInterval(eligibilityInterval);
     };
   }, [id, refreshKey]);
 
@@ -128,7 +138,7 @@ export default function NovaMinhaEquipe({
     { label: 'Em carência', value: graceCount, tone: 'attention' as const, icon: ShieldCheck },
     { label: 'Eleg. sábado', value: eligibility?.saturdayEligibleCount ?? 0, tone: 'info' as const, icon: CheckCircle2 },
     { label: 'Eleg. domingo', value: eligibility?.sundayEligibleCount ?? 0, tone: 'action' as const, icon: CheckCircle2 },
-    { label: 'Na fila da roleta', value: leadsQueue.length, tone: eligibility?.fullyEligibleCount ? 'positive' as const : 'neutral' as const, icon: Target },
+    { label: 'Na fila da roleta', value: leadsQueue.filter((b) => b.roletaName && b.roletaPosition != null).length, tone: eligibility?.fullyEligibleCount ? 'positive' as const : 'neutral' as const, icon: Target },
   ];
 
   return (

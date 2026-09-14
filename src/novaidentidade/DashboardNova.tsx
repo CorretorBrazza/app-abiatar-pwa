@@ -31,7 +31,8 @@ import {
 } from 'lucide-react-native';
 const FAVICON = require('../../assets/favicon.png');
 import { useAuth } from '../contexts/AuthContext';
-import api from '../services/api';
+import api, { apiBaseUrl } from '../services/api';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Inbox from '../screens/Inbox';
 import ManagerPanel from '../screens/ManagerPanel';
 import CheckIn from '../screens/CheckIn';
@@ -797,6 +798,59 @@ export default function DashboardNova() {
       }
     };
   }, [profile]);
+
+  // Camada global de tempo real (SSE) da nova identidade — despacha os eventos
+  // consumidos por todas as telas (abiatar:realtime, abiatar:booth_update, abiatar:push)
+  useEffect(() => {
+    if (typeof fetch === 'undefined' || typeof window === 'undefined' || !user?.id) return;
+    let cancelled = false;
+    let retryTimer: ReturnType<typeof setTimeout> | undefined;
+
+    async function connectRealtime() {
+      try {
+        const token = await AsyncStorage.getItem('@abiatar:token');
+        if (!token || cancelled) return;
+        const response = await fetch(`${apiBaseUrl}/realtime/stream`, {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'text/event-stream' },
+        });
+        if (!response.ok || !response.body) throw new Error(`SSE ${response.status}`);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (!cancelled) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const chunks = buffer.split('\n\n');
+          buffer = chunks.pop() || '';
+          for (const chunk of chunks) {
+            const dataLine = chunk.split('\n').find((line) => line.startsWith('data:'));
+            if (!dataLine) continue;
+            try {
+              const rawData = dataLine.replace(/^data:\s*/, '').trim();
+              if (!rawData) continue;
+              const event = JSON.parse(rawData);
+              window.dispatchEvent(new CustomEvent('abiatar:realtime', { detail: event }));
+              if (event.eventType?.startsWith('booth.')) {
+                window.dispatchEvent(new CustomEvent('abiatar:booth_update', { detail: event }));
+              }
+              if (event.eventType?.startsWith('message.')) {
+                window.dispatchEvent(new CustomEvent('abiatar:push', { detail: event }));
+              }
+            } catch { /* heartbeat ou formato diferente */ }
+          }
+        }
+      } catch {
+        if (!cancelled) retryTimer = setTimeout(connectRealtime, 4000);
+      }
+    }
+
+    void connectRealtime();
+    return () => {
+      cancelled = true;
+      if (retryTimer) clearTimeout(retryTimer);
+    };
+  }, [user?.id]);
 
   // Contador de não lidas compartilhado no nav (corretor, recepção, gerência)
   const hasInbox = profile === 'corretor' || profile === 'recepcao' || profile === 'gerencia';

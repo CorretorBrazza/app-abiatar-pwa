@@ -6,11 +6,23 @@ import { colors, font, fonts, radius, semantic, shadow } from './tokens';
 
 export function ConvidarCorretoresCard({ managerId }: { managerId?: string }) {
   const [inviteLink, setInviteLink] = useState('');
+  const [validUntil, setValidUntil] = useState('');
+  const [copied, setCopied] = useState(false);
   const [generatingLink, setGeneratingLink] = useState(false);
+
+  const formatDate = (iso?: string) => {
+    if (!iso) return '';
+    try {
+      return new Date(iso).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
+    } catch {
+      return '';
+    }
+  };
 
   const handleGenerateLink = async () => {
     try {
       setGeneratingLink(true);
+      setCopied(false);
       const response = await api.post('/users/onboarding-link', {
         invitedRole: 'corretor_level_3',
         managerId,
@@ -19,8 +31,9 @@ export function ConvidarCorretoresCard({ managerId }: { managerId?: string }) {
       const origin =
         typeof window !== 'undefined' && window.location.origin ? window.location.origin : 'https://abiatar.bitimob.com.br';
       setInviteLink(token ? `${origin}/cadastro/${token}` : response.data.onboarding_url);
-    } catch (error) {
-      alert('Falha ao gerar link de convite.');
+      setValidUntil(formatDate(response.data.valid_until));
+    } catch (error: any) {
+      alert(error?.response?.data?.message || 'Falha ao gerar link de convite.');
     } finally {
       setGeneratingLink(false);
     }
@@ -30,7 +43,8 @@ export function ConvidarCorretoresCard({ managerId }: { managerId?: string }) {
     if (!inviteLink) return;
     if (typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(inviteLink);
-      alert('Link de convite copiado para a área de transferência!');
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
     } else {
       alert(`Copie o link: ${inviteLink}`);
     }
@@ -50,10 +64,19 @@ export function ConvidarCorretoresCard({ managerId }: { managerId?: string }) {
       {inviteLink ? (
         <View style={styles.inviteLinkBox}>
           <Text style={styles.inviteLinkText} numberOfLines={2}>{inviteLink}</Text>
-          <TouchableOpacity style={styles.copyBtn} onPress={() => void handleCopyLink()}>
-            <Copy size={13} color={colors.slate600} />
-            <Text style={styles.copyBtnText}>Copiar link</Text>
-          </TouchableOpacity>
+          {validUntil ? (
+            <Text style={styles.validText}>Válido até {validUntil}</Text>
+          ) : null}
+          <View style={{ flexDirection: 'row', gap: 8, flexWrap: 'wrap' }}>
+            <TouchableOpacity style={styles.copyBtn} onPress={() => void handleCopyLink()}>
+              <Copy size={13} color={colors.slate600} />
+              <Text style={styles.copyBtnText}>{copied ? 'Copiado!' : 'Copiar link'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.regenerateBtn} onPress={() => void handleGenerateLink()} disabled={generatingLink}>
+              <Link2 size={13} color={colors.coral600} />
+              <Text style={styles.regenerateBtnText}>{generatingLink ? 'Gerando...' : 'Gerar novo link'}</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       ) : (
         <TouchableOpacity
@@ -88,12 +111,19 @@ const styles = StyleSheet.create({
   sectionSub: { color: semantic.textMuted, fontFamily: font.body, fontSize: 11, lineHeight: 16, marginTop: 2 },
   inviteLinkBox: { gap: 10, alignItems: 'stretch' },
   inviteLinkText: { color: colors.blue700, fontFamily: font.body, fontWeight: '600', fontSize: 11.5, lineHeight: 17 },
+  validText: { color: colors.slate500, fontFamily: font.body, fontWeight: '500', fontSize: 10.5 },
   copyBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingHorizontal: 9, paddingVertical: 6, borderRadius: radius.sm,
     backgroundColor: semantic.card, borderWidth: 1, borderColor: semantic.border,
   },
   copyBtnText: { color: colors.slate600, fontFamily: font.body, fontWeight: '700', fontSize: 10 },
+  regenerateBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 9, paddingVertical: 6, borderRadius: radius.sm,
+    backgroundColor: colors.coral050, borderWidth: 1, borderColor: colors.coral300,
+  },
+  regenerateBtnText: { color: colors.coral600, fontFamily: font.body, fontWeight: '700', fontSize: 10 },
   generateBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
     backgroundColor: colors.coral600, borderRadius: radius.md, paddingVertical: 12,
