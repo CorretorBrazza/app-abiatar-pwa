@@ -98,6 +98,7 @@ export default function NovaRelatorioRecepcao({ isMobile }: { isMobile?: boolean
   const [loading, setLoading] = useState(true);
   const [online, setOnline] = useState(true);
   const [error, setError] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [copying, setCopying] = useState(false);
@@ -120,6 +121,7 @@ export default function NovaRelatorioRecepcao({ isMobile }: { isMobile?: boolean
     const range = computeRange(period);
     setLoading(true);
     setError(false);
+    setErrorMsg(null);
     try {
       const res = await api.get('/presences/reports/reception', {
         params: {
@@ -127,16 +129,26 @@ export default function NovaRelatorioRecepcao({ isMobile }: { isMobile?: boolean
           endDate: range.end,
           ...(boothFilter !== 'all' ? { boothId: boothFilter } : {}),
         },
+        timeout: 30000,
       });
       setData(res.data);
       setOnline(true);
       setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
     } catch (err: any) {
-      if (err.response?.status === 400) {
+      const status = err.response?.status;
+      const serverMsg = Array.isArray(err.response?.data?.message)
+        ? err.response.data.message.join('. ')
+        : err.response?.data?.message;
+      if (status === 400) {
         setError(true);
         setOnline(true);
+        setErrorMsg(serverMsg ? `${serverMsg}.` : 'Confira o período (máximo 3 meses).');
+      } else if (err.code === 'ECONNABORTED') {
+        setOnline(false);
+        setErrorMsg('O servidor demorou para responder. Tente novamente em instantes.');
       } else {
         setOnline(false);
+        setErrorMsg(status ? `Erro ${status} ao carregar o relatório.` : 'Falha de conexão ao carregar o relatório.');
       }
     } finally {
       setLoading(false);
@@ -198,7 +210,7 @@ export default function NovaRelatorioRecepcao({ isMobile }: { isMobile?: boolean
     return (
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <StateError
-          message="Não foi possível carregar o relatório. Confira o período (máximo 3 meses)."
+          message={errorMsg || 'Não foi possível carregar o relatório. Confira o período (máximo 3 meses).'}
           onRetry={() => {
             setLoading(true);
             setRefreshKey((k) => k + 1);
@@ -217,7 +229,7 @@ export default function NovaRelatorioRecepcao({ isMobile }: { isMobile?: boolean
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {!online && (
           <StateError
-            message="Falha de conexão ao carregar o relatório."
+            message={errorMsg || 'Falha de conexão ao carregar o relatório.'}
             onRetry={() => setRefreshKey((k) => k + 1)}
           />
         )}
