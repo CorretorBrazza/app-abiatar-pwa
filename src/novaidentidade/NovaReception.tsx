@@ -68,29 +68,53 @@ export default function NovaReception({
 
   const loadOperationalData = async () => {
     try {
-      const [boothsResponse, targetsResponse, brokersResponse] = await Promise.all([
+      const [boothsResult, targetsResult, brokersResult] = await Promise.allSettled([
         api.get('/booths/assigned'),
         api.get('/notifications/operational/targets'),
         api.get('/users/reception-brokers'),
       ]);
-      const assignedBooths = Array.isArray(boothsResponse.data) ? boothsResponse.data : [];
+
+      const assignedBooths =
+        boothsResult.status === 'fulfilled' && Array.isArray(boothsResult.value.data)
+          ? boothsResult.value.data
+          : [];
+      const operationalTargetsData =
+        targetsResult.status === 'fulfilled' && Array.isArray(targetsResult.value.data)
+          ? targetsResult.value.data
+          : [];
+      const brokersData =
+        brokersResult.status === 'fulfilled' && Array.isArray(brokersResult.value.data)
+          ? brokersResult.value.data
+          : [];
+
+      for (const r of [boothsResult, targetsResult, brokersResult]) {
+        if (r.status === 'rejected') {
+          console.warn('[NOVARECEPTION] Falha em chamada de operação:', r.reason);
+        }
+      }
+
       const queueByBooth: Record<string, any> = {};
       await Promise.all(
         assignedBooths.map(async (booth: any) => {
-          try {
-            const queueResponse = await api.get(`/presences/booths/${booth.id}/queue`);
-            if (queueResponse.data) queueByBooth[booth.id] = queueResponse.data;
-          } catch (error) {
-            console.warn(`[NOVARECEPTION] Falha ao carregar a fila do plantão ${booth.id}:`, error);
+          if (booth?.id) {
+            try {
+              const queueResponse = await api.get(`/presences/booths/${booth.id}/queue`);
+              if (queueResponse.data) queueByBooth[booth.id] = queueResponse.data;
+            } catch (error) {
+              console.warn(`[NOVARECEPTION] Falha ao carregar a fila do plantão ${booth.id}:`, error);
+            }
           }
         }),
       );
+
       setBooths(assignedBooths);
       setQueues(queueByBooth);
-      setOperationalTargets(Array.isArray(targetsResponse.data) ? targetsResponse.data : []);
-      setBrokers(Array.isArray(brokersResponse.data) ? brokersResponse.data : []);
-      setOnline(true);
-      setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+      setOperationalTargets(operationalTargetsData);
+      setBrokers(brokersData);
+      setOnline(boothsResult.status === 'fulfilled');
+      if (boothsResult.status === 'fulfilled') {
+        setLastUpdated(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
+      }
     } catch (error) {
       console.error('[NOVARECEPTION] Falha ao atualizar operação:', error);
       setOnline(false);
@@ -165,11 +189,15 @@ export default function NovaReception({
     loadUnreadCount();
     const intervalId = setInterval(loadUnreadCount, 15000);
     const handlePush = () => loadUnreadCount();
-    window.addEventListener('abiatar:push', handlePush);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('abiatar:push', handlePush);
+    }
     return () => {
       mounted = false;
       clearInterval(intervalId);
-      window.removeEventListener('abiatar:push', handlePush);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('abiatar:push', handlePush);
+      }
     };
   }, []);
 
@@ -552,11 +580,7 @@ const openAttend = (item: any, isNext: boolean) => {
                 </>
               )}
 
-              <Text style={styles.modalLabel}>
-                {attendTarget.isNext
-                  ? 'Dados do cliente (opcional — enviados ao CRM)'
-                  : 'Dados do cliente (opcional — enviados ao CRM)'}
-              </Text>
+              <Text style={styles.modalLabel}>Dados do cliente (opcional — enviados ao CRM)</Text>
               <View style={styles.modalInputs}>
                 <TextInput
                   style={styles.modalInput}

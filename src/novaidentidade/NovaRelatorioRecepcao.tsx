@@ -144,11 +144,15 @@ export default function NovaRelatorioRecepcao({ isMobile }: { isMobile?: boolean
         setOnline(true);
         setErrorMsg(serverMsg ? `${serverMsg}.` : 'Confira o período (máximo 3 meses).');
       } else if (err.code === 'ECONNABORTED') {
+        setError(true);
         setOnline(false);
         setErrorMsg('O servidor demorou para responder. Tente novamente em instantes.');
       } else {
+        setError(true);
         setOnline(false);
-        setErrorMsg(status ? `Erro ${status} ao carregar o relatório.` : 'Falha de conexão ao carregar o relatório.');
+        setErrorMsg(
+          serverMsg || (status ? `Erro ${status} ao carregar o relatório.` : 'Falha de conexão ao carregar o relatório.'),
+        );
       }
     } finally {
       setLoading(false);
