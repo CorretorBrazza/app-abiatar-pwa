@@ -92,6 +92,8 @@ function spTime(iso?: string): string {
 export default function NovaRelatorioRecepcao({ isMobile }: { isMobile?: boolean }) {
   const { tenant } = useAuth();
   const [booths, setBooths] = useState<any[]>([]);
+  const [boothsError, setBoothsError] = useState(false);
+  const [boothsRetryKey, setBoothsRetryKey] = useState(0);
   const [boothFilter, setBoothFilter] = useState<string>('all');
   const [period, setPeriod] = useState<PeriodKey>('month');
   const [data, setData] = useState<any>(null);
@@ -106,16 +108,19 @@ export default function NovaRelatorioRecepcao({ isMobile }: { isMobile?: boolean
 
   useEffect(() => {
     let cancelled = false;
+    setBoothsError(false);
     api
       .get('/booths/assigned')
       .then((res) => {
         if (!cancelled) setBooths(Array.isArray(res.data) ? res.data : []);
       })
-      .catch(() => undefined);
+      .catch(() => {
+        if (!cancelled) setBoothsError(true);
+      });
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [boothsRetryKey]);
 
   const load = useCallback(async () => {
     const range = computeRange(period);
@@ -290,6 +295,14 @@ export default function NovaRelatorioRecepcao({ isMobile }: { isMobile?: boolean
             ))}
           </ScrollView>
           {lastUpdated && <StaleBanner updatedAt={lastUpdated} />}
+          {boothsError && (
+            <View style={styles.boothsErrorRow}>
+              <Text style={styles.boothsErrorText}>Não foi possível carregar a lista de plantões para o filtro.</Text>
+              <TouchableOpacity style={styles.boothsErrorRetry} onPress={() => setBoothsRetryKey((k) => k + 1)}>
+                <Text style={styles.boothsErrorRetryText}>Tentar novamente</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
 
         <View style={styles.card}>
@@ -618,4 +631,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 6,
   },
   staleErrorRetryText: { color: colors.amber700, fontFamily: font.body, fontWeight: '700', fontSize: 10.5 },
+  boothsErrorRow: {
+    borderWidth: 1, borderColor: colors.red300, borderRadius: radius.md,
+    backgroundColor: colors.red100, padding: 10, gap: 8, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+  },
+  boothsErrorText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 11, flexShrink: 1 },
+  boothsErrorRetry: {
+    borderWidth: 1, borderColor: colors.red700, borderRadius: radius.sm,
+    paddingHorizontal: 10, paddingVertical: 6,
+  },
+  boothsErrorRetryText: { color: colors.red700, fontFamily: font.body, fontWeight: '700', fontSize: 10.5 },
 });
