@@ -267,7 +267,7 @@ const openAttend = (item: any, isNext: boolean) => {
   };
 
   const handleForceCheckIn = (brokerId: string, nomeGuerra: string, booth: any) => {
-    if (typeof window !== 'undefined' && !window.confirm(`Efetuar check-in de '${nomeGuerra}' neste plantão (${booth.name})? O check-in precisa estar dentro da janela da roleta atual.`)) return;
+    if (typeof window !== 'undefined' && !window.confirm(`Efetuar check-in de '${nomeGuerra}' neste plantão (${booth.name})? Fora da janela da roleta, ele ficará disponível para você atender, mas o período não será validado nem entrará na sequência da roleta.`)) return;
     void runAction(api.post('/presences/force-check-in', { brokerId, boothId: booth.id }), brokerId);
     setCheckInOpenBooth(null);
   };
