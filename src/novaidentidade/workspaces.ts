@@ -34,6 +34,7 @@ export type NovaView =
   | 'rh_credentials'
   | 'rh_history'
   | 'my_history'
+  | 'shift_active'
   | 'materials';
 
 export type NovaProfile = 'diretoria' | 'gerencia' | 'recepcao' | 'rh' | 'corretor';
@@ -134,6 +135,7 @@ export const PROFILES: ProfileMeta[] = [
     accent: 'action',
     nav: [
       { view: 'command', label: 'Meu próximo plantão', icon: CalendarDays },
+      { view: 'shift_active', label: 'Meu turno', icon: Activity },
       { view: 'my_shifts', label: 'Meus plantões', icon: Clock3 },
       { view: 'check_in', label: 'Check-in do plantão', icon: UserCheck },
       { view: 'inbox', label: 'Mensagens', icon: MessageSquare },
@@ -169,4 +171,5 @@ export const VIEW_TITLE: Record<string, string> = {
   rh_credentials: 'Vigências e CRECI',
   rh_history: 'Histórico',
   my_history: 'Meu histórico',
+  shift_active: 'Meu turno',
 };

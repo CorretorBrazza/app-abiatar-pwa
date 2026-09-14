@@ -48,7 +48,6 @@ export default function CheckIn({ onCheckInSuccess, allowOutOfWindow }: CheckInP
   const [error, setError] = useState('');
 
   const primaryColor = tenant?.primary_color || '#e53924';
-  const showTestDiagnostics = process.env.EXPO_PUBLIC_TEST_MODE !== 'false';
 
   // 1. Efeito Inicial: Busca os plantões cadastrados na nuvem para esta construtora
   useEffect(() => {
@@ -212,7 +211,6 @@ export default function CheckIn({ onCheckInSuccess, allowOutOfWindow }: CheckInP
                   </Text>
                 )}
 
-                {showTestDiagnostics && <Text style={styles.boothRadius}>[Raio permitido: {item.gps_radius}m]</Text>}
               </View>
 
               <IconButton
@@ -280,11 +278,6 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#c13a28',
     marginBottom: 4,
-  },
-  boothRadius: {
-    fontSize: 11,
-    color: '#c13a28',
-    fontWeight: '600',
   },
   badgePontual: {
     backgroundColor: '#dcfce7',

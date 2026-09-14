@@ -47,6 +47,7 @@ import NovaPerformance from './NovaPerformance';
 import NovaMensagens from './NovaMensagens';
 import NovaHistoricoCorretor from './NovaHistoricoCorretor';
 import NovaRelatorioRecepcao from './NovaRelatorioRecepcao';
+import NovaShiftActive from './NovaShiftActive';
 import { colors, font, fonts, radius, semantic, shadow, statusTone } from './tokens';
 import { useNovaFonts } from './fonts';
 import {
@@ -327,9 +328,9 @@ function NovaBrokerHome({
           </View>
         </View>
         <View style={[hero.actions, isMobile && hero.actionsMobile]}>
-          <TouchableOpacity style={[hero.cta, isMobile && hero.ctaFull]} onPress={() => onOpen('check_in')} activeOpacity={0.9}>
-            <UserCheck size={17} color={colors.navy900} strokeWidth={2.2} />
-            <Text style={hero.ctaText}>Efetuar check-in</Text>
+          <TouchableOpacity style={[hero.cta, isMobile && hero.ctaFull]} onPress={() => onOpen(isActive ? 'shift_active' : 'check_in')} activeOpacity={0.9}>
+            {isActive ? <Clock3 size={17} color={colors.navy900} strokeWidth={2.2} /> : <UserCheck size={17} color={colors.navy900} strokeWidth={2.2} />}
+            <Text style={hero.ctaText}>{isActive ? 'Ver meu turno ativo' : 'Efetuar check-in'}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={[hero.ctaGhost, isMobile && hero.ctaFull]} onPress={() => onOpen('my_shifts')} activeOpacity={0.9}>
             <CalendarDays size={17} color="#fff" strokeWidth={2} />
@@ -762,6 +763,40 @@ export default function DashboardNova() {
     }
   }, [view, profile]);
 
+  // Broker session watchdog: se há ping pendente na nuvem, força a tela de turno ativo
+  useEffect(() => {
+    if (profile !== 'corretor') return;
+    let cancelled = false;
+    let timer: ReturnType<typeof setInterval> | undefined;
+
+    const check = async () => {
+      try {
+        const res = await api.get('/presences/current');
+        if (!cancelled && res.data?.hasActiveSession && res.data.presence?.pendingPingId) {
+          setView((v) => (v === 'shift_active' ? v : 'shift_active'));
+        }
+      } catch {
+        /* silencioso */
+      }
+    };
+
+    check();
+    timer = setInterval(check, 10000);
+    const onRealtime = () => void check();
+    if (typeof window !== 'undefined') {
+      window.addEventListener('abiatar:realtime', onRealtime);
+      window.addEventListener('abiatar:push', onRealtime);
+    }
+    return () => {
+      cancelled = true;
+      if (timer) clearInterval(timer);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('abiatar:realtime', onRealtime);
+        window.removeEventListener('abiatar:push', onRealtime);
+      }
+    };
+  }, [profile]);
+
   const isMobile = width < 768;
   const sidebarOffset = isMobile ? 0 : collapsed ? 76 : 256;
   const topOffset = isMobile ? 0 : 72;
@@ -782,10 +817,17 @@ export default function DashboardNova() {
           </ScrollView>
         );
       }
+      if (view === 'shift_active') {
+        return (
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={pad}>
+            <NovaShiftActive isMobile={isMobile} onOpen={setView} onCheckOutDone={() => setView('command')} />
+          </ScrollView>
+        );
+      }
       if (view === 'check_in') {
         return (
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={pad}>
-            <CheckIn onCheckInSuccess={() => setView('command')} allowOutOfWindow />
+            <CheckIn onCheckInSuccess={() => setView('shift_active')} allowOutOfWindow />
           </ScrollView>
         );
       }
