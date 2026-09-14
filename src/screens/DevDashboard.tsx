@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -380,6 +380,38 @@ function formatTime(value?: string | null) {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+function shortDate(value?: string | null) {
+  if (!value) return '—';
+  const d = new Date(value + 'T12:00:00');
+  if (isNaN(d.getTime())) return value;
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+
+function exportText(filename: string, content: string, mime = 'text/plain') {
+  if (typeof window === 'undefined' || typeof URL === 'undefined') return;
+  try {
+    const blob = new Blob([content], { type: `${mime};charset=utf-8` });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  } catch (err) {
+    console.error('Falha ao exportar:', err);
+  }
+}
+
+function toCsv(headers: string[], rows: Array<Array<unknown>>) {
+  const esc = (v: unknown) => {
+    const s = v === null || v === undefined ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  return [headers.join(','), ...rows.map((r) => r.map(esc).join(','))].join('\n');
+}
+
 // ========================= PAINEL PRINCIPAL =========================
 
 export default function DevDashboard({ onBack }: { onBack: () => void }) {
@@ -453,6 +485,32 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [expandedBooth, setExpandedBooth] = useState<string | null>(null);
 
+  const [autoRefresh, setAutoRefresh] = useState<'off' | '15' | '30' | '60'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('@abiatar:auto_refresh') as 'off' | '15' | '30' | '60' | null;
+      return saved && ['15', '30', '60'].includes(saved) ? saved : 'off';
+    }
+    return 'off';
+  });
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Partial<Record<TabKey, string>>>({});
+
+  const [auditTenantFilter, setAuditTenantFilter] = useState<string>('');
+  const [brokerTenantFilter, setBrokerTenantFilter] = useState<string>('');
+  const [deadmanTenantFilter, setDeadmanTenantFilter] = useState<string>('');
+
+  const [sqlHistory, setSqlHistory] = useState<string[]>(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = JSON.parse(localStorage.getItem('@abiatar:sql_history') || '[]');
+        return Array.isArray(raw) ? raw.filter((x) => typeof x === 'string').slice(0, 10) : [];
+      } catch {
+        return [];
+      }
+    }
+    return [];
+  });
+
   // ============ AUTENTICAÇÃO ============
 
   const handleAuth = async () => {
@@ -497,6 +555,24 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
     return { headers: { Authorization: `Bearer ${devToken}` } };
   }, [devToken]);
 
+  const stampTab = useCallback((tab: TabKey) => {
+    setLastUpdated((prev) => ({ ...prev, [tab]: new Date().toLocaleTimeString('pt-BR') }));
+  }, []);
+
+  const addSqlHistory = useCallback((query: string) => {
+    setSqlHistory((h) => {
+      const next = [query, ...h.filter((x) => x !== query)].slice(0, 10);
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('@abiatar:sql_history', JSON.stringify(next));
+        } catch {
+          /* storage indisponível */
+        }
+      }
+      return next;
+    });
+  }, []);
+
   // ============ CARREGADORES ============
 
   const loadHealth = useCallback(async () => {
@@ -505,12 +581,13 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
       setLoading(true);
       const res = await api.get('/dev/health', getDevHeaders());
       setHealthData(res.data);
+      stampTab('health');
     } catch (err: any) {
       if (err.response?.status === 401) handleLogoutDev();
     } finally {
       setLoading(false);
     }
-  }, [devToken, getDevHeaders]);
+  }, [devToken, getDevHeaders, stampTab]);
 
   const loadTenants = useCallback(async () => {
     if (!devToken) return;
@@ -528,16 +605,17 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
       setLoading(true);
       const res = await api.get('/dev/audit-logs', {
         ...getDevHeaders(),
-        params: { page: auditPage, limit: 20, search: auditSearch },
+        params: { page: auditPage, limit: 20, search: auditSearch, tenantId: auditTenantFilter || undefined },
       });
       setAuditLogs(res.data?.logs || []);
       setAuditTotal(res.data?.total || 0);
+      stampTab('audit');
     } catch (err: any) {
       console.error('Erro ao carregar audit logs:', err);
     } finally {
       setLoading(false);
     }
-  }, [devToken, auditPage, auditSearch, getDevHeaders]);
+  }, [devToken, auditPage, auditSearch, auditTenantFilter, getDevHeaders, stampTab]);
 
   const loadDbStatus = useCallback(async () => {
     if (!devToken) return;
@@ -561,12 +639,13 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
         params: liveTenantFilter ? { tenantId: liveTenantFilter } : {},
       });
       setLiveData(res.data);
+      stampTab('live');
     } catch (err: any) {
       setFeedback({ type: 'error', message: 'Falha ao carregar diagnóstico ao vivo: ' + (err.response?.data?.message || err.message) });
     } finally {
       setLoading(false);
     }
-  }, [devToken, liveTenantFilter, getDevHeaders]);
+  }, [devToken, liveTenantFilter, getDevHeaders, stampTab]);
 
   const loadUsers = useCallback(async () => {
     if (!devToken) return;
@@ -608,27 +687,35 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
     if (!devToken) return;
     try {
       setLoading(true);
-      const res = await api.get('/dev/broker/overview', getDevHeaders());
+      const res = await api.get('/dev/broker/overview', {
+        ...getDevHeaders(),
+        params: brokerTenantFilter ? { tenantId: brokerTenantFilter } : {},
+      });
       setBrokerData(res.data);
+      stampTab('broker');
     } catch (err: any) {
       setFeedback({ type: 'error', message: 'Falha ao carregar filas/broker: ' + (err.response?.data?.message || err.message) });
     } finally {
       setLoading(false);
     }
-  }, [devToken, getDevHeaders]);
+  }, [devToken, brokerTenantFilter, getDevHeaders, stampTab]);
 
   const loadDeadmanOverview = useCallback(async () => {
     if (!devToken) return;
     try {
       setLoading(true);
-      const res = await api.get('/dev/deadman/overview', getDevHeaders());
+      const res = await api.get('/dev/deadman/overview', {
+        ...getDevHeaders(),
+        params: deadmanTenantFilter ? { tenantId: deadmanTenantFilter } : {},
+      });
       setDeadmanData(res.data);
+      stampTab('deadman');
     } catch (err: any) {
       setFeedback({ type: 'error', message: 'Falha ao carregar monitor deadman: ' + (err.response?.data?.message || err.message) });
     } finally {
       setLoading(false);
     }
-  }, [devToken, getDevHeaders]);
+  }, [devToken, deadmanTenantFilter, getDevHeaders, stampTab]);
 
   const loadStatsHistory = useCallback(async () => {
     if (!devToken) return;
@@ -639,12 +726,28 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
         params: { days: statsDays, tenantId: statsTenantFilter || undefined },
       });
       setStatsData(res.data);
+      stampTab('stats');
     } catch (err: any) {
       setFeedback({ type: 'error', message: 'Falha ao carregar histórico: ' + (err.response?.data?.message || err.message) });
     } finally {
       setLoading(false);
     }
-  }, [devToken, statsDays, statsTenantFilter, getDevHeaders]);
+  }, [devToken, statsDays, statsTenantFilter, getDevHeaders, stampTab]);
+
+  const refreshCurrentTab = () => {
+    if (currentTab === 'health') loadHealth();
+    if (currentTab === 'tenants') loadTenants();
+    if (currentTab === 'audit') loadAuditLogs();
+    if (currentTab === 'db') loadDbStatus();
+    if (currentTab === 'live') {
+      loadLiveOverview();
+      loadBoothGrid();
+    }
+    if (currentTab === 'users') loadUsers();
+    if (currentTab === 'broker') loadBrokerOverview();
+    if (currentTab === 'deadman') loadDeadmanOverview();
+    if (currentTab === 'stats') loadStatsHistory();
+  };
 
   const handleRunSql = async () => {
     if (!sqlInput.trim()) {
@@ -656,11 +759,63 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
       setFeedback(null);
       const res = await api.post('/dev/sql', { sql: sqlInput.trim() }, getDevHeaders());
       setSqlResult(res.data);
+      addSqlHistory(sqlInput.trim());
     } catch (err: any) {
       setFeedback({ type: 'error', message: err.response?.data?.message || 'Erro ao executar consulta.' });
     } finally {
       setRunningSql(false);
     }
+  };
+
+  const handleClearSqlHistory = () => {
+    setSqlHistory([]);
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.removeItem('@abiatar:sql_history');
+      } catch {
+        /* ignore */
+      }
+    }
+  };
+
+  const handleCopySqlResult = async () => {
+    if (!sqlResult) return;
+    try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(JSON.stringify(sqlResult, null, 2));
+        setFeedback({ type: 'success', message: 'Resultado copiado para a área de transferência.' });
+      } else {
+        setFeedback({ type: 'error', message: 'Área de transferência indisponível neste navegador.' });
+      }
+    } catch {
+      setFeedback({ type: 'error', message: 'Falha ao copiar resultado.' });
+    }
+  };
+
+  const handleExportSqlResult = () => {
+    if (!sqlResult || sqlResult.columns.length === 0) return;
+    const rows = sqlResult.rows.map((r) => sqlResult.columns.map((c) => r[c]));
+    exportText(
+      `consulta-${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.csv`,
+      toCsv(sqlResult.columns, rows),
+      'text/csv',
+    );
+    setFeedback({ type: 'success', message: 'CSV exportado.' });
+  };
+
+  const handleExportAudit = () => {
+    if (auditLogs.length === 0) return;
+    const rows = auditLogs.map((l) => [l.created_at, l.action, l.actor_email_snapshot || '', l.actor_role || '', l.success ? '1' : '0', l.reason || '']);
+    exportText(`auditoria-${new Date().toISOString().slice(0, 10)}.csv`, toCsv(['data', 'acao', 'ator', 'papel', 'sucesso', 'motivo'], rows), 'text/csv');
+    setFeedback({ type: 'success', message: `CSV gerado com ${auditLogs.length} registros.` });
+  };
+
+  const handleExportUsers = () => {
+    const users = usersPayload?.users || [];
+    if (users.length === 0) return;
+    const rows = users.map((u) => [u.nome_guerra, u.name, u.email, u.role, u.status, u.tenantName, u.presencesToday, u.last_checkin_at || '', u.broker_stage || '']);
+    exportText(`usuarios-pag${userPage}.csv`, toCsv(['nome_guerra', 'nome', 'email', 'papel', 'status', 'tenant', 'presencas_hoje', 'ultimo_checkin', 'estagio'], rows), 'text/csv');
+    setFeedback({ type: 'success', message: `CSV gerado com ${users.length} usuários.` });
   };
 
   const handleReprocessQueue = async () => {
@@ -710,9 +865,11 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
 
   useEffect(() => {
     if (!devToken) return;
-    if (currentTab === 'health') loadHealth();
     if (currentTab === 'tenants') loadTenants();
-    if (currentTab === 'audit') loadAuditLogs();
+    if (currentTab === 'audit') {
+      loadAuditLogs();
+      if (tenants.length === 0) loadTenants();
+    }
     if (currentTab === 'db') loadDbStatus();
     if (currentTab === 'live') {
       loadLiveOverview();
@@ -724,18 +881,54 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
       loadBrokerOverview();
       if (tenants.length === 0) loadTenants();
     }
-    if (currentTab === 'deadman') loadDeadmanOverview();
+    if (currentTab === 'deadman') {
+      loadDeadmanOverview();
+      if (tenants.length === 0) loadTenants();
+    }
     if (currentTab === 'stats') {
       loadStatsHistory();
       if (tenants.length === 0) loadTenants();
     }
-  }, [devToken, currentTab, loadHealth, loadTenants, loadAuditLogs, loadDbStatus, loadLiveOverview, loadUsers, loadBrokerOverview, loadDeadmanOverview, loadStatsHistory, loadBoothGrid, tenants.length]);
+  }, [devToken, currentTab, loadTenants, loadAuditLogs, loadDbStatus, loadLiveOverview, loadUsers, loadBrokerOverview, loadDeadmanOverview, loadStatsHistory, loadBoothGrid, tenants.length]);
 
   useEffect(() => {
     if (!devToken || currentTab !== 'users') return;
     const delay = setTimeout(() => loadUsers(), 500);
     return () => clearTimeout(delay);
   }, [userSearch, userRoleFilter, userStatusFilter, userTenantFilter, loadUsers, devToken, currentTab]);
+
+  // Garante o status real no header mesmo antes/fora da aba Telemetria.
+  useEffect(() => {
+    if (devToken && !healthData) loadHealth();
+  }, [devToken, healthData, loadHealth]);
+
+  // Auto-refresh por aba.
+  useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    if (!devToken || autoRefresh === 'off') return;
+    const run: Partial<Record<TabKey, () => void>> = {
+      health: loadHealth,
+      live: () => {
+        loadLiveOverview();
+        loadBoothGrid();
+      },
+      broker: loadBrokerOverview,
+      deadman: loadDeadmanOverview,
+      stats: loadStatsHistory,
+    };
+    const fn = run[currentTab];
+    if (!fn) return;
+    intervalRef.current = setInterval(fn, Number(autoRefresh) * 1000);
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+    };
+  }, [devToken, autoRefresh, currentTab, loadHealth, loadLiveOverview, loadBoothGrid, loadBrokerOverview, loadDeadmanOverview, loadStatsHistory]);
 
   // ============ AÇÕES ============
 
@@ -961,13 +1154,35 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
           </View>
         </View>
 
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-          <TouchableOpacity style={styles.headerBtn} onPress={onBack}>
-            <Text style={styles.headerBtnText}>Ver PWA</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={[styles.headerBtn, { borderColor: '#ef4444' }]} onPress={handleLogoutDev}>
-            <Text style={[styles.headerBtnText, { color: '#ef4444' }]}>Sair</Text>
-          </TouchableOpacity>
+        <View style={{ alignItems: 'flex-end', gap: 6 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <TouchableOpacity style={styles.headerBtn} onPress={onBack}>
+              <Text style={styles.headerBtnText}>Ver PWA</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.headerBtn, { borderColor: '#ef4444' }]} onPress={handleLogoutDev}>
+              <Text style={[styles.headerBtnText, { color: '#ef4444' }]}>Sair</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+            <Text style={{ fontSize: 10, color: '#71717a' }}>Auto-refresh</Text>
+            {(['off', '15', '30', '60'] as const).map((s) => (
+              <TouchableOpacity
+                key={s}
+                style={[styles.speedChip, autoRefresh === s && styles.speedChipActive]}
+                onPress={() => {
+                  setAutoRefresh(s);
+                  if (typeof window !== 'undefined') sessionStorage.setItem('@abiatar:auto_refresh', s);
+                }}
+              >
+                <Text style={autoRefresh === s ? styles.speedChipTextActive : styles.speedChipText}>
+                  {s === 'off' ? 'Off' : `${s}s`}
+                </Text>
+              </TouchableOpacity>
+            ))}
+            <TouchableOpacity style={styles.headerBtn} onPress={refreshCurrentTab}>
+              <Text style={styles.headerBtnText}>↻ Atualizar</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
 
@@ -996,6 +1211,15 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
           </TouchableOpacity>
         </View>
       )}
+
+      {lastUpdated[currentTab] ? (
+        <View style={{ paddingHorizontal: 20, paddingTop: 8 }}>
+          <Text style={{ color: '#52525b', fontSize: 11 }}>
+            Última atualização desta aba: {lastUpdated[currentTab]} · Auto-refresh:{' '}
+            {autoRefresh === 'off' ? 'desligado' : `a cada ${autoRefresh}s`}
+          </Text>
+        </View>
+      ) : null}
 
       <ScrollView style={styles.scrollContent} contentContainerStyle={{ paddingBottom: 40 }}>
         {/* ---------------- TELEMETRIA ---------------- */}
@@ -1150,10 +1374,30 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
           <View style={{ gap: 16 }}>
             <View style={styles.rowBetween}>
               <Text style={styles.sectionTitle}>Linha do Tempo de Auditoria ({auditTotal})</Text>
-              <TouchableOpacity style={styles.refreshBtn} onPress={loadAuditLogs}>
-                <Text style={styles.refreshBtnText}>Atualizar</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity style={styles.refreshBtn} onPress={loadAuditLogs}>
+                  <Text style={styles.refreshBtnText}>Atualizar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerBtn} onPress={handleExportAudit} disabled={auditLogs.length === 0}>
+                  <Text style={[styles.headerBtnText, auditLogs.length === 0 && { opacity: 0.4 }]}>Exportar CSV</Text>
+                </TouchableOpacity>
+              </View>
             </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <TouchableOpacity style={[styles.filterChip, auditTenantFilter === '' && styles.filterChipActive]} onPress={() => { setAuditTenantFilter(''); setAuditPage(1); }}>
+                <Text style={auditTenantFilter === '' ? styles.filterChipTextActive : styles.filterChipText}>Todos os tenants</Text>
+              </TouchableOpacity>
+              {tenants.map((t) => (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[styles.filterChip, auditTenantFilter === t.id && styles.filterChipActive]}
+                  onPress={() => { setAuditTenantFilter(auditTenantFilter === t.id ? '' : t.id); setAuditPage(1); }}
+                >
+                  <Text style={auditTenantFilter === t.id ? styles.filterChipTextActive : styles.filterChipText}>{t.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
             <TextInput
               style={styles.searchInput}
@@ -1484,9 +1728,14 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
               <Text style={styles.sectionTitle}>
                 Usuários ({usersPayload?.total ?? 0})
               </Text>
-              <TouchableOpacity style={styles.refreshBtn} onPress={loadUsers}>
-                <Text style={styles.refreshBtnText}>Atualizar</Text>
-              </TouchableOpacity>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity style={styles.refreshBtn} onPress={loadUsers}>
+                  <Text style={styles.refreshBtnText}>Atualizar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.headerBtn} onPress={handleExportUsers} disabled={!usersPayload || usersPayload.users.length === 0}>
+                  <Text style={[styles.headerBtnText, (!usersPayload || usersPayload.users.length === 0) && { opacity: 0.4 }]}>Exportar CSV</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TextInput
@@ -1610,6 +1859,21 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
               </View>
             </View>
 
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <TouchableOpacity style={[styles.filterChip, brokerTenantFilter === '' && styles.filterChipActive]} onPress={() => setBrokerTenantFilter('')}>
+                <Text style={brokerTenantFilter === '' ? styles.filterChipTextActive : styles.filterChipText}>Todos os tenants</Text>
+              </TouchableOpacity>
+              {tenants.map((t) => (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[styles.filterChip, brokerTenantFilter === t.id && styles.filterChipActive]}
+                  onPress={() => setBrokerTenantFilter(brokerTenantFilter === t.id ? '' : t.id)}
+                >
+                  <Text style={brokerTenantFilter === t.id ? styles.filterChipTextActive : styles.filterChipText}>{t.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
             {brokerData ? (
               <>
                 <View style={styles.metricsGrid}>
@@ -1724,6 +1988,21 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
                 <Text style={styles.refreshBtnText}>Atualizar</Text>
               </TouchableOpacity>
             </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }}>
+              <TouchableOpacity style={[styles.filterChip, deadmanTenantFilter === '' && styles.filterChipActive]} onPress={() => setDeadmanTenantFilter('')}>
+                <Text style={deadmanTenantFilter === '' ? styles.filterChipTextActive : styles.filterChipText}>Todos os tenants</Text>
+              </TouchableOpacity>
+              {tenants.map((t) => (
+                <TouchableOpacity
+                  key={t.id}
+                  style={[styles.filterChip, deadmanTenantFilter === t.id && styles.filterChipActive]}
+                  onPress={() => setDeadmanTenantFilter(deadmanTenantFilter === t.id ? '' : t.id)}
+                >
+                  <Text style={deadmanTenantFilter === t.id ? styles.filterChipTextActive : styles.filterChipText}>{t.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
 
             {deadmanData ? (
               <>
@@ -1862,7 +2141,7 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
                       <View style={{ marginTop: 12, gap: 6 }}>
                         {statsData.perDay.map((d) => (
                           <View key={d.date} style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                            <Text style={{ color: '#71717a', fontSize: 11, width: 78 }}>{formatDate(d.date + 'T12:00:00')}</Text>
+                            <Text style={{ color: '#71717a', fontSize: 11, width: 44 }}>{shortDate(d.date)}</Text>
                             <View style={{ flex: 1, height: 18, backgroundColor: '#18181c', borderRadius: 4, overflow: 'hidden' }}>
                               <View style={{ width: `${(d.total / max) * 100}%`, height: '100%', backgroundColor: d.total > 0 ? '#38bdf8' : '#27272a', borderRadius: 4 }} />
                             </View>
@@ -1946,6 +2225,31 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
             <Text style={{ fontSize: 12, color: '#71717a' }}>
               Apenas SELECT / WITH / SHOW / VALUES / EXPLAIN. Comandos de escrita são bloqueados; limite de 500 linhas e timeout de 5s.
             </Text>
+
+            {sqlHistory.length > 0 && (
+              <View style={styles.sectionCard}>
+                <View style={styles.rowBetween}>
+                  <Text style={styles.sectionTitle}>Histórico de consultas</Text>
+                  <TouchableOpacity style={styles.refreshBtn} onPress={handleClearSqlHistory}>
+                    <Text style={styles.refreshBtnText}>Limpar</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={{ gap: 6, marginTop: 8 }}>
+                  {sqlHistory.map((q, i) => (
+                    <TouchableOpacity
+                      key={`${q}-${i}`}
+                      style={{ paddingVertical: 6, borderBottomWidth: 1, borderBottomColor: '#1e1e24' }}
+                      onPress={() => setSqlInput(q)}
+                    >
+                      <Text style={{ color: '#38bdf8', fontSize: 11, fontFamily: 'monospace' }} numberOfLines={2}>
+                        {q}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
             <TextInput
               style={styles.sqlInput}
               multiline
@@ -1962,9 +2266,19 @@ export default function DevDashboard({ onBack }: { onBack: () => void }) {
               <View style={styles.sectionCard}>
                 <View style={styles.rowBetween}>
                   <Text style={styles.sectionTitle}>Resultado</Text>
-                  <Text style={{ color: '#38bdf8', fontSize: 12 }}>
-                    {sqlResult.rowCount} linha(s) · {sqlResult.durationMs}ms{sqlResult.truncated ? ' · truncado' : ''}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={{ color: '#38bdf8', fontSize: 12 }}>
+                      {sqlResult.rowCount} linha(s) · {sqlResult.durationMs}ms{sqlResult.truncated ? ' · truncado' : ''}
+                    </Text>
+                    <TouchableOpacity style={styles.headerBtn} onPress={handleCopySqlResult}>
+                      <Text style={styles.headerBtnText}>Copiar JSON</Text>
+                    </TouchableOpacity>
+                    {sqlResult.columns.length > 0 && (
+                      <TouchableOpacity style={styles.headerBtn} onPress={handleExportSqlResult}>
+                        <Text style={styles.headerBtnText}>CSV</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
                 </View>
                 {sqlResult.columns.length === 0 ? (
                   <Text style={{ color: '#71717a', fontSize: 12, marginTop: 8 }}>A consulta não retornou colunas.</Text>
@@ -2470,6 +2784,17 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38bdf8' },
   filterChipText: { fontSize: 12, fontWeight: '600', color: '#a1a1aa' },
   filterChipTextActive: { fontSize: 12, fontWeight: '700', color: '#38bdf8' },
+  speedChip: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 999,
+    backgroundColor: '#18181c',
+    borderWidth: 1,
+    borderColor: '#27272a',
+  },
+  speedChipActive: { backgroundColor: 'rgba(56, 189, 248, 0.15)', borderColor: '#38bdf8' },
+  speedChipText: { fontSize: 10, fontWeight: '600', color: '#a1a1aa' },
+  speedChipTextActive: { fontSize: 10, fontWeight: '800', color: '#38bdf8' },
   modalOverlay: {
     flex: 1,
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
