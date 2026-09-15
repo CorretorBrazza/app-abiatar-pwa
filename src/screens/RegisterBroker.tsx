@@ -69,7 +69,9 @@ export default function RegisterBroker({ onBackToLogin, inviteToken }: RegisterB
   const loadManagers = async () => {
     try {
       setLoadingManagers(true);
-      const res = await api.get('/users/public-managers');
+      const res = await api.get('/users/public-managers', {
+        params: { tenantSlug: 'abiatar-teste' },
+      });
       if (res.data?.managers && Array.isArray(res.data.managers)) {
         setManagers(res.data.managers);
         // NÃO pré-seleciona nenhum gerente por padrão, obrigando o corretor a escolher
